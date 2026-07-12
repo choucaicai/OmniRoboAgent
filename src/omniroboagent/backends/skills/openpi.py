@@ -97,7 +97,7 @@ class OpenPIWebSocketPolicyBackend(SkillBackend):
                 )
             except ImportError as error:
                 raise BackendError(
-                    "OpenPI support requires: pip install 'omniroboagent[openpi]'"
+                    "OpenPI support requires: uv pip install --editable '.[openpi]'"
                 ) from error
             factory = module.WebsocketClientPolicy
         return factory(host=self.host, port=self.port, api_key=self.api_key)

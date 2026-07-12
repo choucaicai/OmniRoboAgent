@@ -1,6 +1,6 @@
 # GitHub Pages Documentation
 
-Status: In Progress
+Status: DONE
 
 ## Goal
 
@@ -21,10 +21,10 @@ Status: In Progress
 
 ## Tasks
 
-- [ ] 创建 `docs/index.html`、`_sidebar.md`、`.nojekyll` 和样式。
-- [ ] 记录 GitHub Pages branch `/docs` 配置。
-- [ ] 更新教程首页、根 README 和跨目录链接。
-- [ ] 验证静态资源、Markdown 路由、响应式布局和 workflow 语法。
+- [x] 创建 `docs/index.html`、`_sidebar.md`、`.nojekyll` 和样式。
+- [x] 记录 GitHub Pages branch `/docs` 配置。
+- [x] 更新教程首页、根 README 和跨目录链接。
+- [x] 验证静态资源、Markdown 路由和响应式布局。
 
 ## Acceptance
 
@@ -32,3 +32,5 @@ Status: In Progress
 - 侧边栏导航和全文搜索配置存在。
 - GitHub Pages 可以直接从 branch `/docs` 发布。
 - GitHub Pages 中的仓库源码链接不依赖 artifact 外文件。
+
+Change record: [`../changes/2026-07-12-github-pages-docs.md`](../changes/2026-07-12-github-pages-docs.md)

@@ -19,9 +19,9 @@ Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 - `configs/runs/eb_alfred_smoke.yaml`
 - `src/omniroboagent/planners.py`
 - `tests/unit/test_llm_and_planner.py`
-- `tutorial_docs/eb_alfred.md`
-- `tutorial_docs/quickstart.md`
-- `tutorial_docs/interfaces.md`
+- `docs/eb_alfred.md`
+- `docs/quickstart.md`
+- `docs/interfaces.md`
 - `impl_docs/plans/0001-eb-alfred-first-loop.md`
 - `impl_docs/TODO.md`
 

@@ -1,6 +1,6 @@
 # uv Dependency Management
 
-Status: In Progress
+Status: DONE
 
 ## Goal
 
@@ -16,10 +16,10 @@ Status: In Progress
 
 ## Tasks
 
-- [ ] 更新 dependency groups、optional extras 和 uv source 配置。
-- [ ] 生成 lockfile，并验证基础环境同步。
-- [ ] 更新运行脚本和当前使用文档。
-- [ ] 运行 unit tests、Ruff、mypy 和文档一致性检查。
+- [x] 更新 dependency groups、optional extras 和 uv source 配置。
+- [x] 生成 lockfile，并验证基础环境同步。
+- [x] 更新运行脚本和当前使用文档。
+- [x] 运行 unit tests、Ruff、mypy 和文档一致性检查。
 
 ## Acceptance
 
@@ -27,3 +27,5 @@ Status: In Progress
 - `uv pip install` 能明确使用目标 Conda Python 解析项目依赖。
 - pytest、Ruff 和 mypy 在 `omniagent` 中通过。
 - README 包含 clone、安装 optional extras、测试和启动命令。
+
+Change record: [`../changes/2026-07-12-uv-dependency-management.md`](../changes/2026-07-12-uv-dependency-management.md)

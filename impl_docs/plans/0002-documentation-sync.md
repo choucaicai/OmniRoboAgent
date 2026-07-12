@@ -4,7 +4,7 @@ Status: `DONE`
 
 ## Goal
 
-根据当前 `src/omniroboagent/`、配置文件和已验证的 EB-ALFRED smoke 结果，同步更新 `impl_docs/` 与 `tutorial_docs/`，确保示例可以直接对应现有接口。
+根据当前 `src/omniroboagent/`、配置文件和已验证的 EB-ALFRED smoke 结果，同步更新 `impl_docs/` 与 `docs/`，确保示例可以直接对应现有接口。
 
 ## Confirmed Decisions
 

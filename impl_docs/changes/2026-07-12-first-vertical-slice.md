@@ -14,7 +14,7 @@ Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 - 实现 full/receding-horizon action execution 配置。
 - 实现 `EBAlfredEnvironment`、episode runner、trace、results 和 summary。
 - 添加 EB-ALFRED smoke AgentConfig 和 RunConfig。
-- 创建 `tutorial_docs/` 使用文档和接口文档。
+- 创建 `docs/` 使用文档和接口文档。
 - 创建并安装 `omniagent-eb`，下载 EB-ALFRED dataset 和 AI2-THOR binary。
 
 ## Files
@@ -24,7 +24,7 @@ Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 - `configs/`
 - `src/omniroboagent/`
 - `tests/unit/`
-- `tutorial_docs/`
+- `docs/`
 - `impl_docs/architecture/overview.md`
 - `impl_docs/plans/0001-eb-alfred-first-loop.md`
 - `impl_docs/TODO.md`

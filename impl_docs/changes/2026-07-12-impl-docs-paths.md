@@ -13,7 +13,7 @@ Related plan: N/A
 - `AGENTS.md`
 - `README.md`
 - `rules/README.md`
-- `tutorial_docs/`
+- `docs/`
 - `impl_docs/`
 
 ## Verification
