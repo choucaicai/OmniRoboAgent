@@ -7,7 +7,7 @@
 ## Directory Structure
 
 ```text
-docs/
+impl_docs/
 ├── README.md
 ├── TODO.md
 ├── architecture/

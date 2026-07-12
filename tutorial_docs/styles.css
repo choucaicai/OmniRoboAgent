@@ -1,0 +1,144 @@
+:root {
+  --theme-color: #087f5b;
+  --base-font-size: 16px;
+  --base-line-height: 1.7;
+  --sidebar-width: 280px;
+  --content-max-width: 920px;
+  --text-color-base: #24292f;
+  --surface-muted: #f6f8f8;
+  --border-color: #d8dee4;
+  --code-background: #f1f4f3;
+}
+
+* {
+  letter-spacing: 0;
+}
+
+body {
+  color: var(--text-color-base);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.sidebar {
+  background: var(--surface-muted);
+  border-right: 1px solid var(--border-color);
+  padding-top: 20px;
+}
+
+.sidebar > h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 20px 18px;
+  text-align: left;
+}
+
+.sidebar > h1 a {
+  color: #17211d;
+}
+
+.sidebar ul li a {
+  color: #3d4742;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sidebar ul li.active > a {
+  color: var(--theme-color);
+  font-weight: 700;
+}
+
+.search {
+  border-bottom: 1px solid var(--border-color) !important;
+  margin-bottom: 12px;
+  padding: 0 16px 16px !important;
+}
+
+.search input {
+  background: #ffffff;
+  border: 1px solid #b8c1c7 !important;
+  border-radius: 6px;
+  font-size: 14px;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.markdown-section {
+  max-width: var(--content-max-width);
+  padding: 42px 44px 72px;
+}
+
+.markdown-section h1 {
+  color: #17211d;
+  font-size: 32px;
+  line-height: 1.25;
+  margin-bottom: 24px;
+}
+
+.markdown-section h2 {
+  border-bottom: 1px solid var(--border-color);
+  color: #17211d;
+  font-size: 23px;
+  line-height: 1.35;
+  padding-bottom: 8px;
+}
+
+.markdown-section h3 {
+  color: #25322d;
+  font-size: 18px;
+}
+
+.markdown-section a {
+  color: #0969a8;
+}
+
+.markdown-section code {
+  background: var(--code-background);
+  border-radius: 4px;
+  color: #9a3412;
+  font-size: 0.9em;
+  padding: 2px 5px;
+}
+
+.markdown-section pre {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.markdown-section pre > code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.markdown-section table {
+  display: table;
+  width: 100%;
+}
+
+.markdown-section th {
+  background: var(--surface-muted);
+  color: #25322d;
+}
+
+.markdown-section td,
+.markdown-section th {
+  border-color: var(--border-color);
+  padding: 10px 12px;
+}
+
+@media (max-width: 768px) {
+  .markdown-section {
+    padding: 28px 20px 56px;
+  }
+
+  .markdown-section h1 {
+    font-size: 27px;
+  }
+
+  .markdown-section table {
+    display: block;
+    overflow-x: auto;
+  }
+}

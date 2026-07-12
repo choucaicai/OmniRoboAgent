@@ -4,7 +4,7 @@
 
 ## AgentConfig
 
-[`configs/agents/eb_alfred.yaml`](../configs/agents/eb_alfred.yaml) 只描述 Agent 组件，不包含 benchmark：
+[`configs/agents/eb_alfred.yaml`](https://github.com/choucaicai/OmniRoboAgent/blob/master/configs/agents/eb_alfred.yaml) 只描述 Agent 组件，不包含 benchmark：
 
 ```yaml
 agent:
@@ -40,7 +40,7 @@ memory:
 
 ## RunConfig
 
-[`configs/runs/eb_alfred_smoke.yaml`](../configs/runs/eb_alfred_smoke.yaml) 描述运行方式和环境：
+[`configs/runs/eb_alfred_smoke.yaml`](https://github.com/choucaicai/OmniRoboAgent/blob/master/configs/runs/eb_alfred_smoke.yaml) 描述运行方式和环境：
 
 ```yaml
 agent_config: ../agents/eb_alfred.yaml
@@ -138,7 +138,7 @@ skill_backend:
 
 ## Output Reproducibility
 
-当前 Runtime 会记录 trace、result 和模型原始响应，但不会把 resolved AgentConfig、RunConfig 或 package version 自动复制到输出目录。正式实验应保留本次使用的 YAML；自动写入这些元数据仍在 `docs/TODO.md` 中。
+当前 Runtime 会记录 trace、result 和模型原始响应，但不会把 resolved AgentConfig、RunConfig 或 package version 自动复制到输出目录。正式实验应保留本次使用的 YAML；自动写入这些元数据仍在 `impl_docs/TODO.md` 中。
 
 ## Secrets
 

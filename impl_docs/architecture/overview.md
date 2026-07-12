@@ -353,7 +353,7 @@ Benchmark SDK 作为对应 integration 的 optional dependency 安装。AgentCon
 
 ```text
 OmniRoboAgent/
-├── docs/
+├── impl_docs/
 ├── rules/
 ├── src/
 │   └── omniroboagent/

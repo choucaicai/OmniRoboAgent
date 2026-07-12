@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 openpi = [
-    "openpi-client @ git+https://github.com/Physical-Intelligence/openpi.git@51fb06be280a967e59292cf63bb597aa3efdab6c#subdirectory=packages/openpi-client",
+    "openpi-client @ https://github.com/Physical-Intelligence/openpi/archive/51fb06be280a967e59292cf63bb597aa3efdab6c.tar.gz#subdirectory=packages/openpi-client",
 ]
 eb-alfred = [
     "ai2thor==2.1.0",

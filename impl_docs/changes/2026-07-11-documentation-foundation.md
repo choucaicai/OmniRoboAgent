@@ -14,13 +14,13 @@ Related plan: N/A
 ## Files
 
 - `AGENTS.md`
-- `docs/README.md`
-- `docs/TODO.md`
-- `docs/architecture/overview.md`
-- `docs/plans/README.md`
-- `docs/plans/0001-eb-alfred-first-loop.md`
-- `docs/changes/README.md`
-- `docs/changes/2026-07-11-documentation-foundation.md`
+- `impl_docs/README.md`
+- `impl_docs/TODO.md`
+- `impl_docs/architecture/overview.md`
+- `impl_docs/plans/README.md`
+- `impl_docs/plans/0001-eb-alfred-first-loop.md`
+- `impl_docs/changes/README.md`
+- `impl_docs/changes/2026-07-11-documentation-foundation.md`
 - `rules/README.md`
 
 ## Verification
@@ -31,6 +31,6 @@ Related plan: N/A
 
 ## Remaining Work
 
-- 确认 `docs/TODO.md` 中列出的项目级决策。
-- 开始实施 `docs/plans/0001-eb-alfred-first-loop.md`。
+- 确认 `impl_docs/TODO.md` 中列出的项目级决策。
+- 开始实施 `impl_docs/plans/0001-eb-alfred-first-loop.md`。
 

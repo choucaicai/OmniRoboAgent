@@ -10,7 +10,6 @@ vllm serve Qwen3.5-9B -dp 2 --gpu-memory-utilization 0.85  --max-model-len 26214
 ```
 
 ## EmbodiedBench评测
-
 <!-- conda activate omniagent -->
 
 1. EmbodiedBench已经clone到/home/zzz/vla_code/OmniRoboAgent/benchmarks/EmbodiedBench,然后评测集合使用EB-ALFRED

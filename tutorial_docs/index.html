@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1"
+    />
+    <meta
+      name="description"
+      content="OmniRoboAgent installation, configuration, interfaces, and benchmark documentation."
+    />
+    <title>OmniRoboAgent Docs</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/docsify@4.13.1/lib/themes/vue.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" role="status">Loading documentation...</div>
+    <script>
+      window.$docsify = {
+        name: 'OmniRoboAgent',
+        repo: 'https://github.com/choucaicai/OmniRoboAgent',
+        homepage: 'README.md',
+        loadSidebar: true,
+        relativePath: true,
+        auto2top: true,
+        maxLevel: 3,
+        subMaxLevel: 2,
+        search: {
+          paths: 'auto',
+          placeholder: '搜索文档',
+          noData: '没有找到结果',
+          depth: 3,
+        },
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/docsify@4.13.1/lib/docsify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docsify@4.13.1/lib/plugins/search.min.js"></script>
+  </body>
+</html>

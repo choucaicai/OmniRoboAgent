@@ -1,7 +1,7 @@
 # Implementation Documentation Sync
 
 Date: 2026-07-12
-Related plan: `docs/plans/0002-documentation-sync.md`
+Related plan: `impl_docs/plans/0002-documentation-sync.md`
 
 ## Changed
 
@@ -15,10 +15,10 @@ Related plan: `docs/plans/0002-documentation-sync.md`
 
 ## Files
 
-- `docs/architecture/overview.md`
-- `docs/TODO.md`
-- `docs/README.md`
-- `docs/plans/0002-documentation-sync.md`
+- `impl_docs/architecture/overview.md`
+- `impl_docs/TODO.md`
+- `impl_docs/README.md`
+- `impl_docs/plans/0002-documentation-sync.md`
 - `tutorial_docs/README.md`
 - `tutorial_docs/quickstart.md`
 - `tutorial_docs/configuration.md`
@@ -33,8 +33,8 @@ Related plan: `docs/plans/0002-documentation-sync.md`
 - `conda run -n omniagent ruff check src tests`：通过。
 - `conda run -n omniagent ruff format --check src tests`：27 个文件格式正确。
 - `conda run -n omniagent mypy`：22 个 source files 无类型错误。
-- 检查 `docs/`、`tutorial_docs/` 和根 README 的本地 Markdown links：全部有效。
-- 检查 `docs/` 和 `tutorial_docs/` trailing whitespace：未发现。
+- 检查 `impl_docs/`、`tutorial_docs/` 和根 README 的本地 Markdown links：全部有效。
+- 检查 `impl_docs/` 和 `tutorial_docs/` trailing whitespace：未发现。
 
 ## Remaining Work
 

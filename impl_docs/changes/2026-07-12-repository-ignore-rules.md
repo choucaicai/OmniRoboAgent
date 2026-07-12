@@ -7,13 +7,13 @@ Related plan: N/A
 
 - 保留 `.mypy_cache/`、`.pytest_cache/` 和 `.ruff_cache/` 的现有忽略规则。
 - 增加 `reference_repo/`，避免提交本地参考仓库。
-- 同步更新 `docs/TODO.md` 状态。
+- 同步更新 `impl_docs/TODO.md` 状态。
 
 ## Files
 
 - `.gitignore`
-- `docs/TODO.md`
-- `docs/changes/2026-07-12-repository-ignore-rules.md`
+- `impl_docs/TODO.md`
+- `impl_docs/changes/2026-07-12-repository-ignore-rules.md`
 
 ## Verification
 

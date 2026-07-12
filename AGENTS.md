@@ -3,9 +3,9 @@
 ## Project Documents
 
 - 项目规则以 `rules/README.md` 为准，开始修改前必须阅读。
-- 整体架构以 `docs/architecture/overview.md` 为准，不得引入违反依赖方向的实现。
-- 待实施工作维护在 `docs/TODO.md` 和 `docs/plans/`。
-- 完成修改后，必须同步更新任务状态，并在 `docs/changes/` 添加变更记录。
+- 整体架构以 `impl_docs/architecture/overview.md` 为准，不得引入违反依赖方向的实现。
+- 待实施工作维护在 `impl_docs/TODO.md` 和 `impl_docs/plans/`。
+- 完成修改后，必须同步更新任务状态，并在 `impl_docs/changes/` 添加变更记录。
 - 若代码行为与文档不一致，应在同一次修改中更新相关文档。
 
 ## Communication

@@ -13,9 +13,9 @@ Related plan: N/A
 
 ## Files
 
-- `docs/reference/rai-framework-analysis.md`
-- `docs/README.md`
-- `docs/changes/2026-07-11-rai-framework-reference.md`
+- `impl_docs/reference/rai-framework-analysis.md`
+- `impl_docs/README.md`
+- `impl_docs/changes/2026-07-11-rai-framework-reference.md`
 
 ## Verification
 

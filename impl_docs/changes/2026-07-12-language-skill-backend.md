@@ -1,7 +1,7 @@
 # Language Skill Backend
 
 Date: 2026-07-12
-Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
+Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 
 ## Changed
 
@@ -23,10 +23,10 @@ Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
 - `src/omniroboagent/backends/skills/__init__.py`
 - `src/omniroboagent/backends/skills/language.py`
 - `tests/unit/test_language_skill_backend.py`
-- `docs/architecture/overview.md`
-- `docs/plans/0001-eb-alfred-first-loop.md`
-- `docs/TODO.md`
-- `docs/README.md`
+- `impl_docs/architecture/overview.md`
+- `impl_docs/plans/0001-eb-alfred-first-loop.md`
+- `impl_docs/TODO.md`
+- `impl_docs/README.md`
 
 ## Verification
 

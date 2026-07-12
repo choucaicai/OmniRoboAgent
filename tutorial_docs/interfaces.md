@@ -1,6 +1,6 @@
 # Interface Reference
 
-公共 contracts 位于 [`src/omniroboagent/contracts.py`](../src/omniroboagent/contracts.py)。Core 只依赖标准库和轻量 contract 依赖。
+公共 contracts 位于 [`src/omniroboagent/contracts.py`](https://github.com/choucaicai/OmniRoboAgent/blob/master/src/omniroboagent/contracts.py)。Core 只依赖标准库和轻量 contract 依赖。
 
 ## LLMBackend
 

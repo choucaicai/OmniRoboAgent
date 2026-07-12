@@ -1,7 +1,7 @@
 # Modular Architecture Decisions
 
 Date: 2026-07-11
-Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
+Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 
 ## Changed
 
@@ -21,11 +21,11 @@ Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
 
 ## Files
 
-- `docs/architecture/overview.md`
-- `docs/plans/0001-eb-alfred-first-loop.md`
-- `docs/TODO.md`
+- `impl_docs/architecture/overview.md`
+- `impl_docs/plans/0001-eb-alfred-first-loop.md`
+- `impl_docs/TODO.md`
 - `rules/README.md`
-- `docs/changes/2026-07-11-modular-architecture-decisions.md`
+- `impl_docs/changes/2026-07-11-modular-architecture-decisions.md`
 
 ## Verification
 

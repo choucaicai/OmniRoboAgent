@@ -1,7 +1,7 @@
 # Conda Environment
 
 Date: 2026-07-11
-Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
+Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 
 ## Changed
 

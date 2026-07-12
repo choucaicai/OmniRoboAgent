@@ -38,11 +38,11 @@ Status: `TODO`
 2. 定义各 package 的最小公开 API。
 3. 更新源码、配置、测试和文档中的 import path。
 4. 验证配置加载、unit tests、Ruff 和 mypy。
-5. 更新 `docs/TODO.md` 并添加实施变更记录。
+5. 更新 `impl_docs/TODO.md` 并添加实施变更记录。
 
 ## Acceptance Criteria
 
-- 源码结构与 `docs/architecture/overview.md` 的目标 package layout 一致。
+- 源码结构与 `impl_docs/architecture/overview.md` 的目标 package layout 一致。
 - core package 不 import benchmark SDK、ROS2 或具体 integration 类型。
 - 现有 EB-ALFRED 配置可以加载，unit tests 全部通过。
 - package 重组不改变 Runtime、Pipeline 和 benchmark adapter 的可观察行为。

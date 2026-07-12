@@ -25,5 +25,5 @@ Status: TODO | IN_PROGRESS | BLOCKED | DONE
 ## Risks
 ```
 
-计划完成后不删除。将状态改为 `DONE`，并链接对应的 `docs/changes/` 记录。
+计划完成后不删除。将状态改为 `DONE`，并链接对应的 `impl_docs/changes/` 记录。
 

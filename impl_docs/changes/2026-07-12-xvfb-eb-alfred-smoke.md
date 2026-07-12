@@ -1,7 +1,7 @@
 # Xvfb EB-ALFRED Smoke Evaluation
 
 Date: 2026-07-12
-Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
+Related plan: `impl_docs/plans/0001-eb-alfred-first-loop.md`
 
 ## Changed
 
@@ -22,8 +22,8 @@ Related plan: `docs/plans/0001-eb-alfred-first-loop.md`
 - `tutorial_docs/eb_alfred.md`
 - `tutorial_docs/quickstart.md`
 - `tutorial_docs/interfaces.md`
-- `docs/plans/0001-eb-alfred-first-loop.md`
-- `docs/TODO.md`
+- `impl_docs/plans/0001-eb-alfred-first-loop.md`
+- `impl_docs/TODO.md`
 
 ## Verification
 

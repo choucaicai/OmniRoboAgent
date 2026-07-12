@@ -66,7 +66,7 @@ RunConfig 中的 `display: 1` 用于设置 EB-ALFRED module 的 X display，运�
 
 ## vLLM
 
-按照根目录 [`SERVER.md`](../SERVER.md) 启动模型。检查：
+按照仓库中的 [`SERVER.md`](https://github.com/choucaicai/OmniRoboAgent/blob/master/SERVER.md) 启动模型。检查：
 
 ```bash
 omniroboagent health --agent-config configs/agents/eb_alfred.yaml

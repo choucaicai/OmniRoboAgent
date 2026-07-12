@@ -1,7 +1,7 @@
 # Package Architecture Design
 
 Date: 2026-07-12
-Related plan: `docs/plans/0003-package-architecture.md`
+Related plan: `impl_docs/plans/0003-package-architecture.md`
 
 ## Changed
 
@@ -14,10 +14,10 @@ Related plan: `docs/plans/0003-package-architecture.md`
 
 ## Files
 
-- `docs/architecture/overview.md`
-- `docs/TODO.md`
-- `docs/plans/0003-package-architecture.md`
-- `docs/changes/2026-07-12-package-architecture-design.md`
+- `impl_docs/architecture/overview.md`
+- `impl_docs/TODO.md`
+- `impl_docs/plans/0003-package-architecture.md`
+- `impl_docs/changes/2026-07-12-package-architecture-design.md`
 
 ## Verification
 
@@ -26,6 +26,6 @@ Related plan: `docs/plans/0003-package-architecture.md`
 
 ## Remaining Work
 
-- 按 `docs/plans/0003-package-architecture.md` 迁移源码、imports、配置和测试。
+- 按 `impl_docs/plans/0003-package-architecture.md` 迁移源码、imports、配置和测试。
 - 决定旧 import path 和 dotted `class_path` 的兼容周期。
 - 在出现实际需求时实现 `ros2` 和 `human_interface`，当前不创建占位模块。

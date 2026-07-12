@@ -8,14 +8,14 @@ Related plan: N/A
 - 为 `benchmarks/EmbodiedBench` 添加 `.gitmodules` URL 映射。
 - 在根 README 说明 submodule 的 push 和 clone 行为。
 - 在根 README 补充基础环境、EB-ALFRED、dataset、vLLM healthcheck 和 smoke evaluation 命令。
-- 同步更新 `docs/TODO.md` 状态。
+- 同步更新 `impl_docs/TODO.md` 状态。
 
 ## Files
 
 - `.gitmodules`
 - `README.md`
-- `docs/TODO.md`
-- `docs/changes/2026-07-12-benchmark-submodule-readme.md`
+- `impl_docs/TODO.md`
+- `impl_docs/changes/2026-07-12-benchmark-submodule-readme.md`
 
 ## Verification
 

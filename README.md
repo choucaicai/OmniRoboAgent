@@ -114,9 +114,10 @@ DISPLAY_ID=2 CONDA_ENV=omniagent-eb \
 
 ## Documentation
 
+- [在线文档](https://choucaicai.github.io/OmniRoboAgent/)
 - [快速开始](tutorial_docs/quickstart.md)
 - [配置说明](tutorial_docs/configuration.md)
 - [接口文档](tutorial_docs/interfaces.md)
 - [EB-ALFRED 评测](tutorial_docs/eb_alfred.md)
 - [自定义组件](tutorial_docs/custom_components.md)
-- [整体架构](docs/architecture/overview.md)
+- [整体架构](impl_docs/architecture/overview.md)

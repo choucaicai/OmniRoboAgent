@@ -4,7 +4,7 @@ Status: `DONE`
 
 ## Goal
 
-根据当前 `src/omniroboagent/`、配置文件和已验证的 EB-ALFRED smoke 结果，同步更新 `docs/` 与 `tutorial_docs/`，确保示例可以直接对应现有接口。
+根据当前 `src/omniroboagent/`、配置文件和已验证的 EB-ALFRED smoke 结果，同步更新 `impl_docs/` 与 `tutorial_docs/`，确保示例可以直接对应现有接口。
 
 ## Confirmed Decisions
 
@@ -21,7 +21,7 @@ Status: `DONE`
 - 修正架构文档中的组件职责、配置示例、目录结构和实现状态。
 - 补齐 Quickstart、配置、接口、自定义组件和 EB-ALFRED 教程。
 - 明确当前已实现能力、运行输出和未实现边界。
-- 更新 `docs/TODO.md`、文档索引和变更记录。
+- 更新 `impl_docs/TODO.md`、文档索引和变更记录。
 
 ## Out of Scope
 
@@ -52,4 +52,4 @@ Status: `DONE`
 
 ## Change Record
 
-- `docs/changes/2026-07-12-documentation-sync.md`
+- `impl_docs/changes/2026-07-12-documentation-sync.md`
