@@ -81,7 +81,8 @@
 - 大型 SDK、ROS2、仿真器和模型运行时必须放在 optional dependency group。
 - 不允许 core import optional integration dependency。
 - 版本范围应可重现，不能无理由依赖浮动开发分支。
-- 第一版使用 `pip + pyproject.toml`，运行环境使用 Conda Python 3.11。
+- 使用 `uv + pyproject.toml + uv.lock` 管理依赖，运行环境使用 Conda Python 3.11。
+- 基础开发使用 `omniagent`；benchmark 专用依赖只在实际测试时安装到独立 Conda 环境。
 - 远程 vLLM 和 OpenPI server 由用户管理；框架只负责 healthcheck、客户端请求、重连和关闭客户端连接。
 
 ## 10. Configuration

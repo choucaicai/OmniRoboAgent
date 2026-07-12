@@ -80,7 +80,8 @@ actions = backend.predict({"observation": observation})
 安装 OpenPI optional dependency：
 
 ```bash
-python -m pip install -e '.[openpi]'
+conda activate omniagent
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[openpi]'
 ```
 
 该版本固定到 OpenPI commit `51fb06be280a967e59292cf63bb597aa3efdab6c`。

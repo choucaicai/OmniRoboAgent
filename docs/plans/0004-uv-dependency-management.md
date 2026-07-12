@@ -10,7 +10,7 @@ Status: In Progress
 
 - 使用 `pyproject.toml` 声明 runtime、development、OpenPI 和 EB-ALFRED 依赖。
 - 生成并提交 `uv.lock`。
-- 使用项目 `.venv`，由现有 Conda Python 3.11 创建。
+- 基础依赖安装到 `omniagent`，benchmark 依赖安装到各自独立 Conda 环境。
 - 将安装、测试和 EB-ALFRED 启动文档改为 `uv` 命令。
 - 不修改第三方 submodule 源码，不管理 vLLM server 进程或 EB-ALFRED dataset。
 
@@ -24,6 +24,6 @@ Status: In Progress
 ## Acceptance
 
 - `uv lock --check` 通过。
-- `uv sync --locked` 能创建基础开发环境。
-- `uv run pytest`、Ruff 和 mypy 通过。
+- `uv pip install` 能明确使用目标 Conda Python 解析项目依赖。
+- pytest、Ruff 和 mypy 在 `omniagent` 中通过。
 - README 包含 clone、安装 optional extras、测试和启动命令。

@@ -5,7 +5,7 @@
 ## 0. Project Decisions
 
 - [x] `DONE` 使用 Python 3.11，Conda 环境名为 `omniagent`。
-- [x] `DONE` 使用 `pip + pyproject.toml` 管理 Python package。
+- [x] `DONE` 使用 `uv + pyproject.toml + uv.lock` 管理 Python package 和依赖。
 - [x] `DONE` 第一版允许连接用户预先启动的远程模型和 policy 服务，但不管理服务端进程。
 - [x] `DONE` 首个 LLM/VLM backend 使用支持图像的 OpenAI-compatible 接口。
 - [x] `DONE` 首个远程 policy backend 直接兼容 OpenPI WebSocket 协议。

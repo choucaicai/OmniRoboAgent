@@ -15,25 +15,11 @@
 
 ```bash
 conda create -n omniagent-eb --clone omniagent -y
-
-conda run -n omniagent-eb python -m pip install \
-  torch==2.4.0 torchvision==0.19.0 \
-  --index-url https://download.pytorch.org/whl/cpu
-
-conda run -n omniagent-eb python -m pip install \
-  numpy==1.26.4 scipy==1.13.1 gym==0.23.1 ai2thor==2.1.0 \
-  hydra-core==1.3.2 omegaconf==2.3.0 revtok==0.0.3 \
-  progressbar2==4.5.0 vocab==0.0.5 tqdm==4.67.1 \
-  opencv-python-headless==4.10.0.84
-
-conda run -n omniagent-eb python -m pip install \
-  flask==1.1.2 werkzeug==1.0.1 itsdangerous==1.1.0 \
-  jinja2==2.11.3 markupsafe==1.1.1 click==8.1.7 \
-  requests==2.32.3 urllib3==1.26.20
-
-conda run -n omniagent-eb python -m pip install \
-  -e benchmarks/EmbodiedBench -e .
+conda activate omniagent-eb
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[eb-alfred]'
 ```
+
+仅在实际运行 EB-ALFRED 时创建 `omniagent-eb`。不要把 `eb-alfred` extra 安装到基础 `omniagent`。新建的 `omniagent-eb` 从 `omniagent` clone，因此包含 `uv`；已有环境若缺少 `uv`，先执行 `conda install -n omniagent-eb -c conda-forge uv`。
 
 下载数据：
 

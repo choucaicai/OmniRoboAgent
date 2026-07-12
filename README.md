@@ -29,23 +29,40 @@ git submodule update --init --recursive
 
 ## Install
 
-项目要求 Python 3.11。基础开发环境：
+项目要求 Python 3.11，使用 `uv + pyproject.toml + uv.lock` 管理依赖。基础开发只使用 `omniagent`，不要安装 benchmark 专用依赖：
 
 ```bash
+# 已有 omniagent 时跳过 create
 conda create -n omniagent python=3.11 -y
 conda activate omniagent
-python -m pip install -e '.[dev]'
+
+# 已安装时只需确认路径
+which uv
+
+# 安装 OmniRoboAgent 和 dev dependency group 到当前 Conda 环境
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable . --group dev
 ```
 
-可选的 OpenPI client：
+当前机器已安装的 `uv` 路径是 `/home/zzz/anaconda3/envs/omniagent/bin/uv`。若新环境中没有 `uv`，可先执行 `conda install -c conda-forge uv`。
+
+可选的 OpenPI client 也安装到 `omniagent`：
 
 ```bash
-python -m pip install -e '.[openpi]'
+conda activate omniagent
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[openpi]'
+```
+
+`uv.lock` 需要提交。修改依赖后更新并检查 lockfile：
+
+```bash
+uv lock
+uv lock --check
 ```
 
 运行基础检查：
 
 ```bash
+conda activate omniagent
 python -m pytest
 ruff check src tests
 ruff format --check src tests
@@ -54,29 +71,15 @@ mypy
 
 ## Install EB-ALFRED
 
-EB-ALFRED 使用独立环境，避免旧版 simulator 依赖影响基础开发环境：
+只有实际测试 EB-ALFRED 时才创建 `omniagent-eb`。它与基础 `omniagent` 分开，避免旧版 simulator 依赖影响开发环境：
 
 ```bash
 conda create -n omniagent-eb --clone omniagent -y
-
-conda run -n omniagent-eb python -m pip install \
-  torch==2.4.0 torchvision==0.19.0 \
-  --index-url https://download.pytorch.org/whl/cpu
-
-conda run -n omniagent-eb python -m pip install \
-  numpy==1.26.4 scipy==1.13.1 gym==0.23.1 ai2thor==2.1.0 \
-  hydra-core==1.3.2 omegaconf==2.3.0 revtok==0.0.3 \
-  progressbar2==4.5.0 vocab==0.0.5 tqdm==4.67.1 \
-  opencv-python-headless==4.10.0.84
-
-conda run -n omniagent-eb python -m pip install \
-  flask==1.1.2 werkzeug==1.0.1 itsdangerous==1.1.0 \
-  jinja2==2.11.3 markupsafe==1.1.1 click==8.1.7 \
-  requests==2.32.3 urllib3==1.26.20
-
-conda run -n omniagent-eb python -m pip install \
-  -e benchmarks/EmbodiedBench -e .
+conda activate omniagent-eb
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[eb-alfred]'
 ```
+
+`eb-alfred` extra 固定 AI2-THOR、PyTorch CPU、Flask 等已验证版本，并通过 uv source 安装本地 `benchmarks/EmbodiedBench` submodule。其他 benchmark 需要测试时也应单独创建环境，不写入 `omniagent`。
 
 下载 EB-ALFRED dataset：
 

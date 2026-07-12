@@ -5,10 +5,10 @@
 ```bash
 cd /home/zzz/vla_code/OmniRoboAgent
 conda activate omniagent
-python -m pip install -e '.[dev]'
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable . --group dev
 ```
 
-运行时依赖只有 `httpx`、`Pillow` 和 `PyYAML`。ROS2、LangChain、LangGraph 和 benchmark SDK 不进入 core dependency。
+依赖由 `uv + pyproject.toml + uv.lock` 管理。基础 `omniagent` 不安装 benchmark SDK；具体 benchmark 在测试时创建独立 Conda 环境。
 
 ## 2. Check vLLM
 
