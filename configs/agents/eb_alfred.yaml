@@ -1,0 +1,27 @@
+agent:
+  class_path: omniroboagent.agents.DefaultAgent
+
+planner:
+  class_path: omniroboagent.planners.LanguageSkillPlanner
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:8000
+        model: Qwen3.5-9B
+        timeout_seconds: 120
+        max_retries: 2
+    max_tokens: 1024
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+skill_backend:
+  class_path: omniroboagent.backends.skills.LanguageSkillBackend
+
+verifier:
+  class_path: omniroboagent.verifiers.EnvironmentVerifier
+
+memory:
+  class_path: omniroboagent.memory.InMemoryMemory

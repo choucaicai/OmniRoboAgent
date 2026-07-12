@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omniroboagent"
+version = "0.1.0"
+description = "Modular runtime and evaluation framework for embodied agents."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "httpx>=0.27,<1",
+    "Pillow>=10,<13",
+    "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10,<2",
+    "pytest>=8,<9",
+    "ruff>=0.9,<1",
+    "types-PyYAML>=6,<7",
+]
+openpi = [
+    "openpi-client @ git+https://github.com/Physical-Intelligence/openpi.git@51fb06be280a967e59292cf63bb597aa3efdab6c#subdirectory=packages/openpi-client",
+]
+
+[project.scripts]
+omniroboagent = "omniroboagent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+omniroboagent = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["omniroboagent"]
