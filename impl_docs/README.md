@@ -2,7 +2,7 @@
 
 本目录维护 OmniRoboAgent 的架构、计划、任务状态和实际变更记录。
 
-用户安装、配置和接口教程位于根目录 `tutorial_docs/`。
+用户安装、配置和接口教程位于根目录 `docs/`。
 
 ## Directory Structure
 

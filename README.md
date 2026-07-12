@@ -88,7 +88,7 @@ git clone https://huggingface.co/datasets/EmbodiedBench/EB-ALFRED \
   benchmarks/EmbodiedBench/embodiedbench/envs/eb_alfred/data/json_2.1.0
 ```
 
-系统还需要 `Xvfb` 和 `xdpyinfo`。详细版本与故障排查见 [EB-ALFRED 评测](tutorial_docs/eb_alfred.md)。
+系统还需要 `Xvfb` 和 `xdpyinfo`。详细版本与故障排查见 [EB-ALFRED 评测](docs/eb_alfred.md)。
 
 ## Start
 
@@ -115,9 +115,9 @@ DISPLAY_ID=2 CONDA_ENV=omniagent-eb \
 ## Documentation
 
 - [在线文档](https://choucaicai.github.io/OmniRoboAgent/)
-- [快速开始](tutorial_docs/quickstart.md)
-- [配置说明](tutorial_docs/configuration.md)
-- [接口文档](tutorial_docs/interfaces.md)
-- [EB-ALFRED 评测](tutorial_docs/eb_alfred.md)
-- [自定义组件](tutorial_docs/custom_components.md)
+- [快速开始](docs/quickstart.md)
+- [配置说明](docs/configuration.md)
+- [接口文档](docs/interfaces.md)
+- [EB-ALFRED 评测](docs/eb_alfred.md)
+- [自定义组件](docs/custom_components.md)
 - [整体架构](impl_docs/architecture/overview.md)

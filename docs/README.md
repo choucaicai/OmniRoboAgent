@@ -19,11 +19,11 @@ OmniRoboAgent 的安装、配置、接口和 benchmark 使用文档。在线站�
 从项目根目录启动静态 server：
 
 ```bash
-python -m http.server 8000 --directory tutorial_docs
+python -m http.server 8000 --directory docs
 ```
 
 然后访问 `http://127.0.0.1:8000`。Docsify 在浏览器中直接加载 Markdown，不需要单独 build。
 
 ## GitHub Pages
 
-仓库包含 `.github/workflows/tutorial-docs-pages.yml`，会将 `tutorial_docs/` 作为完整 Pages artifact 发布。首次使用时，在 GitHub 仓库 `Settings -> Pages -> Build and deployment -> Source` 中选择 `GitHub Actions`，然后手动运行 workflow 或 push 本目录修改。
+GitHub Pages 原生支持发布仓库根目录的 `docs/`。首次使用时，在仓库 `Settings -> Pages -> Build and deployment` 中选择 `Deploy from a branch`，branch 选择 `master`，folder 选择 `/docs`，然后保存。

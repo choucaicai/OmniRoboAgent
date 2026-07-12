@@ -404,7 +404,7 @@ OmniRoboAgent/
 │   └── runs/
 ├── scripts/
 │   └── run_eb_alfred_xvfb.sh
-├── tutorial_docs/
+├── docs/
 └── pyproject.toml
 ```
 
