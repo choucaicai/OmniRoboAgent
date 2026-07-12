@@ -22,6 +22,8 @@
 - [x] `DONE` 创建 Python package 和 `pyproject.toml`。
 - [x] `DONE` 创建最小命令行入口。
 - [x] `DONE` 配置 Ruff、mypy 和 pytest。
+- [x] `DONE` 忽略 Python 工具缓存和本地 `reference_repo/` 参考仓库。
+- [x] `DONE` 配置 benchmark submodule，并在根 README 记录 clone、安装和启动流程。
 - [x] `DONE` 将 `docs/` 和 `tutorial_docs/` 与当前实现、配置及 smoke 结果同步（[计划](plans/0002-documentation-sync.md)）。
 - [ ] `TODO` 按已确认的 package architecture 重组 core 与 integrations，保持现有行为不变（[计划](plans/0003-package-architecture.md)）。
 - [ ] `TODO` 配置基础 CI，执行 lint、type check 和 unit tests。

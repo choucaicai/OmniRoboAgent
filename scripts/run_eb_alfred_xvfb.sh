@@ -2,10 +2,10 @@
 set -euo pipefail
 
 display_id="${DISPLAY_ID:-1}"
-conda_env="${CONDA_ENV:-omniagent-eb}"
 config="${1:-configs/runs/eb_alfred_smoke.yaml}"
 display=":${display_id}"
 xvfb_pid=""
+uv_bin="${UV_BIN:-uv}"
 
 cleanup() {
     if [[ -n "${xvfb_pid}" ]]; then
@@ -43,5 +43,5 @@ export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
 export NO_PROXY="${NO_PROXY:-127.0.0.1,localhost}"
 export no_proxy="${no_proxy:-127.0.0.1,localhost}"
 
-conda run --no-capture-output -n "${conda_env}" \
+"${uv_bin}" run --locked --extra eb-alfred \
     omniroboagent run --config "${config}"

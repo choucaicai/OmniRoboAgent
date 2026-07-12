@@ -1,0 +1,3 @@
+[submodule "benchmarks/EmbodiedBench"]
+	path = benchmarks/EmbodiedBench
+	url = https://github.com/EmbodiedBench/EmbodiedBench
