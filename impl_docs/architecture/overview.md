@@ -18,6 +18,7 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 - 各领域 contract 归属对应 package，并与具体模型、ROS2、仿真器和 benchmark 解耦。
 - Pipeline 描述流程，AgentCore 负责决策，Runtime 负责运行。
+- 长程 skill execution 使用 Pipeline-owned explicit graph state 和确定性条件转换；参考 LangGraph 的设计方式，但不集成 LangGraph 或实现通用 Graph 框架。
 - 环境反馈和 verifier 是闭环中的一等对象。
 - benchmark 通过 adapter 接入，不成为 core 的特殊分支。
 - 模块 payload 保持开放，只固定运行控制所需的最小字段。
@@ -67,6 +68,49 @@ Runtime 调用 Pipeline 的终止判断，不固定 Verifier 的 `decision` 取�
 定义一轮推理的步骤顺序、模块输入构造和状态转换。当前 `DirectPipeline` 从 Runtime state 读取 observation，然后执行 plan、predict action、execute、verify、update。新的 observation 由 `Environment.execute()` 结果返回并写回 state。自定义 Pipeline 可以改变调用顺序、解释任意 Planner 输出，并定义自己的 Verifier decision 语义。
 
 Pipeline 不负责启动模型服务、policy server 或仿真器进程。
+
+### Skill Execution State Graph
+
+目标设计中，`SkillExecutionPipeline` 在 Runtime state 内维护显式 graph state，并使用确定性条件转换管理长程 skill execution。该设计参考 LangGraph 的 state、node 和 conditional edge 思路，但不依赖 LangGraph，也不建立通用 `GraphBuilder`、node registry 或另一套 Runtime。
+
+Runtime 继续负责 episode 外层循环、step/timeout/retry limits、trace、异常终止和资源释放。一次 `Pipeline.step()` 最多完成一个 Environment action/verification cycle，不能在 Pipeline 内启动不受 Runtime 约束的 episode loop。
+
+Graph state 是 Pipeline 在普通 Runtime state 中拥有并验证的一组字段，不新增 `AgentContext`：
+
+```text
+active_execution
+planner_output
+action
+environment_result
+verification
+transition
+completed_executions
+```
+
+`active_execution` 至少需要稳定的 execution identity、当前 skill/subtask、attempt/chunk counters 和 status。具体字段在实现计划中确定，未稳定前继续使用普通 `dict`。
+
+Node 表示一个有明确输入、输出和副作用边界的逻辑阶段，不要求每个 node 对应独立 class、module 或公共接口。第一版可以保留在 `SkillExecutionPipeline.step()` 及少量必要的 private methods 中；只有能够独立测试或明显降低复杂度时才提取函数。
+
+| Logical node | Responsibility |
+| --- | --- |
+| `plan` | 仅在没有 active execution 或明确要求 replan 时调用 Planner，校验 proposal，并创建新的 active execution |
+| `act` | 使用 active execution 和当前 observation 调用 SkillBackend 生成 action payload |
+| `execute` | 调用 Environment 一次，接收新的 observation 和执行结果，不解释 subtask 是否完成 |
+| `verify` | 调用 Verifier，根据执行目标和执行前后 evidence 判断 execution 状态 |
+| `transition` | 根据 verification、budget 和 task success 执行确定性状态转换，并生成 trace event |
+| `recover` | 仅在 failed、stalled 或 retry budget 到达时应用已配置的 retry current、replan、fallback 或 abort 规则 |
+
+Planner 不负责宣告 subtask 完成。Verifier 提供结构化 execution status 和 evidence，Pipeline 将其映射为下一状态。例如：
+
+```text
+completed    -> close execution -> record completed -> plan next
+in_progress  -> keep execution -> act again
+failed       -> recover
+uncertain    -> reobserve or reverify
+task_success -> terminate
+```
+
+当前 `SkillExecutionPipeline` 已实现 active skill/subtask、planner check interval 和 chunk budget，但尚未实现上述完整 graph state、execution identity、subtask status、recovery 和 deterministic transition contract；因此本节描述的是已确认的下一阶段设计，不是当前已完成行为。
 
 ### AgentCore
 
@@ -123,6 +167,7 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 | Data | Policy |
 |---|---|
 | Runtime state | 普通可修改 `dict`，基础字段为 `task`、`observation`、`step` |
+| Pipeline graph state | Runtime state 中由当前 Pipeline 拥有并验证的普通字段；不包含 Agent、Environment、model client 或通用 Graph 对象 |
 | Planner output | `Any`，由当前 Pipeline 解释 |
 | SkillBackend output | `Any`，直接交给 Environment 执行 |
 | Verifier input/output | 普通 `dict`，字段由 Verifier 与 Pipeline 协商 |
@@ -496,6 +541,7 @@ episode limit                -> Runtime termination
 | SkillBackend registry | Implemented with explicit names and `class_path` fallback |
 | RoboCasa365 Environment/Evaluator | Implemented; atomic and composite GR00T remote/local split matrices verified |
 | RoboCasa composite Agent contract | Implemented with `SubtaskSkillPlanner`, macro catalog, trusted skill ID mapping, and shared local/remote request schema |
+| Explicit skill-execution graph state and deterministic transitions | Planned; current implementation only tracks active skill/subtask and chunk counters |
 | RoboCasa OpenPI real checkpoint | Server/client/schema implemented; real smoke pending |
 | Resolved config/framework version copied into results | Partial for RoboCasa365: task/component/version metadata implemented, full resolved AgentConfig/RunConfig pending; EB-ALFRED pending |
 | Native EmbodiedBench evaluator alignment | Pending |
@@ -507,8 +553,9 @@ episode limit                -> Runtime termination
 2. 已完成 EB-ALFRED 单 episode 同步闭环；正式 episode 集合和原生 evaluator 对齐待完成。
 3. 已在不改变行为的前提下完成 Agent Core、Environment、Evaluation 和 Integration ownership 重组。
 4. 已接入 RoboCasa 与 GR00T/OpenPI/local VLA backend，并验证 atomic 与 composite Agent split matrix；OpenPI 真实 smoke 和原生 evaluator 对齐待完成。
-5. 根据真实需求加入 async runtime 和多环境调度。
-6. 加入 semantic/spatial memory 和 learned verifier。
-7. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。
+5. 为 `SkillExecutionPipeline` 增加显式 graph state、独立 subtask verification、确定性转换和 recovery，再扩展正式长程 Agent 行为。
+6. 根据真实需求加入 async runtime 和多环境调度。
+7. 加入 semantic/spatial memory 和 learned verifier。
+8. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。
 
 每一阶段都必须保持上一阶段 benchmark 可运行，不能以未来扩展为由破坏已验证接口。

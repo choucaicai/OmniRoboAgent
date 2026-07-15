@@ -25,6 +25,8 @@
 - benchmark environment adapter 放在 `environments/benchmarks/`，benchmark runner 和指标聚合放在 `evals/benchmarks/`。
 - `integrations/` 只承载 ROS2 和 human text I/O 等外部交互接口，core 不得 import 具体 integration 类型。
 - `Pipeline` 独立于 Agent Core，定义调用顺序、模块输入、Verifier decision 语义和状态转换。
+- `SkillExecutionPipeline` 使用 Pipeline 自己维护的显式 graph state 和确定性条件转换；可以参考 LangGraph 的 state/node/edge 设计，但 core 不引入 LangGraph 依赖，也不实现通用 Graph 引擎。
+- Planner 提出 plan/subtask，Verifier 判断执行状态，Pipeline 只根据结构化结果转换状态，不在 Pipeline 内推断视觉语义。
 - `Runtime` 负责 episode 生命周期、调度、限制、日志和异常终止，不包含 planner 策略。
 - `BaseAgent` 对应 Agent Core，组合 Planner、Verifier、Memory 和 SkillBackend，不内置固定 Pipeline。
 - `Environment` 负责执行任意 action payload，并在使用点校验是否支持该 payload。

@@ -67,7 +67,16 @@
 - [x] `DONE` 实现 step、invalid action、retry 和 wall-time 限制。
 - [x] `DONE` 实现 mock environment 闭环集成测试。
 
-## 5. Backend Support
+## 5. Embodied Agent Skill Execution
+
+- [ ] `TODO` 将 `SkillExecutionPipeline` 演进为显式 graph state 和确定性条件转换（[计划](plans/0007-skill-execution-state-graph.md)）。
+- [ ] `TODO` 定义 Pipeline-owned `active_execution`、稳定 execution identity、attempt/chunk counters 和 completed/failed ledger，同时保持 Runtime 只负责 episode 生命周期。
+- [ ] `TODO` 将 Planner proposal、SkillBackend action、Environment result、Verifier result 和 transition event 的边界写成可验证 contract；node 只是逻辑阶段，不要求拆成独立 class 或 module。
+- [ ] `TODO` 实现独立 subtask verifier，输出 `in_progress`、`completed`、`failed`、`uncertain` 和 evidence；Planner 不再负责宣告完成。
+- [ ] `TODO` 实现确定性 transition/recovery：continue、close-and-plan-next、retry-current、replan、fallback、abort，以及 no-progress/loop detection。
+- [ ] `TODO` 增加 graph-state 和 transition unit tests，覆盖正常完成、继续、失败、uncertain、budget exhausted、recovery 和 terminal task success。
+
+## 6. Backend Support
 
 - [x] `DONE` 实现透明传递 `inputs["skill"]` 的 `LanguageSkillBackend`。
 - [x] `DONE` 实现支持文本、单图和多图的 `OpenAICompatibleLLMBackend`。
@@ -81,7 +90,7 @@
 - [ ] `TODO` 使用真实 OpenPI checkpoint 在 RoboCasa 中验证 receding-horizon action chunk；当前只有 fake/schema test 和可运行配置。
 - [x] `DONE` 实现最小 `SkillBackendRegistry`，内置 GR00T remote、OpenPI remote 和 local，并保留 `class_path` fallback。
 
-## 6. EB-ALFRED Environment And Evaluation
+## 7. EB-ALFRED Environment And Evaluation
 
 - [x] `DONE` 安装并验证 EmbodiedBench、EB-ALFRED dataset、AI2-THOR binary、兼容依赖和 Xvfb 软件渲染环境。
 - [x] `DONE` 实现 `EBAlfredEnvironment` adapter。
@@ -96,7 +105,7 @@
 
 详细方案：[0001-eb-alfred-first-loop.md](plans/0001-eb-alfred-first-loop.md)
 
-## 7. First Benchmark Acceptance
+## 8. First Benchmark Acceptance
 
 - [x] `DONE` 完成固定 `base[0]` episode 的真实 smoke run。
 - [x] `DONE` smoke episode 产生明确 `environment_done` 终止原因和完整 trace。
@@ -105,7 +114,7 @@
 - [x] `DONE` 配置和文档记录 model、prompt、依赖版本、episode 和运行命令。
 - [x] `DONE` 记录首份 smoke 指标和重复无效动作失败类型。
 
-## 8. RoboCasa365 Evaluation
+## 9. RoboCasa365 Evaluation
 
 - [ ] `IN_PROGRESS` 实现 RoboCasa365 evaluation-first Agent + VLA case（[计划](plans/0006-robocasa365-evaluation.md)）。
 - [x] `DONE` 添加固定 commit 的 `benchmarks/RoboCasa` submodule，并提供不覆盖已有数据的本地 assets 软链流程。
@@ -114,16 +123,16 @@
 - [x] `DONE` 实现 GR00T remote server/backend、OpenPI remote server/backend 和 local in-process backend 三种 policy mode。
 - [x] `DONE` 完成 GR00T remote/local 单任务 smoke，并在 `atomic_seen` 的同一组 5 个 task 上验证 `pretrain` / `target` split；保存 resolved config、episode trace 和 summary。
 - [x] `DONE` 接通 LLM Agent 的 composite-to-atomic skill contract，并完成 `composite_seen` / `composite_unseen` 的 GR00T remote/local split matrix；40 episodes 为 1 success、0 exception，用户文档记录真实 subtask sequence 和失败模式。
-- [ ] `TODO` 分离 composite Planner 和 subtask visual verifier，增加 visual history、稳定 execution identity、原子 decomposition 约束和失败恢复。
+- [ ] `TODO` 在完成通用 skill-execution state graph 后，将 RoboCasa composite Agent 接入独立 visual subtask verifier 和 structured execution evidence。
 - [ ] `TODO` 拆分 Planner/policy/Environment/benchmark 错误指标，并验证 macro skill catalog、skill 和 trusted skill ID 一致性。
-- [ ] `TODO` 限制长 episode working memory，增加关键视觉 artifact，并实现 evaluator resume、completed-episode skip 和 atomic result write。
+- [ ] `TODO` 限制长 episode working memory 并增加关键视觉 artifact；Evaluator resume、completed-episode skip 和 atomic result write 继续在 RoboCasa plan 中跟踪。
 - [ ] `TODO` 使用真实 OpenPI checkpoint 完成相同 task/scenario smoke；当前只有 server/client/schema 和 fake protocol test。
 - [ ] `TODO` 将已验证的 custom GR00T policy source 固定到其他用户可获取的 commit/package，并记录 checkpoint digest、policy RNG、Conda/CUDA/GPU 和 dependency lock。
 - [ ] `TODO` 将正式 split matrix 的 experiment manifest/RunConfig 纳入版本控制，并在结果中保存完整 resolved AgentConfig/RunConfig、Planner prompt/schema、skill map 和 camera 参数。
 - [x] `DONE` 补充 RoboCasa 官方 assets 安装、可选本地软链、server、本地运行、evaluation 配置和 troubleshooting 用户文档。
 - [ ] `TODO` 先确认正式 RoboCasa task-set scope，再与官方 evaluator 对齐随机 50-scenario manifest、reset identity、low-level horizon 和 aggregation；从 environment horizon 派生或校验 Runtime action-chunk budget，随后增加可控 worker/GPU 并行。
 
-## 9. Later Extensions
+## 10. Later Extensions
 
 - [ ] `TODO` 评估 RoboNeuron action contract 与开放 action payload 的兼容方式。
 - [ ] `TODO` 接入本地 LLM/VLM planner backend（不含 RoboCasa365 计划中的 local VLA policy）。
