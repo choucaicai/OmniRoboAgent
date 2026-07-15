@@ -8,15 +8,17 @@ from omniroboagent.exceptions import ConfigError, PlannerOutputError
 
 DEFAULT_SUBTASK_SKILL_PROMPT = """You are an embodied agent executing a
 long-horizon task. Select exactly one skill and one concrete subtask for the current
-observation. Return continue_subtask only when the selected skill and subtask exactly
-match the active ones; otherwise return new_subtask.
+observation. Ground the proposal in visible objects, locations, receptacles, and target
+states. Propose only what should be executed next. Do not decide whether an existing
+subtask is complete.
 
 Return JSON with exactly these fields:
 {
   "reasoning": "short reason",
   "skill": "exact skill name",
   "subtask": "concrete instruction",
-  "execution_status": "new_subtask or continue_subtask"
+  "grounded_arguments": {"argument name": "grounded value"},
+  "expected_outcome": "observable completion target"
 }
 """
 
@@ -131,12 +133,8 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
             f"- {skill} (id={self.skill_ids[skill]}): {self.skill_definitions[skill]}"
             for skill in skills
         )
-        active_skill = inputs.get("active_skill")
-        active_subtask = inputs.get("active_subtask")
         prompt = (
             f"Task: {instruction}\n\nSkills:\n{skill_text}\n\n"
-            f"Active skill: {json.dumps(active_skill, ensure_ascii=False)}\n"
-            f"Active subtask: {json.dumps(active_subtask, ensure_ascii=False)}\n\n"
             "Recent interaction feedback:\n"
             f"{json.dumps(recent_history, ensure_ascii=False)}"
         )
@@ -169,19 +167,21 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
                                 "reasoning": {"type": "string"},
                                 "skill": {"type": "string", "enum": skills},
                                 "subtask": {"type": "string", "minLength": 1},
-                                "execution_status": {
+                                "grounded_arguments": {
+                                    "type": "object",
+                                    "additionalProperties": True,
+                                },
+                                "expected_outcome": {
                                     "type": "string",
-                                    "enum": [
-                                        "new_subtask",
-                                        "continue_subtask",
-                                    ],
+                                    "minLength": 1,
                                 },
                             },
                             "required": [
                                 "reasoning",
                                 "skill",
                                 "subtask",
-                                "execution_status",
+                                "grounded_arguments",
+                                "expected_outcome",
                             ],
                             "additionalProperties": False,
                         },
@@ -199,33 +199,19 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
         if not isinstance(subtask, str) or not subtask.strip():
             raise PlannerOutputError("Planner returned an invalid subtask")
         subtask = subtask.strip()
-        execution_status = parsed.get("execution_status")
-        if not isinstance(execution_status, str) or execution_status not in {
-            "new_subtask",
-            "continue_subtask",
-        }:
-            raise PlannerOutputError(
-                f"Planner returned invalid execution_status: {execution_status!r}"
-            )
-        if execution_status == "continue_subtask":
-            if not isinstance(active_skill, str) or not active_skill:
-                raise PlannerOutputError("continue_subtask requires an active skill")
-            if skill != active_skill:
-                raise PlannerOutputError(
-                    "continue_subtask skill does not match active skill: "
-                    f"{skill!r} != {active_skill!r}"
-                )
-            if active_subtask is not None and subtask != active_subtask:
-                raise PlannerOutputError(
-                    "continue_subtask does not match active subtask: "
-                    f"{subtask!r} != {active_subtask!r}"
-                )
+        grounded_arguments = parsed.get("grounded_arguments")
+        if not isinstance(grounded_arguments, dict):
+            raise PlannerOutputError("Planner returned invalid grounded_arguments")
+        expected_outcome = parsed.get("expected_outcome")
+        if not isinstance(expected_outcome, str) or not expected_outcome.strip():
+            raise PlannerOutputError("Planner returned an invalid expected_outcome")
 
         return {
             "skill": skill,
             "skill_id": self.skill_ids[skill],
             "subtask": subtask,
-            "execution_status": execution_status,
+            "grounded_arguments": grounded_arguments,
+            "expected_outcome": expected_outcome.strip(),
             "reasoning": parsed.get("reasoning", ""),
             "model_output": model_output,
             "raw_response": response,

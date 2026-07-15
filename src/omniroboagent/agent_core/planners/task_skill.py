@@ -21,11 +21,9 @@ class TaskSkillPlanner(Planner):
         subtask = (
             instruction if isinstance(instruction, str) and instruction else task_name
         )
-        active_skill = inputs.get("active_skill")
         return {
             "skill": task_name,
             "subtask": subtask,
-            "execution_status": (
-                "continue_subtask" if active_skill == task_name else "new_subtask"
-            ),
+            "grounded_arguments": {"task_name": task_name},
+            "expected_outcome": f"Complete the benchmark task: {subtask}",
         }

@@ -34,15 +34,19 @@ class DefaultAgent(BaseAgent):
 
     def healthcheck(self) -> dict[str, Any]:
         planner = self.planner.healthcheck()
+        verifier = self.verifier.healthcheck()
         skill_backend = self.skill_backend.healthcheck()
         return {
             "healthy": bool(planner.get("healthy"))
+            and bool(verifier.get("healthy"))
             and bool(skill_backend.get("healthy")),
             "planner": planner,
+            "verifier": verifier,
             "skill_backend": skill_backend,
         }
 
     def close(self) -> None:
         self.planner.close()
+        self.verifier.close()
         self.skill_backend.close()
         self.memory.close()

@@ -6,7 +6,11 @@ from omniroboagent.agent_core.planners import (
     SubtaskSkillPlanner,
 )
 from omniroboagent.agent_core.planners.task_skill import TaskSkillPlanner
-from omniroboagent.agent_core.verifiers import EnvironmentVerifier, Verifier
+from omniroboagent.agent_core.verifiers import (
+    EnvironmentVerifier,
+    SubtaskVerifier,
+    Verifier,
+)
 
 __all__ = [
     "BaseAgent",
@@ -18,6 +22,7 @@ __all__ = [
     "Memory",
     "Planner",
     "SubtaskSkillPlanner",
+    "SubtaskVerifier",
     "TaskSkillPlanner",
     "Verifier",
 ]

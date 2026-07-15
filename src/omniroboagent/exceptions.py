@@ -16,3 +16,7 @@ class EnvironmentError(OmniRoboAgentError):
 
 class PlannerOutputError(OmniRoboAgentError):
     pass
+
+
+class VerifierOutputError(OmniRoboAgentError):
+    pass
