@@ -4,7 +4,6 @@ pipeline:
   class_path: omniroboagent.pipelines.SkillExecutionPipeline
   init_args:
     action_execution_mode: full
-    planner_check_interval_chunks: 8
     max_chunks_per_skill: 27
 
 runtime:

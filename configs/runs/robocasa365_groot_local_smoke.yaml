@@ -4,7 +4,6 @@ pipeline:
   class_path: omniroboagent.pipelines.SkillExecutionPipeline
   init_args:
     action_execution_mode: full
-    planner_check_interval_chunks: 1
 
 runtime:
   class_path: omniroboagent.runtimes.SyncRuntime

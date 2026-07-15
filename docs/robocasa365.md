@@ -108,12 +108,14 @@ Composite 配置保留 RoboCasa composite task 作为 Environment reset 和 succ
 ```text
 composite task
   -> SubtaskSkillPlanner
-  -> macro skill + trusted local skill_id + concrete subtask
+  -> macro skill + trusted local skill_id + grounded subtask proposal
   -> atomic GR00T checkpoint
+  -> SubtaskVerifier compares before/after evidence
+  -> deterministic transition/recovery
   -> RoboCasa authoritative success
 ```
 
-LLM structured output 只包含 `skill`、`subtask` 和 `execution_status`；`skill_id` 由 AgentConfig 的可信本地映射补充，不接受模型生成的 ID。当前 catalog 为：
+Planner structured output 包含 `skill`、`subtask`、`grounded_arguments` 和 `expected_outcome`；`skill_id` 由 AgentConfig 的可信本地映射补充，不接受模型生成的 ID。Planner 不判断 subtask 是否完成。当前 catalog 为：
 
 | Skill | ID |
 | --- | ---: |
@@ -150,31 +152,43 @@ omniroboagent run \
   "reasoning": "short decision reason",
   "skill": "Pick_Place",
   "subtask": "Pick the kettle from the counter and place it on a stove burner",
-  "execution_status": "new_subtask"
+  "grounded_arguments": {
+    "object": "kettle",
+    "source": "counter",
+    "target": "stove burner"
+  },
+  "expected_outcome": "the kettle is resting on a stove burner"
 }
 ```
 
-`SubtaskSkillPlanner` 校验 skill 和 status 后，从 AgentConfig 补充可信 ID。传给 Pipeline 的主要字段为：
+`SubtaskSkillPlanner` 校验 proposal 后，从 AgentConfig 补充可信 ID。传给 Pipeline 的主要字段为：
 
 ```json
 {
   "skill": "Pick_Place",
   "skill_id": 7,
   "subtask": "Pick the kettle from the counter and place it on a stove burner",
-  "execution_status": "new_subtask"
+  "grounded_arguments": {
+    "object": "kettle",
+    "source": "counter",
+    "target": "stove burner"
+  },
+  "expected_outcome": "the kettle is resting on a stove burner"
 }
 ```
 
 `reasoning` 只写入 trace，不直接传给 VLA。GR00T 接收 composite task name、macro skill、skill ID，以及写入 `annotation.human.task_description` 的 concrete subtask。
 
-当前 smoke 配置在 episode 开始、每 8 个 action chunks，以及 active budget 达到 27 chunks 时调用 Planner。模型 schema 只允许：
+Planner 只在没有 active execution 或 recovery replan 时调用。Composite `SubtaskVerifier` 每 8 个 action chunks 使用 action 前后相机 observation 检查 `expected_outcome`，输出：
 
-- `new_subtask`：选择新的 skill/subtask，重置 active budget。
-- `continue_subtask`：必须与当前 active skill 和 subtask 完全一致。
+```text
+in_progress / completed / failed / uncertain
+reason / confidence / evidence
+```
 
-Trace 中还可能出现 `replan_subtask`。它不是模型输出枚举，而是 Pipeline 在 chunk budget 到达时把 `continue_subtask` 转换成的强制 replan boundary；Planner 仍可重新选择相同 skill/subtask。
+`SkillExecutionPipeline` 使用 `execution_id`/`attempt_id` 维护 active execution。`in_progress` 继续执行而不调用 Planner；`completed` 关闭 execution 并规划下一 subtask；`failed` 进入 retry/replan/fallback/abort；`uncertain` 先 reverify。`max_chunks_per_skill=27` 是 hard execution budget。
 
-以下是 40-episode matrix 中 `Qwen3.5-9B` 的实际输出，不是手写示例：
+以下是 state-graph 迁移前 40-episode matrix 中 `Qwen3.5-9B` 的实际输出，不是手写示例；这些结果用于历史对照，不代表迁移后的 verifier 已完成真实 checkpoint smoke：
 
 | Composite task | Step | Skill | Generated subtask |
 | --- | ---: | --- | --- |
@@ -190,14 +204,14 @@ Trace 中还可能出现 `replan_subtask`。它不是模型输出枚举，而是
 
 `KettleBoiling` 的这组 sequence 是本次 matrix 中唯一由 RoboCasa 判定成功的 episode。
 
-当前生成结果有以下已验证限制：
+该历史 matrix 有以下已验证限制：
 
 - 子任务可能合并多个物理阶段。例如 `Move to the dining counter and place the straw into the glass cup` 同时包含 Navigation 和 placement，却只使用 `Pick_Place`。
-- `last_action_success=true` 只表示 action chunk 成功执行，不表示 subtask 已完成；当前 Planner 有时会据此过早切换到下一子任务。
-- 没有独立视觉 verifier 时，同一 placement subtask 可能被重复执行到 environment horizon。
-- 模型把新 wording 错标为 `continue_subtask` 时会被严格拒绝。例如 active subtask 是 `Pick the kettle from the counter and place it on the tray.`，模型返回 `Pick the mug from the cabinet and place it on the tray.`；该 step 不调用 Environment，并计入 retry budget。
+- `last_action_success=true` 只表示 action chunk 成功执行，不表示 subtask 已完成；旧 Planner contract 会过早切换或重复 subtask。
+- 旧实现没有独立视觉 verifier，同一 placement subtask 可能被重复执行到 environment horizon。
+- 旧 `continue_subtask` contract 依赖 wording 完全一致，模型改写措辞会产生 Planner retry；新实现已移除此依赖。
 
-因此当前 subtask trace 适合验证 Agent-to-VLA contract 和定位 Planner 问题，不应视为已经优化完成的 long-horizon task decomposition。
+因此该历史 subtask trace 适合验证 Agent-to-VLA contract 和定位 Planner 问题，不应视为新 state graph 的质量结果。迁移后的真实 composite smoke 尚未运行。
 
 ## OpenPI Remote
 
@@ -322,9 +336,9 @@ Composite matrix 使用相同 atomic checkpoint、`Qwen3.5-9B` Planner、`episod
 
 唯一成功 episode 是 local `KettleBoiling / pretrain`，RoboCasa 在 506 environment steps、32 action chunks 时返回 success。40 个 episode 均未出现 simulator、server、request schema 或 action shape exception。
 
-Composite 表中的 `invalid_actions` 是没有执行 Environment action 的 Planner output retry，例如把新 subtask 错误标记为 `continue_subtask`；不能解释为 VLA 输出了非法 action array。`max_chunks_per_skill=27` 表示强制重新调用 Planner 的边界，不禁止 Planner 再次选择相同 subtask。
+Composite 表中的 `invalid_actions` 属于旧 Planner contract，包含没有执行 Environment action 的 `continue_subtask` mismatch；不能解释为 VLA 输出了非法 action array。新 trace 改为记录 `previous_status`、`next_status`、`transition_reason`、verifier evidence 和 `recovery_action`。
 
-当前 `SubtaskSkillPlanner` 没有复刻参考 agent 的独立视觉 verifier、视觉历史和 wording few-shot，因此该结果验证的是当前 Agent + atomic VLA case，不应单独归因于 GR00T checkpoint，也不是正式 50-rollout quality baseline。Remote/local 的 task 顺序、reset seed、RoboCasa commit `9a3a786` 和 robosuite commit `aaa8b9b` 已核对一致。
+该 matrix 运行时还没有独立视觉 verifier、视觉历史和新的 proposal contract，因此结果验证的是旧 Agent + atomic VLA case，不应单独归因于 GR00T checkpoint，也不是正式 50-rollout quality baseline。Remote/local 的 task 顺序、reset seed、RoboCasa commit `9a3a786` 和 robosuite commit `aaa8b9b` 已核对一致。
 
 ## Remaining Work Toward The Target System
 
@@ -335,8 +349,8 @@ Composite 表中的 `invalid_actions` 是没有执行 Environment action 的 Pla
 | Priority | Gap | Current limitation | Completion criterion |
 | --- | --- | --- | --- |
 | P0 | Official evaluation alignment | 正式 task-set scope 尚未固定；`episode_index` 只是 `seed` offset；没有官方随机 50-scenario manifest；Runtime limit 按 action chunk 计数而 RoboCasa horizon 按 low-level step 计数 | 明确正式 task sets，对齐官方 reset state、scenario identity、horizon 和 aggregation；相同 manifest 可跨机器、跨 worker 复现，并从 low-level horizon 派生或校验 chunk budget |
-| P0 | Independent subtask verifier | 当前 Planner 同时规划并依据通用 feedback 判断 subtask 状态 | 独立视觉 verifier 使用 current frame、有限 visual history 和 execution history，输出 `done` / `not_done` / `failed` / `uncertain` 与 evidence |
-| P0 | Atomic decomposition and recovery | 子任务可能混合 Navigation 与 manipulation，失败后长期重复同一 wording | 一个子任务对应一个 macro skill 和明确对象关系；支持 timeout、retry、fallback 和下一子任务 |
+| P0 | Independent subtask verifier | `SubtaskVerifier` 与 state graph 已实现并进入 composite config，但迁移后的真实 checkpoint smoke 未运行 | 用固定 episode 验证 visual status/evidence、误判率、LLM latency 和 task-success priority |
+| P0 | Atomic decomposition and recovery | retry/replan/fallback/abort 和 loop detection 已实现；Planner 仍可能提出混合 Navigation/manipulation 的 subtask | 一个 subtask 对应一个 macro skill 和明确对象关系；在真实 smoke 中验证 recovery 分支 |
 | P0 | Error and metric taxonomy | Planner contract error 被统计到 `invalid_actions` | 分开记录 `planner_errors`、`policy_errors`、`environment_errors`、contract retries 和对应 termination reason |
 | P0 | Skill contract consistency | GR00T backend 只校验 `skill_id` 类型，不验证 skill/catalog/ID 一致性 | 在调用 policy 前验证 Planner skill、RunConfig catalog 和 trusted ID mapping 一致 |
 | P1 | Experiment reproducibility | 当前 checkpoint 依赖未发布的 `model_moe_v1` 和 data config；12 组 atomic/composite matrix 的临时 RunConfig 未纳入版本控制；`resolved_config.json` 只保存部分参数；policy RNG 未固定 | 固定可获取 source、environment lock、checkpoint digest 和 policy seed；提交 experiment manifest/RunConfig，并保存完整 resolved AgentConfig/RunConfig、Planner prompt/schema、skill map 和 camera 参数 |

@@ -19,7 +19,7 @@ skill_backend:
     entrypoint: predict
 
 verifier:
-  class_path: omniroboagent.agent_core.EnvironmentVerifier
+  class_path: omniroboagent.agent_core.SubtaskVerifier
 
 memory:
   class_path: omniroboagent.agent_core.InMemoryMemory

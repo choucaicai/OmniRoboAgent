@@ -1,6 +1,6 @@
 # Skill Execution State Graph
 
-Status: IN_PROGRESS
+Status: DONE
 
 ## Goal
 
@@ -82,13 +82,15 @@ Transition table：
 ## Tasks
 
 1. [x] 定义 Pipeline-owned graph state、transition table、recovery 顺序和 trace 摘要边界。
-2. [ ] 调整 Planner proposal contract；增加独立 Subtask Verifier 和 focused contract tests。
-3. [ ] 实现 graph state 初始化、`plan/act/execute/verify/transition` 路由和 ledger。
-4. [ ] 实现 retry/replan/fallback/abort、attempt/chunk budget、no-progress 和 loop detection。
-5. [ ] 保证每次 `Pipeline.step()` 最多调用一次 `Environment.execute()`，uncertain reverify 调用零次。
-6. [ ] 增加 transition unit tests，覆盖 first plan、continue、completed、failed、uncertain、budget、no-progress、loop、task success 和 cleanup。
-7. [ ] 迁移 RoboCasa configs，保持 `DirectPipeline`、EB-ALFRED 和 atomic/composite config loading 兼容。
-8. [ ] 更新 architecture、TODO、用户文档和 change record，并运行 pytest、Ruff、mypy、Markdown links 和 `git diff --check`。
+2. [x] 调整 Planner proposal contract；增加独立 Subtask Verifier 和 focused contract tests。
+3. [x] 实现 graph state 初始化、`plan/act/execute/verify/transition` 路由和 ledger。
+4. [x] 实现 retry/replan/fallback/abort、attempt/chunk budget、no-progress 和 loop detection。
+5. [x] 保证每次 `Pipeline.step()` 最多调用一次 `Environment.execute()`，uncertain reverify 调用零次。
+6. [x] 增加 transition unit tests，覆盖 first plan、continue、completed、failed、uncertain、budget、no-progress、loop、task success 和 cleanup。
+7. [x] 迁移 RoboCasa configs，保持 `DirectPipeline`、EB-ALFRED 和 atomic/composite config loading 兼容。
+8. [x] 更新 architecture、TODO、用户文档和 change record，并运行 pytest、Ruff、mypy、Markdown links 和 `git diff --check`。
+
+Implementation record: [2026-07-15 skill execution state graph implementation](../changes/2026-07-15-skill-execution-state-graph-implementation.md).
 
 ## Acceptance Criteria
 

@@ -69,12 +69,12 @@
 
 ## 5. Embodied Agent Skill Execution
 
-- [ ] `IN_PROGRESS` 将 `SkillExecutionPipeline` 演进为显式 graph state 和确定性条件转换（[计划](plans/0007-skill-execution-state-graph.md)）。
-- [ ] `TODO` 定义 Pipeline-owned `active_execution`、稳定 execution identity、attempt/chunk counters 和 completed/failed ledger，同时保持 Runtime 只负责 episode 生命周期。
-- [ ] `TODO` 将 Planner proposal、SkillBackend action、Environment result、Verifier result 和 transition event 的边界写成可验证 contract；node 只是逻辑阶段，不要求拆成独立 class 或 module。
-- [ ] `TODO` 实现独立 subtask verifier，输出 `in_progress`、`completed`、`failed`、`uncertain` 和 evidence；Planner 不再负责宣告完成。
-- [ ] `TODO` 实现确定性 transition/recovery：continue、close-and-plan-next、retry-current、replan、fallback、abort，以及 no-progress/loop detection。
-- [ ] `TODO` 增加 graph-state 和 transition unit tests，覆盖正常完成、继续、失败、uncertain、budget exhausted、recovery 和 terminal task success。
+- [x] `DONE` 将 `SkillExecutionPipeline` 演进为显式 graph state 和确定性条件转换（[计划](plans/0007-skill-execution-state-graph.md)）。
+- [x] `DONE` 定义 Pipeline-owned `active_execution`、稳定 execution identity、attempt/chunk counters 和 completed/failed ledger，同时保持 Runtime 只负责 episode 生命周期。
+- [x] `DONE` 将 Planner proposal、SkillBackend action、Environment result、Verifier result 和 transition event 的边界写成可验证 contract；node 只是逻辑阶段，不要求拆成独立 class 或 module。
+- [x] `DONE` 实现独立 subtask verifier，输出 `in_progress`、`completed`、`failed`、`uncertain` 和 evidence；Planner 不再负责宣告完成。
+- [x] `DONE` 实现确定性 transition/recovery：continue、close-and-plan-next、retry-current、replan、fallback、abort，以及 no-progress/loop detection。
+- [x] `DONE` 增加 graph-state 和 transition unit tests，覆盖正常完成、继续、失败、uncertain、budget exhausted、recovery 和 terminal task success。
 
 ## 5.1 Agent Core And Memory Evolution
 
@@ -125,11 +125,11 @@
 - [ ] `IN_PROGRESS` 实现 RoboCasa365 evaluation-first Agent + VLA case（[计划](plans/0006-robocasa365-evaluation.md)）。
 - [x] `DONE` 添加固定 commit 的 `benchmarks/RoboCasa` submodule，并提供不覆盖已有数据的本地 assets 软链流程。
 - [x] `DONE` 实现 `RoboCasaEnvironment` 和 `RoboCasa365Evaluator`，支持官方 `task_set`、`pretrain` / `target` split 和可复现 smoke overrides。
-- [x] `DONE` 实现 chunk-level `SkillExecutionPipeline`，在每个 action chunk 后验证，并按检查间隔继续 skill 或 replan。
+- [x] `DONE` 实现 graph-state `SkillExecutionPipeline`，在每个 action chunk 后验证，并按 structured status continue、close、recover 或 terminate。
 - [x] `DONE` 实现 GR00T remote server/backend、OpenPI remote server/backend 和 local in-process backend 三种 policy mode。
 - [x] `DONE` 完成 GR00T remote/local 单任务 smoke，并在 `atomic_seen` 的同一组 5 个 task 上验证 `pretrain` / `target` split；保存 resolved config、episode trace 和 summary。
 - [x] `DONE` 接通 LLM Agent 的 composite-to-atomic skill contract，并完成 `composite_seen` / `composite_unseen` 的 GR00T remote/local split matrix；40 episodes 为 1 success、0 exception，用户文档记录真实 subtask sequence 和失败模式。
-- [ ] `TODO` 在完成通用 skill-execution state graph 后，将 RoboCasa composite Agent 接入独立 visual subtask verifier 和 structured execution evidence。
+- [x] `DONE` RoboCasa composite Agent 配置已接入独立 visual `SubtaskVerifier` 和 structured execution evidence；迁移后的真实 checkpoint smoke 尚待运行。
 - [ ] `TODO` 拆分 Planner/policy/Environment/benchmark 错误指标，并验证 macro skill catalog、skill 和 trusted skill ID 一致性。
 - [ ] `TODO` 限制长 episode working memory 并增加关键视觉 artifact；Evaluator resume、completed-episode skip 和 atomic result write 继续在 RoboCasa plan 中跟踪。
 - [ ] `TODO` 使用真实 OpenPI checkpoint 完成相同 task/scenario smoke；当前只有 server/client/schema 和 fake protocol test。

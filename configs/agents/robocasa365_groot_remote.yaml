@@ -12,7 +12,7 @@ skill_backend:
     timeout_seconds: 120
 
 verifier:
-  class_path: omniroboagent.agent_core.EnvironmentVerifier
+  class_path: omniroboagent.agent_core.SubtaskVerifier
 
 memory:
   class_path: omniroboagent.agent_core.InMemoryMemory

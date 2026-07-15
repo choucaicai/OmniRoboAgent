@@ -4,13 +4,14 @@ from typing import Any
 import numpy as np
 import pytest
 
-from omniroboagent.agent_core import DefaultAgent
+from omniroboagent.agent_core import DefaultAgent, SubtaskSkillPlanner, SubtaskVerifier
 from omniroboagent.backends.skills.openpi import (
     OpenPIRoboCasaPolicyBackend,
     OpenPIWebSocketPolicyBackend,
 )
-from omniroboagent.config import build_agent, load_yaml
+from omniroboagent.config import build_agent, instantiate, load_yaml
 from omniroboagent.exceptions import BackendError, ConfigError
+from omniroboagent.pipelines import SkillExecutionPipeline
 
 
 def test_build_agent_from_component_specs() -> None:
@@ -49,6 +50,37 @@ def test_load_yaml_rejects_non_mapping(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="Config root must be a mapping"):
         load_yaml(path)
+
+
+def test_robocasa_composite_config_uses_independent_subtask_verifier() -> None:
+    config = load_yaml("configs/agents/robocasa365_groot_composite_remote.yaml")
+
+    planner = instantiate(config["planner"])
+    verifier = instantiate(config["verifier"])
+
+    assert isinstance(planner, SubtaskSkillPlanner)
+    assert isinstance(verifier, SubtaskVerifier)
+    assert verifier.check_interval_chunks == 8
+    planner.close()
+    verifier.close()
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "configs/runs/robocasa365_groot_remote_smoke.yaml",
+        "configs/runs/robocasa365_groot_local_smoke.yaml",
+        "configs/runs/robocasa365_openpi_remote_smoke.yaml",
+        "configs/runs/robocasa365_groot_composite_remote_smoke.yaml",
+        "configs/runs/robocasa365_groot_composite_local_smoke.yaml",
+    ],
+)
+def test_robocasa_run_configs_load_skill_execution_pipeline(path: str) -> None:
+    config = load_yaml(path)
+
+    pipeline = instantiate(config["pipeline"])
+
+    assert isinstance(pipeline, SkillExecutionPipeline)
 
 
 class FakeWebSocket:

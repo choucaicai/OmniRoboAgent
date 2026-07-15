@@ -143,6 +143,23 @@ class RoboCasa365Evaluator:
                     "max_chunks_per_skill": getattr(
                         pipeline, "max_chunks_per_skill", None
                     ),
+                    "max_attempts_per_execution": getattr(
+                        pipeline, "max_attempts_per_execution", None
+                    ),
+                    "max_uncertain_verifications": getattr(
+                        pipeline, "max_uncertain_verifications", None
+                    ),
+                    "max_no_progress_steps": getattr(
+                        pipeline, "max_no_progress_steps", None
+                    ),
+                    "max_replans": getattr(pipeline, "max_replans", None),
+                },
+                "verifier": {
+                    "check_interval_chunks": getattr(
+                        getattr(agent, "verifier", None),
+                        "check_interval_chunks",
+                        None,
+                    ),
                 },
                 "runtime": {
                     "max_steps": getattr(runtime, "max_steps", None),

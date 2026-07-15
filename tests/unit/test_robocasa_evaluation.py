@@ -221,6 +221,8 @@ def test_robocasa_evaluator_runs_one_resolved_task(tmp_path: Path) -> None:
     assert result["resolved"]["task_set_size"] == 2
     assert result["resolved"]["episode_index_semantics"] == "seed_offset"
     assert result["resolved"]["omniroboagent"]["python"]
+    assert result["resolved"]["pipeline"]["max_attempts_per_execution"] == 2
+    assert result["resolved"]["pipeline"]["max_uncertain_verifications"] == 2
     assert environment.closed is True
 
 

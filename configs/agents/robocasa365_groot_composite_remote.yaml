@@ -54,7 +54,25 @@ skill_backend:
     timeout_seconds: 120
 
 verifier:
-  class_path: omniroboagent.agent_core.EnvironmentVerifier
+  class_path: omniroboagent.agent_core.SubtaskVerifier
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:8000
+        model: Qwen3.5-9B
+        timeout_seconds: 120
+        max_retries: 2
+    camera_keys:
+      - video.robot0_agentview_left
+      - video.robot0_agentview_right
+      - video.robot0_eye_in_hand
+    check_interval_chunks: 8
+    max_tokens: 512
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
 
 memory:
   class_path: omniroboagent.agent_core.InMemoryMemory

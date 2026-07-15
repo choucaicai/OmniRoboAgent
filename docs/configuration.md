@@ -174,7 +174,9 @@ configs/runs/robocasa365_groot_composite_local_smoke.yaml
 
 它们复用同一个 `RoboCasa365Evaluator` 和 `RoboCasaEnvironment`，只替换 AgentConfig。Atomic GR00T 使用 `TaskSkillPlanner`；composite GR00T 使用 `SubtaskSkillPlanner` 和 RunConfig 提供的 11-skill macro catalog。`task_set` 选择官方 task 集合，`split` 独立选择 `pretrain` 或 `target`；`max_tasks`、`episodes_per_task`、`episode_indices` 和 `seed` 控制可复现 smoke。完整字段和命令见 [RoboCasa365 评测](robocasa365.md)。
 
-连续 VLA 使用 `SkillExecutionPipeline`。`planner_check_interval_chunks` 控制多少 action chunks 后再次调用 planner；`max_chunks_per_skill` 达到后强制一次 planner boundary 并重置 active budget，但 Planner 可以重新选择相同 skill/subtask。OpenPI smoke 使用 `receding_horizon + execute_steps=5`，GR00T smoke 执行完整 16-step chunk。
+连续 VLA 使用 `SkillExecutionPipeline`。Planner 只在没有 active execution 或 recovery 要求 replan 时调用；`in_progress` 不再周期调用 Planner。`max_chunks_per_skill` 是 execution hard budget，`max_attempts_per_execution` 控制失败重试，`max_uncertain_verifications` 控制 reverify，`max_no_progress_steps`、`max_replans` 和 `fallback_proposal` 为可选 recovery 限制。`planner_check_interval_chunks` 只为旧配置兼容保留。
+
+RoboCasa atomic 配置使用无 VLM backend 的 `SubtaskVerifier`，依赖 benchmark task success 和 action feedback；composite 配置为 `SubtaskVerifier` 配置同一个 OpenAI-compatible model，并通过 `check_interval_chunks: 8` 每 8 个 action chunks 执行视觉 completion 检查。OpenPI smoke 使用 `receding_horizon + execute_steps=5`，GR00T smoke 执行完整 16-step chunk。
 
 ## Output Reproducibility
 

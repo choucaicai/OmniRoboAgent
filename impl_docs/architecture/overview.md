@@ -1,6 +1,6 @@
 # OmniRoboAgent Architecture
 
-Status: `v0.1` package architecture implemented; EB-ALFRED, RoboCasa atomic GR00T, and composite Agent evaluation verified
+Status: `v0.1` package architecture and skill execution state graph implemented; EB-ALFRED and pre-graph RoboCasa atomic/composite evaluation verified
 
 ## 1. Objective
 
@@ -12,7 +12,7 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 框架需要支持不同 LLM/VLM、规则或学习型 skill、仿真 benchmark 和真实机器人，同时保持推理流程、决策逻辑和运行调度解耦。
 
-当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline` / `SkillExecutionPipeline`、`SyncRuntime`、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。真实 OpenPI checkpoint smoke、async runtime、ROS2 和真机 integration 尚未完成。
+当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、显式 graph-state `SkillExecutionPipeline`、独立 `SubtaskVerifier`、`SyncRuntime`、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。迁移后 RoboCasa composite 真实 checkpoint smoke、真实 OpenPI checkpoint smoke、async runtime、ROS2 和真机 integration 尚未完成。
 
 ## 2. Design Principles
 
@@ -71,7 +71,7 @@ Pipeline 不负责启动模型服务、policy server 或仿真器进程。
 
 ### Skill Execution State Graph
 
-目标设计中，`SkillExecutionPipeline` 在 Runtime state 内维护显式 graph state，并使用确定性条件转换管理长程 skill execution。该设计参考 LangGraph 的 state、node 和 conditional edge 思路，但不依赖 LangGraph，也不建立通用 `GraphBuilder`、node registry 或另一套 Runtime。
+`SkillExecutionPipeline` 在 Runtime state 内维护显式 graph state，并使用确定性条件转换管理长程 skill execution。该实现参考 LangGraph 的 state、node 和 conditional edge 思路，但不依赖 LangGraph，也不建立通用 `GraphBuilder`、node registry 或另一套 Runtime。
 
 Runtime 继续负责 episode 外层循环、step/timeout/retry limits、trace、异常终止和资源释放。一次 `Pipeline.step()` 最多完成一个 Environment action/verification cycle，不能在 Pipeline 内启动不受 Runtime 约束的 episode loop。
 
@@ -112,7 +112,7 @@ uncertain    -> reobserve or reverify
 task_success -> terminate
 ```
 
-当前 `SkillExecutionPipeline` 已实现 active skill/subtask、planner check interval 和 chunk budget，但尚未实现上述完整 graph state、execution identity、subtask status、recovery 和 deterministic transition contract；因此本节描述的是已确认的下一阶段设计，不是当前已完成行为。
+当前实现每个 Runtime step 最多调用一次 `Environment.execute()`；uncertain reverify step 调用零次。`completed` 关闭 execution 并在下一 Runtime step 规划，`in_progress` 保持 execution，`failed` 进入 retry/replan/fallback/abort，`task_success` 使用 benchmark authoritative signal 终止。attempt/chunk/uncertain/no-progress budgets 和 repeated/A-B-A loop detection 都由 Pipeline 的 structured state 决定。
 
 ### AgentCore
 
@@ -126,7 +126,7 @@ task_success -> terminate
 
 `LanguageSkillPlanner` 从 Environment 提供的语言 skill 列表中选择一个动作。`TaskSkillPlanner` 将 concrete benchmark task name 直接作为 policy skill，用于 RoboCasa atomic task。
 
-`SubtaskSkillPlanner` 用于 composite task。Environment 通过 observation 的 `available_skills` 暴露 atomic macro catalog；Planner 使用 OpenAI-compatible multimodal structured output 生成 `skill`、具体 `subtask` 和 `execution_status`，再通过 AgentConfig 中的可信映射补充 `skill_id`。模型不能直接提供或覆盖 skill ID。`continue_subtask` 必须与当前 active skill/subtask 一致，否则在调用 VLA 前抛出 `PlannerOutputError`。
+`SubtaskSkillPlanner` 用于 composite task。Environment 通过 observation 的 `available_skills` 暴露 atomic macro catalog；Planner 使用 OpenAI-compatible multimodal structured output 生成 `skill`、具体 `subtask`、`grounded_arguments` 和 `expected_outcome`，再通过 AgentConfig 中的可信映射补充 `skill_id`。模型不能直接提供或覆盖 skill ID，也不输出 execution completion status。
 
 ### LLMBackend
 
@@ -158,7 +158,7 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 ### Verifier
 
-输入和输出均使用普通字典。输出字段由具体 Verifier 自定义，Pipeline 负责解释；框架不提供全局固定的 decision 枚举。第一版 `EnvironmentVerifier` 优先使用 benchmark 的 authoritative success signal，后续可增加 `VLMVerifier`、`HumanVerifier` 和组合实现。
+输入和输出均使用普通字典。输出字段由具体 Verifier 自定义，Pipeline 负责解释；框架不提供全局固定的 Runtime decision 枚举。`EnvironmentVerifier` 为 `DirectPipeline` 透传 benchmark authoritative fields。`SubtaskVerifier` 输出 `in_progress`、`completed`、`failed`、`uncertain`、reason、confidence 和 evidence；它始终优先保留 benchmark `task_success`、environment done 和 action failure，并可选使用 OpenAI-compatible VLM 比较 action 前后 observation。RoboCasa composite 配置每 8 个 action chunks 执行一次视觉语义检查。
 
 ### Memory
 
@@ -356,6 +356,7 @@ benchmark:
 omniroboagent.agent_core.DefaultAgent
 omniroboagent.agent_core.LanguageSkillPlanner
 omniroboagent.agent_core.SubtaskSkillPlanner
+omniroboagent.agent_core.SubtaskVerifier
 omniroboagent.agent_core.EnvironmentVerifier
 omniroboagent.agent_core.InMemoryMemory
 omniroboagent.pipelines.DirectPipeline
@@ -546,8 +547,8 @@ episode limit                -> Runtime termination
 | Package architecture | Implemented and unit tested |
 | SkillBackend registry | Implemented with explicit names and `class_path` fallback |
 | RoboCasa365 Environment/Evaluator | Implemented; atomic and composite GR00T remote/local split matrices verified |
-| RoboCasa composite Agent contract | Implemented with `SubtaskSkillPlanner`, macro catalog, trusted skill ID mapping, and shared local/remote request schema |
-| Explicit skill-execution graph state and deterministic transitions | Planned; current implementation only tracks active skill/subtask and chunk counters |
+| RoboCasa composite Agent contract | Implemented with `SubtaskSkillPlanner`, visual `SubtaskVerifier` config, macro catalog, trusted skill ID mapping, and shared local/remote request schema; migrated smoke pending |
+| Explicit skill-execution graph state and deterministic transitions | Implemented and unit tested; migrated RoboCasa real checkpoint smoke pending |
 | RoboCasa OpenPI real checkpoint | Server/client/schema implemented; real smoke pending |
 | Resolved config/framework version copied into results | Partial for RoboCasa365: task/component/version metadata implemented, full resolved AgentConfig/RunConfig pending; EB-ALFRED pending |
 | Native EmbodiedBench evaluator alignment | Pending |
@@ -559,7 +560,7 @@ episode limit                -> Runtime termination
 2. 已完成 EB-ALFRED 单 episode 同步闭环；正式 episode 集合和原生 evaluator 对齐待完成。
 3. 已在不改变行为的前提下完成 Agent Core、Environment、Evaluation 和 Integration ownership 重组。
 4. 已接入 RoboCasa 与 GR00T/OpenPI/local VLA backend，并验证 atomic 与 composite Agent split matrix；OpenPI 真实 smoke 和原生 evaluator 对齐待完成。
-5. 为 `SkillExecutionPipeline` 增加显式 graph state、独立 subtask verification、确定性转换和 recovery，再扩展正式长程 Agent 行为。
+5. 已为 `SkillExecutionPipeline` 增加显式 graph state、独立 subtask verification、确定性转换和 recovery；下一步验证迁移后的 RoboCasa composite real smoke。
 6. 根据真实需求加入 async runtime 和多环境调度。
 7. 加入 semantic/spatial memory 和 learned verifier。
 8. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。

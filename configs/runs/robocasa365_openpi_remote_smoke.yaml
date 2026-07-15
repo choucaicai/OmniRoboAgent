@@ -5,7 +5,6 @@ pipeline:
   init_args:
     action_execution_mode: receding_horizon
     execute_steps: 5
-    planner_check_interval_chunks: 1
 
 runtime:
   class_path: omniroboagent.runtimes.SyncRuntime

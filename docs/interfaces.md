@@ -59,11 +59,11 @@ Planner 要求 response content 是 JSON object。该对象可以使用 `skill`�
 
 `LanguageSkillPlanner` 会把动态 `available_skills` 写入 JSON schema enum，并验证最终 skill 确实存在。`PlannerOutputError` 会被 `DirectPipeline` 转换为一次失败验证；其他异常由 Runtime 记录为 `termination_reason=exception`。
 
-`TaskSkillPlanner` 用于 RoboCasa VLA evaluation：它把当前 concrete task name 作为 `skill`，把 environment task description 作为 `subtask`，不调用 LLM。GR00T `model_moe_v1` 因此收到例如 `CloseBlenderLid`，而不是宽泛的 `Close_Lid` 标签。
+`TaskSkillPlanner` 用于 RoboCasa VLA evaluation：它把当前 concrete task name 作为 `skill`，把 environment task description 作为 `subtask`，并提供 `grounded_arguments` 与 `expected_outcome`，不调用 LLM。GR00T `model_moe_v1` 因此收到例如 `CloseBlenderLid`，而不是宽泛的 `Close_Lid` 标签。
 
-`SubtaskSkillPlanner` 用于 RoboCasa composite task。它从 observation 的 `available_skills` 中选择 macro skill，生成具体 `subtask` 和 `new_subtask` / `continue_subtask`，并通过 AgentConfig 中的可信 `skill_ids` 映射补充整数 ID。LLM response schema 不包含 `skill_id`；非法 catalog、未知 skill、空 subtask，或与 active execution 不一致的 `continue_subtask` 会抛出 `PlannerOutputError`。
+`SubtaskSkillPlanner` 用于 RoboCasa composite task。它从 observation 的 `available_skills` 中选择 macro skill，生成具体 `subtask`、结构化 `grounded_arguments` 和可观察的 `expected_outcome`，并通过 AgentConfig 中的可信 `skill_ids` 映射补充整数 ID。Planner 只提出 execution proposal，不判断 subtask completion；continue 由 Pipeline 保持同一个 `active_execution` 实现，不依赖模型重复相同 wording。
 
-模型 JSON 字段为 `reasoning`、`skill`、`subtask` 和 `execution_status`。Planner 返回值额外包含本地映射的 `skill_id`、原始 `model_output` 和 `raw_response`；`reasoning` 用于 trace，不作为 GR00T language instruction。Composite VLA request 使用 `subtask` 覆盖 `annotation.human.task_description`。
+模型 JSON 字段为 `reasoning`、`skill`、`subtask`、`grounded_arguments` 和 `expected_outcome`。Planner 返回值额外包含本地映射的 `skill_id`、原始 `model_output` 和 `raw_response`；`reasoning` 用于 trace，不作为 GR00T language instruction。Composite VLA request 使用 `subtask` 覆盖 `annotation.human.task_description`。
 
 ## SkillBackend
 
@@ -129,6 +129,18 @@ env_feedback
 
 Verifier 不决定全局终止枚举。`DirectPipeline` 解释这些字段。
 
+`SubtaskVerifier` 为 `SkillExecutionPipeline` 输出：
+
+```text
+execution_status = in_progress | completed | failed | uncertain
+reason
+confidence
+evidence
+task_success / task_progress / last_action_success / environment_done
+```
+
+benchmark `task_success`、environment done 和 action failure 优先于视觉模型。配置 `backend` 后，Verifier 比较 action 前后 observation 与 active execution 的 `expected_outcome`；`check_interval_chunks` 控制视觉语义检查频率。未配置 backend 时，成功执行且没有结构化 completion evidence 的 action 返回 `in_progress`。
+
 ## Memory
 
 ```python
@@ -173,7 +185,7 @@ close() -> None
 
 `DefaultAgent` 只委托 Planner、Verifier、Memory 和 SkillBackend，不包含 Pipeline。
 
-`healthcheck()` 同时检查 Planner 和 SkillBackend；两者都 healthy 时 Agent 才 healthy。`close()` 依次关闭 Planner、SkillBackend 和 Memory 的客户端资源。
+`healthcheck()` 同时检查 Planner、Verifier 和 SkillBackend；三者都 healthy 时 Agent 才 healthy。`close()` 依次关闭 Planner、Verifier、SkillBackend 和 Memory 的客户端资源。
 
 ## Pipeline
 
@@ -186,7 +198,19 @@ is_terminal(output, state) -> bool
 
 当前 `DirectPipeline` 从 observation 读取 `available_skills`；非 list 时按空列表处理，非空时验证 Planner 选择的 skill。`LanguageSkillPlanner` 本身要求该列表非空。Pipeline 每轮只执行一个 action，把 `last_action_success=false` 记为 invalid action，并把 task success 和 environment done 分别映射为成功与失败终止。
 
-`SkillExecutionPipeline` 在一个 active skill 下执行连续 action chunks。每个 chunk 后仍调用 Verifier；`planner_check_interval_chunks` 决定重新检查 planner 的频率，`max_chunks_per_skill` 达到后强制一次 planner boundary 并重置 budget，但不禁止 Planner 再次选择相同 skill/subtask。它累计 `planner_calls`、`action_chunks` 和 `environment_steps`。
+`SkillExecutionPipeline` 在 Runtime state 中维护 `active_execution`、`verification`、`transition`、`completed_executions`、`failed_executions` 和 `execution_history`。`active_execution` 包含稳定 `execution_id`、可递增 `attempt_id`、skill/subtask、grounded arguments、expected outcome、status 和 counters。
+
+每个 `step()` 最多执行一个 Environment action；`uncertain` 的下一 step 只 reverify，执行零个 action。确定性转换为：
+
+```text
+completed -> close execution -> plan next
+in_progress -> keep execution
+failed -> retry_current / replan / fallback / abort
+uncertain -> reverify, exhausted 后 recovery
+task_success -> terminal
+```
+
+构造参数包括 `max_chunks_per_skill`、`max_attempts_per_execution`、`max_uncertain_verifications`、可选 `max_no_progress_steps`、可选 `max_replans` 和可选 `fallback_proposal`。`planner_check_interval_chunks` 只为旧 RunConfig 兼容保留，不再控制 completion。loop signature 使用 skill、grounded arguments 和 expected outcome，不依赖 subtask wording。
 
 `PlannerOutputError` 会产生一个没有 Environment action 的 retry step，并计入 Runtime 的 invalid/retry budget。因此 composite evaluation 的 `invalid_actions` 可能表示 Planner contract mismatch，不一定是 VLA action array 非法。
 
@@ -214,6 +238,6 @@ planner_calls, action_chunks, environment_steps, latency_seconds,
 termination_reason, trace_path
 ```
 
-正常终止原因包括 `task_success`、`environment_done`、`pipeline_terminal`、`invalid_action_limit`、`retry_limit`、`step_limit` 和 `timeout`。未处理异常记录为 `exception`，同时保存 `error_type` 与 `error`。资源关闭错误写入 `close_errors`，不会覆盖 episode 结果。
+正常终止原因包括 `task_success`、`environment_done`、`execution_aborted`、`pipeline_terminal`、`invalid_action_limit`、`retry_limit`、`step_limit` 和 `timeout`。未处理异常记录为 `exception`，同时保存 `error_type` 与 `error`。资源关闭错误写入 `close_errors`，不会覆盖 episode 结果。
 
-`planner_calls` 是 planner 总调用次数。`replans` 统计 invalid action 触发的重新规划，以及 Pipeline 明确报告的 subtask/skill 变化；同一 active skill 的定期 planner check 不计为 replan。
+`planner_calls` 是 planner 总调用次数。`replans` 统计 invalid action 触发的重新规划，以及 Pipeline 明确报告的 replan/fallback recovery；`in_progress` execution 不调用 Planner。
