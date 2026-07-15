@@ -238,7 +238,9 @@ def test_robocasa_evaluator_rejects_duplicate_episode_indexes(
         )
 
 
-def test_skill_pipeline_reuses_active_skill_between_checks(tmp_path: Path) -> None:
+def test_skill_pipeline_reuses_active_execution_until_verified(
+    tmp_path: Path,
+) -> None:
     class CountingPlanner(TaskSkillPlanner):
         def __init__(self) -> None:
             self.calls = 0
@@ -285,9 +287,9 @@ def test_skill_pipeline_reuses_active_skill_between_checks(tmp_path: Path) -> No
     )
 
     assert result["termination_reason"] == "step_limit"
-    assert result["planner_calls"] == 2
+    assert result["planner_calls"] == 1
     assert result["environment_steps"] == 3
-    assert planner.calls == 2
+    assert planner.calls == 1
 
 
 def test_skill_pipeline_forces_replan_at_chunk_budget(tmp_path: Path) -> None:
