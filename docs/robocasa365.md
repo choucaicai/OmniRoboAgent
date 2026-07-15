@@ -189,9 +189,29 @@ reason / confidence / evidence
 
 `SkillExecutionPipeline` 使用 `execution_id`/`attempt_id` 维护 active execution。`in_progress` 继续执行而不调用 Planner；`completed` 关闭 execution 并规划下一 subtask；`failed` 进入 retry/replan/fallback/abort；`uncertain` 先 reverify。`max_chunks_per_skill=27` 是 hard execution budget。
 
-当前 composite AgentConfig 使用 `TieredMemory(visual_window_size=4)`。Planner 和 visual Verifier 会收到同一 episode 最近 4 个 observation timestep 的三路 camera frames、最近 transition events 和 bounded summary。该路径已通过 unit tests，真实 Qwen+GR00T smoke 结果在运行后记录。
+当前 composite AgentConfig 使用 `TieredMemory(visual_window_size=4)`。Planner 和 visual Verifier 会收到同一 episode 最近 4 个 observation timestep 的三路 camera frames、最近 transition events 和 bounded summary。该路径已通过 unit tests 和下面的固定 Qwen+GR00T real smoke。
 
-以下是 state-graph 迁移前 40-episode matrix 中 `Qwen3.5-9B` 的实际输出，不是手写示例；这些结果用于历史对照，不代表迁移后的 verifier 已完成真实 checkpoint smoke：
+### Migrated State-Graph Fixed Smoke
+
+固定 smoke 使用 `composite_seen / pretrain / DeliverStraw / episode_index=0 / seed=0`、GR00T `checkpoint-240000`、K=4 memory 和每 8 chunks 一次的 visual verifier。对照取自迁移前 5-task matrix 中的同一个 episode：
+
+| Metric | Pre-graph baseline | Graph + verifier + memory |
+| --- | ---: | ---: |
+| Success / progress | 0 / 0.0 | 0 / 0.0 |
+| Pipeline steps / action chunks | 109 / 107 | 107 / 107 |
+| Environment steps | 1700 | 1700 |
+| Planner calls / replans | 16 / 6 | 5 / 3 |
+| Planner prompt tokens | 22352 | 24112 |
+| Planner backend latency | 32.43 s | 19.31 s |
+| Episode latency | 134.17 s | 149.49 s |
+
+新流程在第 16 个 chunk 将 `Open_Door` 判定为 `completed`，confidence 为 `0.95`，evidence 明确指出 drawer 已打开且 red straw 可见。后续 verifier 持续确认 straw 仍在 drawer 内，没有把 `Pick_Place` 误判为完成；3 个 execution 在 27-chunk budget 后 replan，最后一个在 environment horizon 结束。最终 ledger 为 1 个 completed execution 和 4 个 failed executions。
+
+这说明状态控制和可诊断性优于旧流程：Planner 不再每 8 chunks 重复判断，也不会在没有视觉证据时过早切到 placement。但是该 episode 的 success 和 progress 没有提升，主要失败点是 atomic `Pick_Place` policy 没有抓起 straw。K=4 使 Planner 单次 prompt 从首步 642 tokens 增长到后续 5535-5982 tokens；Planner 总 latency 虽下降 13.12 s，12 次 visual verifier 使 episode 总 latency 增加 15.32 s。当前 trace 未记录 verifier backend usage/latency，且本轮未采样 peak RSS。
+
+这不是严格的模型质量 A/B：两次使用相同 checkpoint 和 simulator seed，但 OmniRoboAgent commit、Python dependency set 不同，diffusion policy RNG 也未固定。还需要同 manifest 多 episode matrix。固定 smoke 同时暴露了一个 recovery gap：语义相同的 `Pick_Place` proposal 因 `grounded_arguments` / `expected_outcome` 变化而未触发 repeated-execution loop detection，当前 smoke config 也没有设置 `max_no_progress_steps` 或 `max_replans`。
+
+以下是 state-graph 迁移前 40-episode matrix 中 `Qwen3.5-9B` 的实际输出，不是手写示例；这些结果用于历史对照，不代表上面的迁移后 fixed smoke：
 
 | Composite task | Step | Skill | Generated subtask |
 | --- | ---: | --- | --- |
@@ -214,7 +234,7 @@ reason / confidence / evidence
 - 旧实现没有独立视觉 verifier，同一 placement subtask 可能被重复执行到 environment horizon。
 - 旧 `continue_subtask` contract 依赖 wording 完全一致，模型改写措辞会产生 Planner retry；新实现已移除此依赖。
 
-因此该历史 subtask trace 适合验证 Agent-to-VLA contract 和定位 Planner 问题，不应视为新 state graph 的质量结果。迁移后的真实 composite smoke 尚未运行。
+因此该历史 subtask trace 适合验证 Agent-to-VLA contract 和定位 Planner 问题，不应视为新 state graph 的质量结果。迁移后的 fixed smoke 见上文，正式多 episode matrix 仍未运行。
 
 ## OpenPI Remote
 
@@ -352,12 +372,12 @@ Composite 表中的 `invalid_actions` 属于旧 Planner contract，包含没有�
 | Priority | Gap | Current limitation | Completion criterion |
 | --- | --- | --- | --- |
 | P0 | Official evaluation alignment | 正式 task-set scope 尚未固定；`episode_index` 只是 `seed` offset；没有官方随机 50-scenario manifest；Runtime limit 按 action chunk 计数而 RoboCasa horizon 按 low-level step 计数 | 明确正式 task sets，对齐官方 reset state、scenario identity、horizon 和 aggregation；相同 manifest 可跨机器、跨 worker 复现，并从 low-level horizon 派生或校验 chunk budget |
-| P0 | Independent subtask verifier | `SubtaskVerifier` 与 state graph 已实现并进入 composite config，但迁移后的真实 checkpoint smoke 未运行 | 用固定 episode 验证 visual status/evidence、误判率、LLM latency 和 task-success priority |
-| P0 | Atomic decomposition and recovery | retry/replan/fallback/abort 和 loop detection 已实现；Planner 仍可能提出混合 Navigation/manipulation 的 subtask | 一个 subtask 对应一个 macro skill 和明确对象关系；在真实 smoke 中验证 recovery 分支 |
+| P0 | Independent subtask verifier | fixed smoke 已完成 12 次 visual checks 并正确关闭 `Open_Door`；尚无多 episode 误判率，trace 也未保存 verifier backend usage/latency | 在固定 manifest matrix 中统计 status/evidence、误判率、backend usage/latency 和 task-success priority |
+| P0 | Atomic decomposition and recovery | fixed smoke 触发 3 次 chunk-budget replan，但语义相同的 `Pick_Place` 因 arguments/outcome 改写未命中 loop signature；`max_no_progress_steps` / `max_replans` 未配置 | 一个 subtask 对应一个 macro skill 和明确对象关系；semantic-equivalent repeated/A-B-A loop 能在 horizon 前进入 fallback 或 abort |
 | P0 | Error and metric taxonomy | Planner contract error 被统计到 `invalid_actions` | 分开记录 `planner_errors`、`policy_errors`、`environment_errors`、contract retries 和对应 termination reason |
 | P0 | Skill contract consistency | GR00T backend 只校验 `skill_id` 类型，不验证 skill/catalog/ID 一致性 | 在调用 policy 前验证 Planner skill、RunConfig catalog 和 trusted ID mapping 一致 |
 | P1 | Experiment reproducibility | 当前 checkpoint 依赖未发布的 `model_moe_v1` 和 data config；12 组 atomic/composite matrix 的临时 RunConfig 未纳入版本控制；`resolved_config.json` 只保存部分参数；policy RNG 未固定 | 固定可获取 source、environment lock、checkpoint digest 和 policy seed；提交 experiment manifest/RunConfig，并保存完整 resolved AgentConfig/RunConfig、Planner prompt/schema、skill map 和 camera 参数 |
-| P1 | Bounded memory and diagnostics | `InMemoryMemory` 保留完整图像/action event，长 episode RSS 持续增长 | Memory 只保存摘要或 artifact reference；按 episode 清理，并可选保存首帧、关键帧或视频 |
+| P1 | Bounded memory and diagnostics | `TieredMemory(K=4)` 已限制 visual working set，fixed smoke 最多保留 12 张 frame；尚无 peak RSS、关键视觉 artifact 和 verifier usage trace | 使用 peak-RSS sampler 验证长 episode 内存上界，保存关键帧引用，并记录 Planner/Verifier context、token 和 latency |
 | P1 | Resumable evaluation | Evaluator 和 Runtime 启动时会重建 `episodes.jsonl` / trace，长跑中断后不能原地续跑 | 支持 run manifest、跳过已完成 episode，并对 episode、trace/result、summary 和 resolved config 做 atomic write 与一致性检查 |
 | P2 | Formal-scale evaluation | 当前只跑每组 5 tasks、每 task 1 episode，且串行单环境 | 完成 task set x split x policy 的正式 50-rollout protocol、置信区间和可控并行 worker/GPU 调度 |
 | P2 | Additional policy validation | OpenPI 只有 client/server/schema 和 fake protocol test | 使用真实 OpenPI checkpoint 完成与 GR00T 相同 scenario 的 smoke 和 matrix |

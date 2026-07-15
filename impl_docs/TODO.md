@@ -129,9 +129,10 @@
 - [x] `DONE` 实现 GR00T remote server/backend、OpenPI remote server/backend 和 local in-process backend 三种 policy mode。
 - [x] `DONE` 完成 GR00T remote/local 单任务 smoke，并在 `atomic_seen` 的同一组 5 个 task 上验证 `pretrain` / `target` split；保存 resolved config、episode trace 和 summary。
 - [x] `DONE` 接通 LLM Agent 的 composite-to-atomic skill contract，并完成 `composite_seen` / `composite_unseen` 的 GR00T remote/local split matrix；40 episodes 为 1 success、0 exception，用户文档记录真实 subtask sequence 和失败模式。
-- [x] `DONE` RoboCasa composite Agent 配置已接入独立 visual `SubtaskVerifier` 和 structured execution evidence；迁移后的真实 checkpoint smoke 尚待运行。
+- [x] `DONE` RoboCasa composite Agent 配置已接入独立 visual `SubtaskVerifier`、`TieredMemory(K=4)` 和 structured execution evidence；固定 `DeliverStraw` real smoke 完成 12 次 visual checks，正确关闭 `Open_Door`，但最终 success 仍为 0。
 - [ ] `TODO` 拆分 Planner/policy/Environment/benchmark 错误指标，并验证 macro skill catalog、skill 和 trusted skill ID 一致性。
-- [ ] `TODO` 限制长 episode working memory 并增加关键视觉 artifact；Evaluator resume、completed-episode skip 和 atomic result write 继续在 RoboCasa plan 中跟踪。
+- [ ] `TODO` 为 RoboCasa memory/verifier audit 增加 peak RSS、Verifier backend usage/latency 和关键视觉 artifact；调整 semantic-equivalent repeated execution detection，并配置 `max_no_progress_steps` / `max_replans` 后复跑 fixed matrix。
+- [ ] `TODO` Evaluator resume、completed-episode skip 和 atomic result write 继续在 RoboCasa plan 中跟踪。
 - [ ] `TODO` 使用真实 OpenPI checkpoint 完成相同 task/scenario smoke；当前只有 server/client/schema 和 fake protocol test。
 - [ ] `TODO` 将已验证的 custom GR00T policy source 固定到其他用户可获取的 commit/package，并记录 checkpoint digest、policy RNG、Conda/CUDA/GPU 和 dependency lock。
 - [ ] `TODO` 将正式 split matrix 的 experiment manifest/RunConfig 纳入版本控制，并在结果中保存完整 resolved AgentConfig/RunConfig、Planner prompt/schema、skill map 和 camera 参数。
