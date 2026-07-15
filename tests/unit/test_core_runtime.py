@@ -273,3 +273,50 @@ def test_runtime_resets_agent_memory_for_each_session(tmp_path: Path) -> None:
 
     assert len(agent.memory.events) == 1
     agent.close()
+
+
+def test_direct_pipeline_passes_explicit_memory_context() -> None:
+    class ContextMemory(InMemoryMemory):
+        def recall(self, query: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "working_frames": [],
+                "recent_events": [],
+                "summary": f"memory for {query['phase']}",
+            }
+
+    class RecordingVerifier(FakeVerifier):
+        def verify(self, inputs: dict[str, Any]) -> dict[str, Any]:
+            self.inputs = inputs
+            return super().verify(inputs)
+
+    verifier = RecordingVerifier()
+    agent = DefaultAgent(
+        planner=FakePlanner(),
+        verifier=verifier,
+        memory=ContextMemory(),
+        skill_backend=LanguageSkillBackend(),
+    )
+    environment = FakeEnvironment(
+        [
+            {
+                "task_success": True,
+                "task_progress": 1.0,
+                "last_action_success": True,
+                "done": True,
+            }
+        ]
+    )
+    state = {
+        "task": "find mug",
+        "observation": environment.reset("find mug"),
+        "step": 0,
+        "session_id": "session",
+        "history": [],
+    }
+
+    output = DirectPipeline().step(agent, environment, state)
+
+    assert output["planner_output"]["received"]["memory_context"]["summary"] == (
+        "memory for plan"
+    )
+    assert verifier.inputs["memory_context"]["summary"] == "memory for verify"

@@ -41,6 +41,7 @@ task
 observation
 available_skills
 history
+memory_context
 ```
 
 它要求模型每轮只返回一个 skill。输出是包含 `skill`、`reasoning`、`model_output` 和 `raw_response` 的普通字典。
@@ -62,6 +63,8 @@ Planner 要求 response content 是 JSON object。该对象可以使用 `skill`�
 `TaskSkillPlanner` 用于 RoboCasa VLA evaluation：它把当前 concrete task name 作为 `skill`，把 environment task description 作为 `subtask`，并提供 `grounded_arguments` 与 `expected_outcome`，不调用 LLM。GR00T `model_moe_v1` 因此收到例如 `CloseBlenderLid`，而不是宽泛的 `Close_Lid` 标签。
 
 `SubtaskSkillPlanner` 用于 RoboCasa composite task。它从 observation 的 `available_skills` 中选择 macro skill，生成具体 `subtask`、结构化 `grounded_arguments` 和可观察的 `expected_outcome`，并通过 AgentConfig 中的可信 `skill_ids` 映射补充整数 ID。Planner 只提出 execution proposal，不判断 subtask completion；continue 由 Pipeline 保持同一个 `active_execution` 实现，不依赖模型重复相同 wording。
+
+两个 LLM Planner 都显式读取 `memory_context.summary`、最近 10 条 `recent_events` 和 `working_frames`。summary/events 进入 text prompt，working frames 作为按时间排序的 image content；缺少 memory context 时行为保持兼容。
 
 模型 JSON 字段为 `reasoning`、`skill`、`subtask`、`grounded_arguments` 和 `expected_outcome`。Planner 返回值额外包含本地映射的 `skill_id`、原始 `model_output` 和 `raw_response`；`reasoning` 用于 trace，不作为 GR00T language instruction。Composite VLA request 使用 `subtask` 覆盖 `annotation.human.task_description`。
 
@@ -141,6 +144,8 @@ task_success / task_progress / last_action_success / environment_done
 
 benchmark `task_success`、environment done 和 action failure 优先于视觉模型。配置 `backend` 后，Verifier 比较 action 前后 observation 与 active execution 的 `expected_outcome`；`check_interval_chunks` 控制视觉语义检查频率。未配置 backend 时，成功执行且没有结构化 completion evidence 的 action 返回 `in_progress`。
 
+`SubtaskVerifier` 的 VLM 请求显式包含 `memory_context.summary`、最近 events 和 working frames。Pipeline 只负责传递 context，不读取图像或 summary 判断 completion。
+
 ## Memory
 
 ```python
@@ -164,6 +169,8 @@ summary
 ```
 
 `visual_window_size` 默认 `4`，按 observation timestep 计数，每个 timestep 可以包含多 camera。raw frames 只存在 bounded working deque；event JSONL 不保存 raw observation、action tensor 或 provider raw response。`event_path` 可选，未配置时 event memory 保存在当前 Agent 进程中。
+
+Pipeline 使用 `session_id` 查询当前 episode context，避免默认把其他 episode 的 event 注入 Planner/Verifier；调用方显式设置其他 scope 时仍可访问长期 event memory。
 
 Runtime 自己始终写 episode trace，因此 Memory 是否持久化不会影响评测结果文件。
 

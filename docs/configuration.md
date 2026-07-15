@@ -55,6 +55,8 @@ memory:
 
 `event_path` 是可选 append-only JSONL；不配置时长期 event memory 保留在当前 Agent 进程中。每个 Runtime session 会清空 working frames 和当前 summary，但保留 event memory。
 
+`DirectPipeline` 和 `SkillExecutionPipeline` 会在 plan/verify 阶段显式生成 `memory_context`。当前 RoboCasa composite Planner/Verifier 会消费最近 4 个 timestep 的三路 camera frames、最近 20 条结构化 events 和 bounded summary。
+
 SkillBackend 支持 registry 稳定名称：
 
 ```yaml

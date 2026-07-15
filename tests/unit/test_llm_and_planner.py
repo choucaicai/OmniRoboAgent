@@ -82,6 +82,29 @@ def test_language_skill_planner_selects_one_skill() -> None:
     assert len(backend.inputs["messages"][1]["content"]) == 2
 
 
+def test_language_skill_planner_uses_explicit_memory_context() -> None:
+    backend = FakeLLMBackend('{"reasoning":"memory","skill":"find a Mug"}')
+    planner = LanguageSkillPlanner(backend)
+    memory_image = Image.new("RGB", (2, 2), color="blue")
+
+    planner.plan(
+        {
+            "task": "find mug",
+            "observation": {},
+            "available_skills": ["find a Mug"],
+            "memory_context": {
+                "summary": "the mug was last seen near the sink",
+                "recent_events": [{"status": "in_progress"}],
+                "working_frames": [{"cameras": {"head": memory_image}}],
+            },
+        }
+    )
+
+    content = backend.inputs["messages"][1]["content"]
+    assert "mug was last seen" in content[0]["text"]
+    assert content[-1]["image_url"]["url"] is memory_image
+
+
 def test_language_skill_planner_accepts_baseline_action_id() -> None:
     backend = FakeLLMBackend(
         '{"reasoning_and_reflection":"next", "executable_plan":'

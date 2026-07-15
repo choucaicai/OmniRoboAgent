@@ -68,11 +68,12 @@ artifact_refs / timestamp
 2. [x] 实现 bounded visual working memory，优先保存 artifact reference 和 camera/step metadata。
 3. [x] 将 skill graph transition 写入 append-only event memory。
 4. [x] 实现 bounded deterministic text summary，并在 execution close/episode end 更新。
-5. [ ] 在 Agent/Pipeline 输入中显式传递 memory context，增加序列化和容量测试。
+5. [x] 在 Agent/Pipeline 输入中显式传递 memory context，增加序列化和容量测试。
 6. [ ] 用 RoboCasa 长 episode audit K、RSS、artifact 数量和 planner/verifier context 大小。
-7. [ ] 完成 memory context 接入后更新 architecture、configuration、TODO 和最终 change record。
+7. [x] 完成 memory context 接入后更新 architecture、configuration、TODO 和 change record。
 
 Core implementation record: [2026-07-15 tiered agent memory](../changes/2026-07-15-tiered-agent-memory.md).
+Context integration record: [2026-07-15 memory context integration](../changes/2026-07-15-memory-context-integration.md).
 
 ## Acceptance Criteria
 

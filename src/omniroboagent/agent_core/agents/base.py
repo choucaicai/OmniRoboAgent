@@ -40,7 +40,10 @@ class BaseAgent(ABC):
         self.memory.reset(session_id)
 
     def recall(self, query: dict[str, Any]) -> dict[str, Any]:
-        return self.memory.recall(query)
+        context = self.memory.recall(query)
+        if not isinstance(context, dict):
+            raise TypeError("Memory.recall() must return a dict")
+        return context
 
     def healthcheck(self) -> dict[str, Any]:
         planner = self.planner.healthcheck()

@@ -6,7 +6,7 @@ OmniRoboAgent 是面向具身 Agent 的模块化构建、运行与评估框架�
 Observe -> Plan -> Act -> Verify -> Update or Stop
 ```
 
-当前实现包含同步 Runtime、可替换 Agent 组件、显式 skill-execution graph state、独立 SubtaskVerifier、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 的 atomic/composite Agent、GR00T/OpenPI/local VLA evaluation 路径。
+当前实现包含同步 Runtime、组合式 BaseAgent、显式 skill-execution graph state、独立 SubtaskVerifier、K 帧 TieredMemory、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 的 atomic/composite Agent、GR00T/OpenPI/local VLA evaluation 路径。
 
 ## Clone
 

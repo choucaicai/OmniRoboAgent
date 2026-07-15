@@ -41,6 +41,14 @@ class DirectPipeline(Pipeline):
             "step": state["step"],
             "history": state.get("history", []),
             "available_skills": available_skills,
+            "memory_context": agent.recall(
+                {
+                    "phase": "plan",
+                    "session_id": state.get("session_id"),
+                    "task": state["task"],
+                    "step": state["step"],
+                }
+            ),
         }
 
         try:
@@ -83,6 +91,14 @@ class DirectPipeline(Pipeline):
                 "planner_output": planner_output,
                 "action": action,
                 "environment_result": environment_result,
+                "memory_context": agent.recall(
+                    {
+                        "phase": "verify",
+                        "session_id": state.get("session_id"),
+                        "task": state["task"],
+                        "step": state["step"],
+                    }
+                ),
                 "state": state,
             }
         )

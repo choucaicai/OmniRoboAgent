@@ -107,6 +107,7 @@ Composite 配置保留 RoboCasa composite task 作为 Environment reset 和 succ
 
 ```text
 composite task
+  -> TieredMemory recalls K=4 past multi-camera observations
   -> SubtaskSkillPlanner
   -> macro skill + trusted local skill_id + grounded subtask proposal
   -> atomic GR00T checkpoint
@@ -187,6 +188,8 @@ reason / confidence / evidence
 ```
 
 `SkillExecutionPipeline` 使用 `execution_id`/`attempt_id` 维护 active execution。`in_progress` 继续执行而不调用 Planner；`completed` 关闭 execution 并规划下一 subtask；`failed` 进入 retry/replan/fallback/abort；`uncertain` 先 reverify。`max_chunks_per_skill=27` 是 hard execution budget。
+
+当前 composite AgentConfig 使用 `TieredMemory(visual_window_size=4)`。Planner 和 visual Verifier 会收到同一 episode 最近 4 个 observation timestep 的三路 camera frames、最近 transition events 和 bounded summary。该路径已通过 unit tests，真实 Qwen+GR00T smoke 结果在运行后记录。
 
 以下是 state-graph 迁移前 40-episode matrix 中 `Qwen3.5-9B` 的实际输出，不是手写示例；这些结果用于历史对照，不代表迁移后的 verifier 已完成真实 checkpoint smoke：
 

@@ -6,6 +6,7 @@ from typing import Any
 from omniroboagent.agent_core.verifiers.base import Verifier
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import ConfigError, VerifierOutputError
+from omniroboagent.serialization import to_jsonable
 
 EXECUTION_STATUSES = {"in_progress", "completed", "failed", "uncertain"}
 
@@ -162,10 +163,23 @@ class SubtaskVerifier(Verifier):
             "expected_outcome": active_execution.get("expected_outcome"),
             "environment_feedback": common["env_feedback"],
         }
+        memory_context = inputs.get("memory_context")
+        if isinstance(memory_context, Mapping):
+            recent_events = memory_context.get("recent_events", [])
+            prompt["memory_context"] = to_jsonable(
+                {
+                    "summary": memory_context.get("summary", ""),
+                    "recent_events": (
+                        recent_events[-10:]
+                        if isinstance(recent_events, list)
+                        else recent_events
+                    ),
+                }
+            )
         content: list[dict[str, Any]] = [
             {
                 "type": "text",
-                "text": json.dumps(prompt, ensure_ascii=False),
+                "text": json.dumps(to_jsonable(prompt), ensure_ascii=False),
             }
         ]
         observations = [
@@ -186,6 +200,30 @@ class SubtaskVerifier(Verifier):
                     content.append(
                         {"type": "image_url", "image_url": {"url": image}}
                     )
+        if isinstance(memory_context, Mapping):
+            working_frames = memory_context.get("working_frames", [])
+            if isinstance(working_frames, list) and working_frames:
+                content.append(
+                    {
+                        "type": "text",
+                        "text": "Visual working memory, oldest to newest",
+                    }
+                )
+                for frame in working_frames:
+                    cameras = (
+                        frame.get("cameras") if isinstance(frame, Mapping) else None
+                    )
+                    if not isinstance(cameras, Mapping):
+                        continue
+                    for value in cameras.values():
+                        images = value if isinstance(value, list) else [value]
+                        for image in images:
+                            content.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": image},
+                                }
+                            )
 
         response = self.backend.complete(
             {

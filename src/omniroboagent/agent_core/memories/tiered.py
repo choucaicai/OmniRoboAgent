@@ -125,13 +125,17 @@ class TieredMemory(Memory):
             self._summary_lines.popleft()
 
     def recall(self, query: dict[str, Any]) -> dict[str, Any]:
+        events = self.event_memory
+        session_id = query.get("session_id")
+        if session_id is not None and query.get("scope", "session") == "session":
+            events = [event for event in events if event["session_id"] == session_id]
         return {
             "working_frames": [
                 {**frame, "cameras": dict(frame["cameras"])}
                 for frame in self.working_frames
             ],
             "recent_events": [
-                dict(event) for event in self.event_memory[-self.recent_event_limit :]
+                dict(event) for event in events[-self.recent_event_limit :]
             ],
             "summary": "\n".join(self._summary_lines),
         }

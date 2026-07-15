@@ -53,6 +53,7 @@ def test_tiered_memory_reset_keeps_long_term_events() -> None:
     assert recalled["summary"] == ""
     assert len(recalled["recent_events"]) == 1
     assert recalled["recent_events"][0]["session_id"] == "first"
+    assert memory.recall({"session_id": "second"})["recent_events"] == []
 
 
 def test_tiered_memory_persists_summary_only_event_records(tmp_path: Path) -> None:

@@ -17,6 +17,8 @@ class ScriptedAgent(BaseAgent):
         self.action_calls = 0
         self.verify_calls = 0
         self.events: list[dict[str, Any]] = []
+        self.recall_phases: list[str] = []
+        self.verify_inputs: list[dict[str, Any]] = []
 
     def plan(self, inputs: dict[str, Any]) -> dict[str, Any]:
         proposal = self.proposals[min(self.plan_calls, len(self.proposals) - 1)]
@@ -28,6 +30,7 @@ class ScriptedAgent(BaseAgent):
         return {"execution_id": inputs["execution_id"], "skill": inputs["skill"]}
 
     def verify(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        self.verify_inputs.append(inputs)
         result = self.verifications[
             min(self.verify_calls, len(self.verifications) - 1)
         ]
@@ -46,6 +49,14 @@ class ScriptedAgent(BaseAgent):
 
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
         self.events.append(event)
+
+    def recall(self, query: dict[str, Any]) -> dict[str, Any]:
+        self.recall_phases.append(str(query["phase"]))
+        return {
+            "working_frames": [],
+            "recent_events": [],
+            "summary": f"memory for {query['phase']}",
+        }
 
 
 class CountingEnvironment(Environment):
@@ -125,6 +136,8 @@ def test_first_plan_creates_explicit_active_execution() -> None:
     assert output["next_status"] == "in_progress"
     assert agent.plan_calls == 1
     assert environment.calls == 1
+    assert agent.recall_phases == ["plan", "verify"]
+    assert agent.verify_inputs[0]["memory_context"]["summary"] == "memory for verify"
 
 
 def test_in_progress_continues_same_execution_without_planner() -> None:

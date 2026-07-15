@@ -98,6 +98,14 @@ class SkillExecutionPipeline(DirectPipeline):
                         "available_skills": available_skills,
                         "completed_executions": state["completed_executions"],
                         "failed_executions": state["failed_executions"],
+                        "memory_context": agent.recall(
+                            {
+                                "phase": "plan",
+                                "session_id": state.get("session_id"),
+                                "task": state["task"],
+                                "step": state["step"],
+                            }
+                        ),
                     }
                 )
                 active_execution = self._start_execution(
@@ -190,6 +198,19 @@ class SkillExecutionPipeline(DirectPipeline):
                 "active_execution": active_execution,
                 "action": action,
                 "environment_result": environment_result,
+                "memory_context": agent.recall(
+                    {
+                        "phase": "verify",
+                        "session_id": state.get("session_id"),
+                        "task": state["task"],
+                        "step": state["step"],
+                        "execution_id": (
+                            active_execution.get("execution_id")
+                            if isinstance(active_execution, dict)
+                            else None
+                        ),
+                    }
+                ),
                 "state": state,
             }
         )

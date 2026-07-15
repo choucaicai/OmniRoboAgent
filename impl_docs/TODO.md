@@ -80,7 +80,7 @@
 
 - [x] `DONE` 将 `BaseAgent` 演进为统一组件 ownership 和 lifecycle 的组合式抽象基类，同时保持 `DefaultAgent` 配置兼容（[计划](plans/0008-composable-agent-base.md)）。
 - [x] `DONE` 实现 bounded visual working memory、长期 event memory 和 bounded text summary 的集中分层 Memory（[计划](plans/0009-tiered-agent-memory.md)）。
-- [ ] `TODO` 为 Planner/Verifier 提供显式 memory recall 输入，不允许 Memory 隐式修改 decision 或 Pipeline transition。
+- [x] `DONE` 为 Planner/Verifier 提供显式 memory recall 输入，不允许 Memory 隐式修改 decision 或 Pipeline transition。
 
 ## 6. Backend Support
 

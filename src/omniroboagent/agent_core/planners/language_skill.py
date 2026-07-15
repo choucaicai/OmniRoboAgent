@@ -1,10 +1,12 @@
 import json
 import re
+from collections.abc import Mapping
 from typing import Any
 
 from omniroboagent.agent_core.planners.base import Planner
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import PlannerOutputError
+from omniroboagent.serialization import to_jsonable
 
 DEFAULT_LANGUAGE_SKILL_PROMPT = """You are an embodied agent operating in a home.
 Select exactly one action for the current observation. After the action, the environment
@@ -49,6 +51,10 @@ class LanguageSkillPlanner(Planner):
             f"Task: {instruction}\n\nAvailable actions:\n{action_text}\n\n"
             f"Previous interaction feedback:\n{json.dumps(history, ensure_ascii=False)}"
         )
+        memory_context = inputs.get("memory_context")
+        memory_prompt = self._memory_prompt(memory_context)
+        if memory_prompt:
+            prompt += f"\n\nMemory context:\n{memory_prompt}"
         content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
         observation = inputs.get("observation")
         if isinstance(observation, dict):
@@ -58,6 +64,13 @@ class LanguageSkillPlanner(Planner):
             elif images is not None and not isinstance(images, list):
                 images = [images]
             for image in images or []:
+                content.append({"type": "image_url", "image_url": {"url": image}})
+        memory_images = self._memory_images(memory_context)
+        if memory_images:
+            content.append(
+                {"type": "text", "text": "Visual working memory, oldest to newest"}
+            )
+            for image in memory_images:
                 content.append({"type": "image_url", "image_url": {"url": image}})
 
         response = self.backend.complete(
@@ -194,3 +207,44 @@ class LanguageSkillPlanner(Planner):
         if skill not in available_skills:
             raise PlannerOutputError(f"Planner selected unavailable skill: {skill!r}")
         return skill
+
+    @staticmethod
+    def _memory_prompt(memory_context: Any) -> str:
+        if not isinstance(memory_context, Mapping):
+            return ""
+        summary = memory_context.get("summary", "")
+        recent_events = memory_context.get("recent_events", [])
+        if not summary and not recent_events:
+            return ""
+        return json.dumps(
+            to_jsonable(
+                {
+                    "summary": summary,
+                    "recent_events": (
+                        recent_events[-10:]
+                        if isinstance(recent_events, list)
+                        else recent_events
+                    ),
+                }
+            ),
+            ensure_ascii=False,
+        )
+
+    @staticmethod
+    def _memory_images(memory_context: Any) -> list[Any]:
+        if not isinstance(memory_context, Mapping):
+            return []
+        frames = memory_context.get("working_frames", [])
+        if not isinstance(frames, list):
+            return []
+        images: list[Any] = []
+        for frame in frames:
+            cameras = frame.get("cameras") if isinstance(frame, Mapping) else None
+            if not isinstance(cameras, Mapping):
+                continue
+            for value in cameras.values():
+                if isinstance(value, list):
+                    images.extend(value)
+                else:
+                    images.append(value)
+        return images

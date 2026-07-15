@@ -138,6 +138,10 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
             "Recent interaction feedback:\n"
             f"{json.dumps(recent_history, ensure_ascii=False)}"
         )
+        memory_context = inputs.get("memory_context")
+        memory_prompt = self._memory_prompt(memory_context)
+        if memory_prompt:
+            prompt += f"\n\nMemory context:\n{memory_prompt}"
         content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
         if isinstance(observation, Mapping):
             for camera_key in self.camera_keys:
@@ -148,6 +152,13 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
                     images = [images]
                 for image in images:
                     content.append({"type": "image_url", "image_url": {"url": image}})
+        memory_images = self._memory_images(memory_context)
+        if memory_images:
+            content.append(
+                {"type": "text", "text": "Visual working memory, oldest to newest"}
+            )
+            for image in memory_images:
+                content.append({"type": "image_url", "image_url": {"url": image}})
 
         response = self.backend.complete(
             {

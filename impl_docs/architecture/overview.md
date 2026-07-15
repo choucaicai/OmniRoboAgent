@@ -164,7 +164,9 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 当前提供 `InMemoryMemory`、`JsonlMemory` 和 `TieredMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working memory，但不删除长期 event memory；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
 
-`TieredMemory` 组合 bounded visual working memory、structured event memory 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；raw frame 不进入长期 event JSONL。长期 record 只保存 execution/attempt identity、transition、reason、confidence、evidence summary 和 artifact references。`recall()` 稳定返回 `working_frames`、`recent_events` 和 `summary`，但 Planner/Verifier 的显式消费仍由下一 TODO 接入。见 [0009 plan](../plans/0009-tiered-agent-memory.md)。
+`TieredMemory` 组合 bounded visual working memory、structured event memory 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；raw frame 不进入长期 event JSONL。长期 record 只保存 execution/attempt identity、transition、reason、confidence、evidence summary 和 artifact references。
+
+Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events` 和 `summary`。LLM Planner 将 summary/recent events 放入文本 prompt，并把 working frames 作为独立 image content；visual SubtaskVerifier 同样显式消费这些字段。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md)。
 
 ## 5. Data Policy
 

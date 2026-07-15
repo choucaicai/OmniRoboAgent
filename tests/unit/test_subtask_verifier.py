@@ -87,13 +87,23 @@ def test_subtask_verifier_calls_vlm_with_before_after_images() -> None:
         '"confidence":0.9,"evidence":["door is flush with the frame"]}'
     )
 
-    output = SubtaskVerifier(backend).verify(make_inputs())
+    inputs = make_inputs()
+    inputs["memory_context"] = {
+        "summary": "the door was moving toward closed",
+        "recent_events": [{"status": "in_progress"}],
+        "working_frames": [
+            {"cameras": {"history": Image.new("RGB", (2, 2), "green")}}
+        ],
+    }
+
+    output = SubtaskVerifier(backend).verify(inputs)
 
     assert output["execution_status"] == "completed"
     assert output["confidence"] == 0.9
     content = backend.inputs["messages"][1]["content"]
-    assert sum(item["type"] == "image_url" for item in content) == 2
+    assert sum(item["type"] == "image_url" for item in content) == 3
     assert "expected_outcome" in content[0]["text"]
+    assert "door was moving" in content[0]["text"]
 
 
 def test_subtask_verifier_defers_semantic_check_by_chunk_interval() -> None:
