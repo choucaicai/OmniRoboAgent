@@ -1,3 +1,4 @@
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -18,15 +19,37 @@ class SkillExecutionPipeline(DirectPipeline):
         execute_steps: int | None = None,
         planner_check_interval_chunks: int = 1,
         max_chunks_per_skill: int | None = None,
+        max_attempts_per_execution: int = 2,
+        max_uncertain_verifications: int = 2,
+        max_no_progress_steps: int | None = None,
+        max_replans: int | None = None,
+        fallback_proposal: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(action_execution_mode, execute_steps)
         if planner_check_interval_chunks <= 0:
             raise ValueError("planner_check_interval_chunks must be positive")
         if max_chunks_per_skill is not None and max_chunks_per_skill <= 0:
             raise ValueError("max_chunks_per_skill must be positive")
+        if max_attempts_per_execution <= 0:
+            raise ValueError("max_attempts_per_execution must be positive")
+        if max_uncertain_verifications <= 0:
+            raise ValueError("max_uncertain_verifications must be positive")
+        if max_no_progress_steps is not None and max_no_progress_steps <= 0:
+            raise ValueError("max_no_progress_steps must be positive")
+        if max_replans is not None and max_replans < 0:
+            raise ValueError("max_replans must be non-negative")
+        if fallback_proposal is not None and not isinstance(fallback_proposal, dict):
+            raise ValueError("fallback_proposal must be a dict")
         # Kept for existing RunConfig compatibility. Completion now belongs to Verifier.
         self.planner_check_interval_chunks = planner_check_interval_chunks
         self.max_chunks_per_skill = max_chunks_per_skill
+        self.max_attempts_per_execution = max_attempts_per_execution
+        self.max_uncertain_verifications = max_uncertain_verifications
+        self.max_no_progress_steps = max_no_progress_steps
+        self.max_replans = max_replans
+        self.fallback_proposal = (
+            dict(fallback_proposal) if fallback_proposal is not None else None
+        )
 
     def step(
         self,
@@ -50,8 +73,14 @@ class SkillExecutionPipeline(DirectPipeline):
         planner_called = False
         replanned = False
         action: Any = None
-        planner_output: Any = state.get("planner_output")
+        planner_output: Any = (
+            active_execution.get("planner_output")
+            if isinstance(active_execution, dict)
+            else state.get("planner_output")
+        )
         verification_observation = observation
+        control_failure_reason: str | None = None
+        control_failure_kind: str | None = None
         reverify_only = (
             isinstance(active_execution, dict)
             and active_execution.get("status") == "uncertain"
@@ -76,14 +105,34 @@ class SkillExecutionPipeline(DirectPipeline):
                 )
                 state["active_execution"] = active_execution
                 state["planner_calls"] = int(state.get("planner_calls", 0)) + 1
+                loop_reason = active_execution.pop("_loop_reason", None)
+                if loop_reason is not None:
+                    control_failure_reason = str(loop_reason)
+                    control_failure_kind = "loop"
                 reverify_only = False
 
-            if reverify_only:
-                environment_result = state.get("environment_result")
-                if not isinstance(environment_result, dict):
+            if control_failure_reason is not None:
+                environment_result = {
+                    "observation": observation,
+                    "done": False,
+                    "task_success": False,
+                    "task_progress": state.get("task_progress", 0.0),
+                    "last_action_success": True,
+                    "executed_steps": 0,
+                    "env_feedback": control_failure_reason,
+                    "execution_status": "failed",
+                    "verification_reason": control_failure_reason,
+                    "verification_confidence": 1.0,
+                    "verification_evidence": [control_failure_reason],
+                    "control_failure": control_failure_kind,
+                }
+            elif reverify_only:
+                previous_environment_result = state.get("environment_result")
+                if not isinstance(previous_environment_result, dict):
                     raise VerifierOutputError(
                         "uncertain execution requires the previous environment_result"
                     )
+                environment_result = previous_environment_result
                 verification_observation = state.get(
                     "verification_observation", observation
                 )
@@ -152,6 +201,50 @@ class SkillExecutionPipeline(DirectPipeline):
             or verification.get("env_feedback")
             or execution_status
         )
+        if control_failure_reason is not None:
+            execution_status = "failed"
+            transition_reason = control_failure_reason
+            verification = {
+                **verification,
+                "execution_status": "failed",
+                "reason": transition_reason,
+                "confidence": 1.0,
+                "evidence": [control_failure_reason],
+            }
+        if (
+            execution_status == "in_progress"
+            and isinstance(active_execution, dict)
+            and action is not None
+        ):
+            progress_marker = verification.get(
+                "progress_marker", verification.get("task_progress")
+            )
+            if not active_execution["progress_marker_initialized"]:
+                active_execution["last_progress_marker"] = progress_marker
+                active_execution["no_progress_count"] = 0
+                active_execution["progress_marker_initialized"] = True
+            elif progress_marker == active_execution["last_progress_marker"]:
+                active_execution["no_progress_count"] += 1
+            else:
+                active_execution["last_progress_marker"] = progress_marker
+                active_execution["no_progress_count"] = 0
+            if (
+                self.max_no_progress_steps is not None
+                and active_execution["no_progress_count"]
+                >= self.max_no_progress_steps
+            ):
+                execution_status = "failed"
+                transition_reason = "no progress detected"
+                control_failure_kind = "no_progress"
+                verification = {
+                    **verification,
+                    "execution_status": "failed",
+                    "reason": transition_reason,
+                    "evidence": [
+                        *self._evidence_summary(verification),
+                        f"no_progress_count={active_execution['no_progress_count']}",
+                    ],
+                }
         if (
             execution_status == "in_progress"
             and isinstance(active_execution, dict)
@@ -160,6 +253,7 @@ class SkillExecutionPipeline(DirectPipeline):
         ):
             execution_status = "failed"
             transition_reason = "chunk budget exhausted"
+            control_failure_kind = "chunk_budget"
             verification = {
                 **verification,
                 "execution_status": "failed",
@@ -229,20 +323,34 @@ class SkillExecutionPipeline(DirectPipeline):
             next_status = "plan"
         elif execution_status == "failed":
             if isinstance(active_execution, dict):
-                active_execution["status"] = "failed"
-                active_execution["failure_count"] += 1
-                self._record_execution(
+                (
+                    next_status,
+                    decision,
+                    termination_reason,
+                    recovery_action,
+                    replanned,
+                ) = self._recover_execution(
                     state,
                     active_execution,
                     verification,
                     transition_reason,
-                    completed=False,
+                    available_skills,
+                    allow_retry=control_failure_kind is None,
+                    allow_replan=control_failure_kind != "loop",
                 )
-            state["active_execution"] = None
-            next_status = "plan"
-            recovery_action = "replan"
-            replanned = True
-            decision = "retry"
+            else:
+                (
+                    next_status,
+                    decision,
+                    termination_reason,
+                    recovery_action,
+                    replanned,
+                ) = self._next_recovery(
+                    state,
+                    verification,
+                    available_skills,
+                    allow_replan=True,
+                )
         elif execution_status == "uncertain":
             if not isinstance(active_execution, dict):
                 raise VerifierOutputError(
@@ -250,7 +358,33 @@ class SkillExecutionPipeline(DirectPipeline):
                 )
             active_execution["status"] = "uncertain"
             active_execution["uncertain_count"] += 1
-            next_status = "uncertain"
+            if (
+                active_execution["uncertain_count"]
+                >= self.max_uncertain_verifications
+            ):
+                transition_reason = "uncertain verification budget exhausted"
+                verification = {
+                    **verification,
+                    "execution_status": "failed",
+                    "reason": transition_reason,
+                }
+                (
+                    next_status,
+                    decision,
+                    termination_reason,
+                    recovery_action,
+                    replanned,
+                ) = self._recover_execution(
+                    state,
+                    active_execution,
+                    verification,
+                    transition_reason,
+                    available_skills,
+                    allow_retry=False,
+                    allow_replan=True,
+                )
+            else:
+                next_status = "uncertain"
         else:
             if not isinstance(active_execution, dict):
                 raise VerifierOutputError(
@@ -268,6 +402,11 @@ class SkillExecutionPipeline(DirectPipeline):
             "next_status": next_status,
             "transition_reason": transition_reason,
             "recovery_action": recovery_action,
+            "next_execution_id": (
+                state["active_execution"].get("execution_id")
+                if isinstance(state["active_execution"], dict)
+                else None
+            ),
         }
         state["planner_output"] = planner_output
         state["action"] = action
@@ -355,6 +494,8 @@ class SkillExecutionPipeline(DirectPipeline):
         state.setdefault("failed_executions", [])
         state.setdefault("execution_history", [])
         state.setdefault("execution_sequence", 0)
+        state.setdefault("replan_count", 0)
+        state.setdefault("fallback_count", 0)
         if state["active_execution"] is not None and not isinstance(
             state["active_execution"], dict
         ):
@@ -413,9 +554,27 @@ class SkillExecutionPipeline(DirectPipeline):
             "failure_count": 0,
             "uncertain_count": 0,
             "no_progress_count": 0,
+            "progress_marker_initialized": False,
             "last_progress_marker": None,
             "planner_output": planner_output,
         }
+        signature = self._execution_signature(execution)
+        recent_signatures = [
+            item.get("signature")
+            for item in state["execution_history"]
+            if isinstance(item, dict)
+        ]
+        if (
+            len(recent_signatures) >= 2
+            and signature == recent_signatures[-1] == recent_signatures[-2]
+        ):
+            execution["_loop_reason"] = "repeated execution loop detected"
+        elif (
+            len(recent_signatures) >= 2
+            and signature == recent_signatures[-2]
+            and signature != recent_signatures[-1]
+        ):
+            execution["_loop_reason"] = "A-B-A execution loop detected"
         state["execution_history"].append(
             {
                 "execution_id": execution_id,
@@ -423,6 +582,7 @@ class SkillExecutionPipeline(DirectPipeline):
                 "skill_id": skill_id,
                 "grounded_arguments": grounded_arguments,
                 "expected_outcome": expected_outcome.strip(),
+                "signature": signature,
             }
         )
         return execution
@@ -438,7 +598,7 @@ class SkillExecutionPipeline(DirectPipeline):
             ):
                 return "failed"
             return "in_progress"
-        if status not in EXECUTION_STATUSES:
+        if not isinstance(status, str) or status not in EXECUTION_STATUSES:
             raise VerifierOutputError(
                 f"Verifier returned invalid execution_status: {status!r}"
             )
@@ -478,3 +638,96 @@ class SkillExecutionPipeline(DirectPipeline):
         }
         ledger = "completed_executions" if completed else "failed_executions"
         state[ledger].append(record)
+
+    def _recover_execution(
+        self,
+        state: dict[str, Any],
+        execution: dict[str, Any],
+        verification: dict[str, Any],
+        reason: str,
+        available_skills: Any,
+        *,
+        allow_retry: bool,
+        allow_replan: bool,
+    ) -> tuple[str, str, str | None, str, bool]:
+        execution["failure_count"] += 1
+        if allow_retry and execution["attempt_count"] < self.max_attempts_per_execution:
+            execution["attempt_count"] += 1
+            execution["attempt_id"] = (
+                f"{execution['execution_id']}:attempt:{execution['attempt_count']}"
+            )
+            execution["attempt_chunk_count"] = 0
+            execution["status"] = "retrying"
+            state["active_execution"] = execution
+            return "retrying", "retry", None, "retry_current", False
+
+        execution["status"] = "failed"
+        self._record_execution(
+            state,
+            execution,
+            verification,
+            reason,
+            completed=False,
+        )
+        state["active_execution"] = None
+        return self._next_recovery(
+            state,
+            verification,
+            available_skills,
+            allow_replan=allow_replan,
+        )
+
+    def _next_recovery(
+        self,
+        state: dict[str, Any],
+        verification: dict[str, Any],
+        available_skills: Any,
+        *,
+        allow_replan: bool,
+    ) -> tuple[str, str, str | None, str, bool]:
+        if allow_replan and (
+            self.max_replans is None or state["replan_count"] < self.max_replans
+        ):
+            state["replan_count"] += 1
+            return "plan", "retry", None, "replan", True
+
+        if self.fallback_proposal is not None and state["fallback_count"] == 0:
+            try:
+                fallback = self._start_execution(
+                    state, self.fallback_proposal, available_skills
+                )
+            except PlannerOutputError:
+                fallback = None
+            if fallback is not None:
+                loop_reason = fallback.pop("_loop_reason", None)
+                if loop_reason is None:
+                    fallback["status"] = "planned"
+                    state["active_execution"] = fallback
+                    state["fallback_count"] += 1
+                    return "planned", "continue", None, "fallback", True
+                fallback["status"] = "failed"
+                fallback["failure_count"] += 1
+                self._record_execution(
+                    state,
+                    fallback,
+                    verification,
+                    str(loop_reason),
+                    completed=False,
+                )
+
+        state["active_execution"] = None
+        return "aborted", "failure", "execution_aborted", "abort", False
+
+    @staticmethod
+    def _execution_signature(execution: Mapping[str, Any]) -> str:
+        return json.dumps(
+            {
+                "skill": execution.get("skill"),
+                "skill_id": execution.get("skill_id"),
+                "grounded_arguments": execution.get("grounded_arguments"),
+                "expected_outcome": execution.get("expected_outcome"),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            default=str,
+        )

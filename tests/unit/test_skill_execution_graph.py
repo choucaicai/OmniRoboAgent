@@ -74,13 +74,18 @@ class CountingEnvironment(Environment):
         return None
 
 
-def proposal(subtask: str = "place mug on tray") -> dict[str, Any]:
+def proposal(
+    subtask: str = "place mug on tray",
+    *,
+    object_name: str = "mug",
+    target: str = "tray",
+) -> dict[str, Any]:
     return {
         "skill": "PickPlace",
         "skill_id": 7,
         "subtask": subtask,
-        "grounded_arguments": {"object": "mug", "target": "tray"},
-        "expected_outcome": "the mug is on the tray",
+        "grounded_arguments": {"object": object_name, "target": target},
+        "expected_outcome": f"the {object_name} is on the {target}",
     }
 
 
@@ -165,10 +170,14 @@ def test_completed_execution_is_recorded_and_next_step_plans() -> None:
     assert agent.plan_calls == 2
 
 
-def test_failed_execution_is_recorded_and_replanned_next_step() -> None:
+def test_failed_execution_retries_current_attempt_then_replans() -> None:
     agent = ScriptedAgent(
         [proposal(), proposal("recover mug")],
-        [verification("failed"), verification("in_progress")],
+        [
+            verification("failed"),
+            verification("failed"),
+            verification("in_progress"),
+        ],
     )
     environment = CountingEnvironment()
     state = initial_state()
@@ -176,13 +185,20 @@ def test_failed_execution_is_recorded_and_replanned_next_step() -> None:
 
     first = pipeline.step(agent, environment, state)
 
-    assert first["recovery_action"] == "replan"
+    assert first["recovery_action"] == "retry_current"
+    assert state["active_execution"]["execution_id"] == "session:1"
+    assert state["active_execution"]["attempt_id"] == "session:1:attempt:2"
+    assert state["failed_executions"] == []
+
+    state["step"] += 1
+    second = pipeline.step(agent, environment, state)
+
+    assert second["recovery_action"] == "replan"
     assert state["active_execution"] is None
-    assert state["failed_executions"][0]["reason"] == "status is failed"
+    assert state["failed_executions"][0]["attempt_count"] == 2
 
     state["step"] += 1
     pipeline.step(agent, environment, state)
-
     assert agent.plan_calls == 2
     assert state["active_execution"]["execution_id"] == "session:2"
 
@@ -239,4 +255,148 @@ def test_chunk_budget_closes_execution_after_one_action_per_step() -> None:
     assert output["recovery_action"] == "replan"
     assert state["active_execution"] is None
     assert state["failed_executions"][0]["chunk_count"] == 2
+    assert environment.calls == 2
+
+
+def test_uncertain_budget_exhaustion_replans_without_second_action() -> None:
+    agent = ScriptedAgent(
+        [proposal()],
+        [verification("uncertain"), verification("uncertain")],
+    )
+    environment = CountingEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline(max_uncertain_verifications=2)
+
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    output = pipeline.step(agent, environment, state)
+
+    assert output["transition_reason"] == "uncertain verification budget exhausted"
+    assert output["recovery_action"] == "replan"
+    assert state["active_execution"] is None
+    assert len(state["failed_executions"]) == 1
+    assert environment.calls == 1
+
+
+def test_no_progress_detection_replans_current_execution() -> None:
+    agent = ScriptedAgent(
+        [proposal()],
+        [
+            verification("in_progress", progress_marker="unchanged"),
+            verification("in_progress", progress_marker="unchanged"),
+        ],
+    )
+    environment = CountingEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline(max_no_progress_steps=1)
+
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    output = pipeline.step(agent, environment, state)
+
+    assert output["transition_reason"] == "no progress detected"
+    assert output["recovery_action"] == "replan"
+    assert state["failed_executions"][0]["chunk_count"] == 2
+    assert environment.calls == 2
+
+
+def test_recovery_uses_configured_fallback_after_replan_budget() -> None:
+    fallback = proposal(
+        "place plate on table", object_name="plate", target="table"
+    )
+    agent = ScriptedAgent(
+        [proposal()],
+        [verification("failed"), verification("in_progress")],
+    )
+    environment = CountingEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline(
+        max_attempts_per_execution=1,
+        max_replans=0,
+        fallback_proposal=fallback,
+    )
+
+    first = pipeline.step(agent, environment, state)
+
+    assert first["recovery_action"] == "fallback"
+    assert first["transition"]["next_execution_id"] == "session:2"
+    assert state["active_execution"]["grounded_arguments"]["object"] == "plate"
+
+    state["step"] += 1
+    pipeline.step(agent, environment, state)
+
+    assert agent.plan_calls == 1
+    assert environment.calls == 2
+
+
+def test_recovery_aborts_when_all_budgets_are_exhausted() -> None:
+    agent = ScriptedAgent([proposal()], [verification("failed")])
+    environment = CountingEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline(
+        max_attempts_per_execution=1,
+        max_replans=0,
+    )
+
+    output = pipeline.step(agent, environment, state)
+
+    assert output["recovery_action"] == "abort"
+    assert output["termination_reason"] == "execution_aborted"
+    assert output["decision"] == "failure"
+    assert state["active_execution"] is None
+
+
+def test_repeated_execution_loop_ignores_subtask_wording() -> None:
+    agent = ScriptedAgent(
+        [
+            proposal("place the mug on the tray"),
+            proposal("put mug onto tray"),
+            proposal("move the mug to the tray"),
+        ],
+        [
+            verification("completed"),
+            verification("completed"),
+            verification("in_progress"),
+        ],
+    )
+    environment = CountingEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline()
+
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    output = pipeline.step(agent, environment, state)
+
+    assert output["transition_reason"] == "repeated execution loop detected"
+    assert output["recovery_action"] == "abort"
+    assert environment.calls == 2
+
+
+def test_a_b_a_execution_loop_is_detected() -> None:
+    agent = ScriptedAgent(
+        [
+            proposal(),
+            proposal("place plate on table", object_name="plate", target="table"),
+            proposal("put mug onto tray"),
+        ],
+        [
+            verification("completed"),
+            verification("completed"),
+            verification("in_progress"),
+        ],
+    )
+    environment = CountingEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline()
+
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    output = pipeline.step(agent, environment, state)
+
+    assert output["transition_reason"] == "A-B-A execution loop detected"
+    assert output["recovery_action"] == "abort"
     assert environment.calls == 2

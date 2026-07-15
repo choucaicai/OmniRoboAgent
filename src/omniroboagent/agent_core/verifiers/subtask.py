@@ -107,7 +107,10 @@ class SubtaskVerifier(Verifier):
 
         explicit_status = result.get("execution_status")
         if explicit_status is not None:
-            if explicit_status not in EXECUTION_STATUSES:
+            if (
+                not isinstance(explicit_status, str)
+                or explicit_status not in EXECUTION_STATUSES
+            ):
                 raise VerifierOutputError(
                     f"Invalid environment execution_status: {explicit_status!r}"
                 )
@@ -229,7 +232,10 @@ class SubtaskVerifier(Verifier):
         )
         parsed = self._parse_json(self._response_text(response))
         execution_status = parsed.get("execution_status")
-        if execution_status not in EXECUTION_STATUSES:
+        if (
+            not isinstance(execution_status, str)
+            or execution_status not in EXECUTION_STATUSES
+        ):
             raise VerifierOutputError(
                 f"Verifier returned invalid execution_status: {execution_status!r}"
             )
