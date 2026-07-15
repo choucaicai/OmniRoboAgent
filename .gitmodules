@@ -1,3 +1,7 @@
 [submodule "benchmarks/EmbodiedBench"]
 	path = benchmarks/EmbodiedBench
 	url = https://github.com/EmbodiedBench/EmbodiedBench
+[submodule "benchmarks/RoboCasa"]
+	path = benchmarks/RoboCasa
+	url = https://github.com/robocasa/robocasa.git
+	ignore = untracked

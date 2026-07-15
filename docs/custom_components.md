@@ -2,14 +2,14 @@
 
 自定义组件继承对应 contract，然后通过 `class_path` 加载。
 
-自定义类必须位于当前 Python 环境可 import 的 module 中，构造参数放在 `init_args`。配置 loader 不做 plugin discovery 或 registry 注册。
+自定义类必须位于当前 Python 环境可 import 的 module 中，构造参数放在 `init_args`。配置 loader 不做自动 plugin discovery；SkillBackend 额外支持显式 registry 注册。
 
 ## Custom Planner
 
 ```python
 from typing import Any
 
-from omniroboagent.contracts import Planner
+from omniroboagent.agent_core import Planner
 
 
 class MyPlanner(Planner):
@@ -27,7 +27,7 @@ planner:
 ```python
 from typing import Any
 
-from omniroboagent.contracts import Verifier
+from omniroboagent.agent_core import Verifier
 
 
 class MyVerifier(Verifier):
@@ -46,10 +46,10 @@ class MyVerifier(Verifier):
 ```python
 from typing import Any
 
-from omniroboagent.contracts import SkillBackend
+from omniroboagent.backends.skills import SkillBackend
 
 
-class LocalPolicyBackend(SkillBackend):
+class MyPolicyBackend(SkillBackend):
     def predict(self, inputs: dict[str, Any]) -> Any:
         observation = inputs["observation"]
         return local_policy(observation)
@@ -57,12 +57,22 @@ class LocalPolicyBackend(SkillBackend):
 
 SkillBackend 只生成 action，不调用 Environment。
 
+CLI 配置自定义 backend 时直接使用 `class_path`。在嵌入式 Python 进程中，也可以先显式注册稳定名称：
+
+```python
+from omniroboagent.backends.skills import register_skill_backend
+
+register_skill_backend("my_policy", MyPolicyBackend)
+```
+
+注册后可使用 `skill_backend: {name: my_policy}`。CLI 不会自动 import 注册 module，因此 stock CLI 的外部 backend 仍应使用 `class_path`。
+
 ## Custom Environment
 
 ```python
 from typing import Any
 
-from omniroboagent.contracts import Environment
+from omniroboagent.environments import Environment
 
 
 class MyEnvironment(Environment):
@@ -89,7 +99,9 @@ Environment 必须把 Pipeline 需要的执行反馈整理成普通字典，并�
 ```python
 from typing import Any
 
-from omniroboagent.contracts import BaseAgent, Environment, Pipeline
+from omniroboagent.agent_core import BaseAgent
+from omniroboagent.environments import Environment
+from omniroboagent.pipelines import Pipeline
 
 
 class MyPipeline(Pipeline):

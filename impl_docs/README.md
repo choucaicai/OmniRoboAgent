@@ -17,7 +17,11 @@ impl_docs/
 ├── plans/
 │   ├── README.md
 │   ├── 0001-eb-alfred-first-loop.md
-│   └── 0002-documentation-sync.md
+│   ├── 0002-documentation-sync.md
+│   ├── 0003-package-architecture.md
+│   ├── 0004-agent-core-subpackages.md
+│   ├── 0005-eval-environment-ownership.md
+│   └── 0006-robocasa365-evaluation.md
 └── changes/
     ├── README.md
     ├── 2026-07-11-conda-environment.md
@@ -27,7 +31,13 @@ impl_docs/
     ├── 2026-07-12-language-skill-backend.md
     ├── 2026-07-12-first-vertical-slice.md
     ├── 2026-07-12-xvfb-eb-alfred-smoke.md
-    └── 2026-07-12-documentation-sync.md
+    ├── 2026-07-12-documentation-sync.md
+    ├── 2026-07-12-package-architecture-implementation.md
+    ├── 2026-07-13-agent-core-subpackages.md
+    ├── 2026-07-14-eval-environment-ownership.md
+    ├── 2026-07-15-robocasa365-evaluation-plan.md
+    ├── 2026-07-15-robocasa365-evaluation-implementation.md
+    └── 2026-07-15-robocasa365-composite-evaluation.md
 ```
 
 ## Responsibilities

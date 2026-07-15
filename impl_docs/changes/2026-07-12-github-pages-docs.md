@@ -10,6 +10,7 @@ Related plan: `impl_docs/plans/0005-github-pages-docs.md`
 - 添加文档入口、侧边栏、全文搜索、响应式样式和 `.nojekyll`。
 - 将跨目录链接改为 GitHub repository links，确保只发布 `docs/` 时仍可访问。
 - 更新 README 和工程文档路径，记录 `master /docs` 发布方式。
+- 面向读者的文档首页只保留使用导航和 Future Roadmap，不展示站点部署说明或内部实现状态。
 
 ## Files
 

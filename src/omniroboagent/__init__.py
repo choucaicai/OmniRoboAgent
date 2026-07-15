@@ -1,7 +1,7 @@
 """OmniRoboAgent public package."""
 
-from omniroboagent.agents import DefaultAgent
+from omniroboagent.agent_core import DefaultAgent
 from omniroboagent.pipelines import DirectPipeline
-from omniroboagent.runtime import SyncRuntime
+from omniroboagent.runtimes import SyncRuntime
 
 __all__ = ["DefaultAgent", "DirectPipeline", "SyncRuntime"]

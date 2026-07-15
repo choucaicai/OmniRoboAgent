@@ -22,7 +22,8 @@
 
 - `core` 只能依赖 Python 标准库和轻量 contract 依赖。
 - `core` 不得依赖 ROS2、LangChain、LangGraph、benchmark SDK、模型 SDK 或仿真器。
-- 第三方系统通过 `integrations` adapter 接入，core 不得 import 第三方 integration 类型。
+- benchmark environment adapter 放在 `environments/benchmarks/`，benchmark runner 和指标聚合放在 `evals/benchmarks/`。
+- `integrations/` 只承载 ROS2 和 human text I/O 等外部交互接口，core 不得 import 具体 integration 类型。
 - `Pipeline` 独立于 Agent Core，定义调用顺序、模块输入、Verifier decision 语义和状态转换。
 - `Runtime` 负责 episode 生命周期、调度、限制、日志和异常终止，不包含 planner 策略。
 - `BaseAgent` 对应 Agent Core，组合 Planner、Verifier、Memory 和 SkillBackend，不内置固定 Pipeline。
@@ -30,7 +31,7 @@
 - `SkillBackend` 只生成 action payload，不执行动作，也不负责全局任务规划。
 - `Memory` 保存事实和事件，不应暗中改变 planner 决策。
 - 不按 HTTP、WebSocket、OpenAI-compatible 等通信协议创建 Agent 子类，通信差异放在 backend 实现中。
-- 依赖方向必须从具体实现指向抽象接口，不能反向依赖 integration。
+- 依赖方向必须从具体实现指向抽象接口，core 不能反向依赖 `evals` 或具体 integration。
 
 ## 4. Data Boundaries
 
@@ -79,7 +80,7 @@
 - 优先使用标准库和已有依赖。
 - 新依赖必须对应明确功能，并说明为什么现有工具无法满足。
 - 大型 SDK、ROS2、仿真器和模型运行时必须放在 optional dependency group。
-- 不允许 core import optional integration dependency。
+- 不允许 core import optional benchmark、robot 或 human interface dependency。
 - 版本范围应可重现，不能无理由依赖浮动开发分支。
 - 使用 `uv + pyproject.toml + uv.lock` 管理依赖，运行环境使用 Conda Python 3.11。
 - 基础开发使用 `omniagent`；benchmark 专用依赖只在实际测试时安装到独立 Conda 环境。
@@ -90,7 +91,8 @@
 - Agent 配置和运行配置分离，AgentConfig 不包含具体 benchmark。
 - RunConfig 负责选择 AgentConfig、Pipeline、Runtime、Environment、任务和执行限制。
 - 自定义组件通过 dotted `class_path` 和 `init_args` 加载。
-- 第一版不引入 registry、plugin manager、factory hierarchy 或依赖注入框架。
+- `SkillBackendRegistry` 只映射已确认的稳定名称，并保留 `class_path` fallback。
+- 不引入自动 discovery、plugin manager、factory hierarchy 或依赖注入框架。
 - 密钥通过环境变量读取，不直接写入 YAML。
 
 ## 11. Documentation

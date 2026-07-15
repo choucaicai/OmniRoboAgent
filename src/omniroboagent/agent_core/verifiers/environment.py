@@ -1,6 +1,6 @@
 from typing import Any
 
-from omniroboagent.contracts import Verifier
+from omniroboagent.agent_core.verifiers.base import Verifier
 
 
 class EnvironmentVerifier(Verifier):

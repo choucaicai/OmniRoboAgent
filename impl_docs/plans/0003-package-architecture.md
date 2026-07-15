@@ -1,6 +1,6 @@
 # Package Architecture
 
-Status: `TODO`
+Status: `DONE`
 
 ## Goal
 
@@ -17,7 +17,7 @@ Status: `TODO`
 
 ## Open Questions
 
-- 是否为旧的 dotted `class_path` 和 import path 提供一个版本周期的兼容导出。
+- 无。当前项目仍处于 `v0.1`，直接迁移内部 import 和配置路径，不保留与目标 package 名冲突的平铺兼容模块。
 
 ## Scope
 
@@ -53,3 +53,7 @@ Status: `TODO`
 - dotted `class_path` 变化可能破坏已有配置。
 - 移动 contract 时可能产生循环 import。
 - 同时调整结构和行为会扩大验证范围，因此实施时必须保持行为不变。
+
+## Change Record
+
+- `impl_docs/changes/2026-07-12-package-architecture-implementation.md`

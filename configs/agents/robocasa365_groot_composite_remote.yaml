@@ -1,0 +1,60 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.SubtaskSkillPlanner
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:8000
+        model: Qwen3.5-9B
+        timeout_seconds: 120
+        max_retries: 2
+    skill_ids:
+      Close_Door: 1
+      Open_Door: 2
+      Close_Lid: 3
+      Open_Lid: 4
+      Insertion: 5
+      Navigation: 6
+      Pick_Place: 7
+      Press_Button: 8
+      Slide_Rack: 9
+      Turn_Lever: 10
+      Twist_Knob: 11
+    skill_definitions:
+      Close_Door: Close a cabinet, fridge, microwave, oven, dishwasher, or toaster-oven door.
+      Open_Door: Open a cabinet, fridge, microwave, oven, dishwasher, or toaster-oven door.
+      Close_Lid: Close a lid, cover, cap, or mixer head.
+      Open_Lid: Open a lid, cover, cap, or mixer head.
+      Insertion: Insert an object or tool into another object, appliance, or fixture.
+      Navigation: Move the robot base or whole body to a target region.
+      Pick_Place: Pick, locally move, and place or release an object.
+      Press_Button: Press and release an appliance button.
+      Slide_Rack: Slide a rack, drawer-like fixture, dishwasher rack, oven rack, or fridge drawer.
+      Turn_Lever: Move a lever, handle, faucet control, or spout.
+      Twist_Knob: Rotate a knob or dial to a target setting.
+    camera_keys:
+      - video.robot0_agentview_left
+      - video.robot0_agentview_right
+      - video.robot0_eye_in_hand
+    history_limit: 10
+    max_tokens: 1024
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+skill_backend:
+  name: groot_remote
+  init_args:
+    host: 127.0.0.1
+    port: 5555
+    timeout_seconds: 120
+
+verifier:
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
+
+memory:
+  class_path: omniroboagent.agent_core.InMemoryMemory

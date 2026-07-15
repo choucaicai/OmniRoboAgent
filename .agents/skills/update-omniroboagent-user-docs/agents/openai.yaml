@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update OmniRoboAgent User Docs"
+  short_description: "同步 OmniRoboAgent 用户文档与实际使用方式"
+  default_prompt: "Use $update-omniroboagent-user-docs to update user-facing documentation for the current implementation."

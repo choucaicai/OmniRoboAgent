@@ -1,0 +1,49 @@
+agent_config: ../agents/robocasa365_groot_composite_remote.yaml
+
+pipeline:
+  class_path: omniroboagent.pipelines.SkillExecutionPipeline
+  init_args:
+    action_execution_mode: full
+    planner_check_interval_chunks: 8
+    max_chunks_per_skill: 27
+
+runtime:
+  class_path: omniroboagent.runtimes.SyncRuntime
+  init_args:
+    max_steps: 200
+    max_invalid_actions: 10
+    max_retries: 3
+    timeout_seconds: 7200
+    output_dir: runs/robocasa365_groot_composite_remote_smoke/traces
+
+environment:
+  class_path: omniroboagent.environments.benchmarks.robocasa.RoboCasaEnvironment
+  init_args:
+    enable_render: true
+    render_gpu_device_id: 0
+    camera_height: 256
+    camera_width: 256
+    available_skills:
+      - Close_Door
+      - Open_Door
+      - Close_Lid
+      - Open_Lid
+      - Insertion
+      - Navigation
+      - Pick_Place
+      - Press_Button
+      - Slide_Rack
+      - Turn_Lever
+      - Twist_Knob
+
+benchmark:
+  class_path: omniroboagent.evals.benchmarks.robocasa.RoboCasa365Evaluator
+  init_args:
+    task_set: composite_seen
+    split: pretrain
+    task_names: [DeliverStraw]
+    max_tasks: 1
+    episodes_per_task: 1
+    episode_indices: [0]
+    seed: 0
+    output_dir: runs/robocasa365_groot_composite_remote_smoke

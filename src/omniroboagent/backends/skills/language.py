@@ -1,6 +1,6 @@
 from typing import Any
 
-from omniroboagent.contracts import SkillBackend
+from omniroboagent.backends.skills.base import SkillBackend
 
 
 class LanguageSkillBackend(SkillBackend):

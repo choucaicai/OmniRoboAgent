@@ -4,7 +4,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from omniroboagent.contracts import BaseAgent, Environment, Pipeline, Runtime
+from omniroboagent.agent_core.agents.base import BaseAgent
+from omniroboagent.environments.base import Environment
+from omniroboagent.pipelines.base import Pipeline
+from omniroboagent.runtimes.base import Runtime
 from omniroboagent.serialization import to_jsonable
 
 
@@ -86,6 +89,8 @@ class SyncRuntime(Runtime):
                     replans += 1
                 else:
                     consecutive_retries = 0
+                    if last_output.get("replanned"):
+                        replans += 1
 
                 self._append_trace(
                     trace_path,
@@ -116,6 +121,9 @@ class SyncRuntime(Runtime):
                 "steps": state["step"],
                 "invalid_actions": invalid_actions,
                 "replans": replans,
+                "planner_calls": int(state.get("planner_calls", 0)),
+                "action_chunks": int(state.get("action_chunks", state["step"])),
+                "environment_steps": int(state.get("environment_steps", 0)),
                 "latency_seconds": time.monotonic() - started,
                 "termination_reason": termination_reason,
                 "trace_path": str(trace_path),
@@ -129,6 +137,9 @@ class SyncRuntime(Runtime):
                 "steps": state["step"],
                 "invalid_actions": invalid_actions,
                 "replans": replans,
+                "planner_calls": int(state.get("planner_calls", 0)),
+                "action_chunks": int(state.get("action_chunks", state["step"])),
+                "environment_steps": int(state.get("environment_steps", 0)),
                 "latency_seconds": time.monotonic() - started,
                 "termination_reason": "exception",
                 "error_type": type(error).__name__,

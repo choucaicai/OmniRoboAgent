@@ -2,11 +2,12 @@ import json
 from typing import Any
 
 import httpx
+import pytest
 from PIL import Image
 
-from omniroboagent.backends.llm import OpenAICompatibleLLMBackend
-from omniroboagent.contracts import LLMBackend
-from omniroboagent.planners import LanguageSkillPlanner
+from omniroboagent.agent_core import LanguageSkillPlanner, SubtaskSkillPlanner
+from omniroboagent.backends.llm import LLMBackend, OpenAICompatibleLLMBackend
+from omniroboagent.exceptions import ConfigError, PlannerOutputError
 
 
 def test_openai_backend_health_and_multimodal_request() -> None:
@@ -110,3 +111,160 @@ def test_language_skill_planner_strips_index_prefix() -> None:
     )
 
     assert output["skill"] == "pick up the Mug"
+
+
+def test_subtask_skill_planner_maps_skill_and_limits_context() -> None:
+    backend = FakeLLMBackend(
+        '{"reasoning":"the fridge is open","skill":"CloseFridge",'
+        '"subtask":"close the fridge door","execution_status":"new_subtask"}'
+    )
+    planner = SubtaskSkillPlanner(
+        backend,
+        skill_ids={"OpenFridge": 3, "CloseFridge": 7},
+        skill_definitions={
+            "OpenFridge": "Open the fridge door.",
+            "CloseFridge": "Close the fridge door.",
+        },
+        camera_keys=["left_rgb", "wrist_rgb"],
+        history_limit=2,
+    )
+
+    output = planner.plan(
+        {
+            "task": {"name": "Fallback task name"},
+            "observation": {
+                "annotation.human.task_description": "Prepare a cold drink",
+                "left_rgb": Image.new("RGB", (2, 2)),
+                "wrist_rgb": Image.new("RGB", (2, 2)),
+                "ignored_rgb": Image.new("RGB", (2, 2)),
+            },
+            "available_skills": ["CloseFridge"],
+            "history": [
+                {"step": 0, "feedback": "old"},
+                {"step": 1, "feedback": "recent"},
+                {"step": 2, "feedback": "latest"},
+            ],
+        }
+    )
+
+    assert output["skill"] == "CloseFridge"
+    assert output["skill_id"] == 7
+    assert output["subtask"] == "close the fridge door"
+    assert output["execution_status"] == "new_subtask"
+    user_content = backend.inputs["messages"][1]["content"]
+    assert len(user_content) == 3
+    assert '"feedback": "old"' not in user_content[0]["text"]
+    assert '"feedback": "recent"' in user_content[0]["text"]
+    assert "Task: Prepare a cold drink" in user_content[0]["text"]
+    assert "Fallback task name" not in user_content[0]["text"]
+    assert "Open the fridge door." not in user_content[0]["text"]
+    schema = backend.inputs["response_format"]["json_schema"]["schema"]
+    assert schema["properties"]["skill"]["enum"] == ["CloseFridge"]
+    assert "skill_id" not in schema["properties"]
+
+
+def test_subtask_skill_planner_accepts_matching_continue() -> None:
+    backend = FakeLLMBackend(
+        '{"reasoning":"not closed yet","skill":"CloseFridge",'
+        '"subtask":"close the fridge door",'
+        '"execution_status":"continue_subtask"}'
+    )
+    planner = SubtaskSkillPlanner(
+        backend,
+        skill_ids={"CloseFridge": 7},
+        skill_definitions={"CloseFridge": "Close the fridge door."},
+    )
+
+    output = planner.plan(
+        {
+            "task": "Prepare a cold drink",
+            "observation": {},
+            "active_skill": "CloseFridge",
+            "active_subtask": "close the fridge door",
+        }
+    )
+
+    assert output["execution_status"] == "continue_subtask"
+    assert output["skill_id"] == 7
+
+
+@pytest.mark.parametrize(
+    ("active_skill", "active_subtask", "match"),
+    [
+        (None, None, "requires an active skill"),
+        ("OpenFridge", "close the fridge door", "does not match active skill"),
+        ("CloseFridge", "keep closing", "does not match active subtask"),
+    ],
+)
+def test_subtask_skill_planner_rejects_invalid_continue(
+    active_skill: str | None,
+    active_subtask: str | None,
+    match: str,
+) -> None:
+    backend = FakeLLMBackend(
+        '{"reasoning":"continue","skill":"CloseFridge",'
+        '"subtask":"close the fridge door",'
+        '"execution_status":"continue_subtask"}'
+    )
+    planner = SubtaskSkillPlanner(
+        backend,
+        skill_ids={"OpenFridge": 3, "CloseFridge": 7},
+        skill_definitions={
+            "OpenFridge": "Open the fridge door.",
+            "CloseFridge": "Close the fridge door.",
+        },
+    )
+
+    with pytest.raises(PlannerOutputError, match=match):
+        planner.plan(
+            {
+                "task": "Prepare a cold drink",
+                "observation": {},
+                "active_skill": active_skill,
+                "active_subtask": active_subtask,
+            }
+        )
+
+
+def test_subtask_skill_planner_requires_matching_skill_definitions() -> None:
+    with pytest.raises(ConfigError, match="keys must match"):
+        SubtaskSkillPlanner(
+            FakeLLMBackend("{}"),
+            skill_ids={"CloseFridge": 7},
+            skill_definitions={"OpenFridge": "Open the fridge door."},
+        )
+
+
+def test_subtask_skill_planner_does_not_trust_model_skill_id() -> None:
+    planner = SubtaskSkillPlanner(
+        FakeLLMBackend(
+            '{"reasoning":"close it","action_id":7,'
+            '"subtask":"close the fridge door",'
+            '"execution_status":"new_subtask"}'
+        ),
+        skill_ids={"CloseFridge": 7},
+        skill_definitions={"CloseFridge": "Close the fridge door."},
+    )
+
+    with pytest.raises(PlannerOutputError, match="unavailable skill"):
+        planner.plan({"task": "Prepare a cold drink", "observation": {}})
+
+
+@pytest.mark.parametrize("available_skills", [[], ["UnknownSkill"]])
+def test_subtask_skill_planner_rejects_invalid_available_skills(
+    available_skills: list[str],
+) -> None:
+    planner = SubtaskSkillPlanner(
+        FakeLLMBackend("{}"),
+        skill_ids={"CloseFridge": 7},
+        skill_definitions={"CloseFridge": "Close the fridge door."},
+    )
+
+    with pytest.raises(PlannerOutputError, match="available_skills"):
+        planner.plan(
+            {
+                "task": "Prepare a cold drink",
+                "observation": {},
+                "available_skills": available_skills,
+            }
+        )

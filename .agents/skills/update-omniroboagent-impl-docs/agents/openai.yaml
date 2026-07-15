@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update OmniRoboAgent Impl Docs"
+  short_description: "同步 OmniRoboAgent 架构、计划与变更记录"
+  default_prompt: "Use $update-omniroboagent-impl-docs to update implementation documentation for the current repository changes."

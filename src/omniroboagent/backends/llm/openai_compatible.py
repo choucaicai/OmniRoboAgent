@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 from PIL import Image
 
-from omniroboagent.contracts import LLMBackend
+from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import BackendError
 
 

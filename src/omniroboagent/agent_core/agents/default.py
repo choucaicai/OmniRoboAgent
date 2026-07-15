@@ -1,12 +1,10 @@
 from typing import Any
 
-from omniroboagent.contracts import (
-    BaseAgent,
-    Memory,
-    Planner,
-    SkillBackend,
-    Verifier,
-)
+from omniroboagent.agent_core.agents.base import BaseAgent
+from omniroboagent.agent_core.memories.base import Memory
+from omniroboagent.agent_core.planners.base import Planner
+from omniroboagent.agent_core.verifiers.base import Verifier
+from omniroboagent.backends.skills.base import SkillBackend
 
 
 class DefaultAgent(BaseAgent):

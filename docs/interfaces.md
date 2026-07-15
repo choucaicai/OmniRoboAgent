@@ -1,6 +1,6 @@
 # Interface Reference
 
-公共 contracts 位于 [`src/omniroboagent/contracts.py`](https://github.com/choucaicai/OmniRoboAgent/blob/master/src/omniroboagent/contracts.py)。Core 只依赖标准库和轻量 contract 依赖。
+公共 contracts 位于各自 ownership package 的 `base.py`。Agent、Planner、Verifier 和 Memory 位于 [`agent_core/`](https://github.com/choucaicai/OmniRoboAgent/tree/master/src/omniroboagent/agent_core)，其他 contracts 位于 `pipelines/`、`runtimes/`、`environments/` 和对应 backend package。Core 只依赖标准库和轻量 contract 依赖。
 
 ## LLMBackend
 
@@ -59,6 +59,12 @@ Planner 要求 response content 是 JSON object。该对象可以使用 `skill`�
 
 `LanguageSkillPlanner` 会把动态 `available_skills` 写入 JSON schema enum，并验证最终 skill 确实存在。`PlannerOutputError` 会被 `DirectPipeline` 转换为一次失败验证；其他异常由 Runtime 记录为 `termination_reason=exception`。
 
+`TaskSkillPlanner` 用于 RoboCasa VLA evaluation：它把当前 concrete task name 作为 `skill`，把 environment task description 作为 `subtask`，不调用 LLM。GR00T `model_moe_v1` 因此收到例如 `CloseBlenderLid`，而不是宽泛的 `Close_Lid` 标签。
+
+`SubtaskSkillPlanner` 用于 RoboCasa composite task。它从 observation 的 `available_skills` 中选择 macro skill，生成具体 `subtask` 和 `new_subtask` / `continue_subtask`，并通过 AgentConfig 中的可信 `skill_ids` 映射补充整数 ID。LLM response schema 不包含 `skill_id`；非法 catalog、未知 skill、空 subtask，或与 active execution 不一致的 `continue_subtask` 会抛出 `PlannerOutputError`。
+
+模型 JSON 字段为 `reasoning`、`skill`、`subtask` 和 `execution_status`。Planner 返回值额外包含本地映射的 `skill_id`、原始 `model_output` 和 `raw_response`；`reasoning` 用于 trace，不作为 GR00T language instruction。Composite VLA request 使用 `subtask` 覆盖 `annotation.human.task_description`。
+
 ## SkillBackend
 
 ```python
@@ -66,6 +72,14 @@ predict(inputs: dict[str, Any]) -> Any
 ```
 
 `LanguageSkillBackend` 返回同一个 `inputs["skill"]` 对象。
+
+`SkillBackendRegistry` 将稳定配置名映射到 backend class。内置 `groot_remote`、`openpi_remote` 和 `local`；`build_agent()` 接受 `skill_backend.name + init_args`，并保留 `class_path` fallback。registry 只支持代码显式注册，不扫描 Python entry points。
+
+`GR00TRemotePolicyBackend` 兼容 RoboCasa GR00T 的 ZeroMQ + `torch.save` 协议，负责 healthcheck、metadata、timeout、一次 reconnect、episode memory reset、GR00T observation batch 维度和五个 action key 的 shape/dtype/range 校验。
+
+GR00T local/remote 共用 request builder。没有显式 `planner_output.skill_id` 时，backend 严格要求 `skill == task_name`，用于 atomic task；存在合法非负整数 ID 时，request 可以同时发送 composite `task`、atomic macro `skill`、`skill_id` 和 concrete subtask。
+
+`LocalPolicyBackend` 包装已经实例化的 in-process policy，支持 `predict`、`infer`、`get_action` 或 callable entrypoint，可选从 mapping 中提取 `action_key`。存在 policy `healthcheck()` / `close()` 时会委托调用。`GR00TLocalPolicyAdapter` lazy load 参考 GR00T policy，避免构造 Agent 时立即占用 CUDA。
 
 `OpenPIWebSocketPolicyBackend` 使用官方 OpenPI msgpack/WebSocket client protocol：
 
@@ -84,7 +98,7 @@ conda activate omniagent
 uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[openpi]'
 ```
 
-该版本固定到 OpenPI commit `51fb06be280a967e59292cf63bb597aa3efdab6c`。
+该版本固定到 `robocasa-benchmark/openpi` commit `5a6beda9ff99da30b4e1b59320f6a32971d7c397`，其 client metadata 兼容 RoboCasa 使用的 NumPy 2。
 
 构造参数：
 
@@ -94,6 +108,8 @@ uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[openpi]'
 - `action_key`：从 server response 中读取 action chunk 的 key，默认 `actions`。
 
 `predict()` 要求 `inputs["observation"]` 是 dict，返回 response 中 `action_key` 对应的对象。首次请求前执行 `/healthz`，连接或推理失败时最多重建一次 client。`close()` 只关闭 WebSocket client，不关闭 policy server。
+
+registry 的 `openpi_remote` 使用 `OpenPIRoboCasaPolicyBackend`：按官方 RoboCasa OpenPI evaluator 构造三路 image、16-D state、prompt，并把 `[T,12]` response 拆成 Environment 接受的五个 action key。通用 `OpenPIWebSocketPolicyBackend` 仍可通过 `class_path` 做 passthrough。
 
 ## Verifier
 
@@ -138,6 +154,12 @@ Environment 在使用点校验开放 action payload。benchmark SDK 类型不能
 
 当前 contract 没有独立 `observe()`：初始 observation 由 `reset()` 返回，后续 observation 放在 `execute()` 结果的 `observation` 字段中。
 
+`RoboCasaEnvironment` lazy import 固定 submodule，创建一个官方 Gym environment，逐 low-level step 执行 action chunk，并在 authoritative `info["success"]`、simulator termination 或 task horizon 时停止。它严格要求五个 action key 具有同一正 chunk horizon、floating dtype、有限值和 controller range；为兼容官方 GR00T min-max inverse 的轻微数值越界，range check 允许 `0.05` tolerance，但不 clip action。
+
+默认 observation 的 `available_skills` 为当前 `[task_name]`。Composite RunConfig 可以通过构造参数提供非空、唯一的 macro skill 列表；Environment 只暴露 catalog，不负责选择 skill 或映射 ID。
+
+`RoboCasa365Evaluator` 不是 core base class。它解析官方 `task_set` 与独立 `split`，运行 task/episode loop，并写入 `episodes.jsonl`、`summary.json` 和 `resolved_config.json`。当前 `episode_index` 通过 `seed + index` 驱动 reset，不是 dataset scenario id。
+
 ## BaseAgent
 
 ```python
@@ -164,6 +186,10 @@ is_terminal(output, state) -> bool
 
 当前 `DirectPipeline` 从 observation 读取 `available_skills`；非 list 时按空列表处理，非空时验证 Planner 选择的 skill。`LanguageSkillPlanner` 本身要求该列表非空。Pipeline 每轮只执行一个 action，把 `last_action_success=false` 记为 invalid action，并把 task success 和 environment done 分别映射为成功与失败终止。
 
+`SkillExecutionPipeline` 在一个 active skill 下执行连续 action chunks。每个 chunk 后仍调用 Verifier；`planner_check_interval_chunks` 决定重新检查 planner 的频率，`max_chunks_per_skill` 达到后强制一次 planner boundary 并重置 budget，但不禁止 Planner 再次选择相同 skill/subtask。它累计 `planner_calls`、`action_chunks` 和 `environment_steps`。
+
+`PlannerOutputError` 会产生一个没有 Environment action 的 retry step，并计入 Runtime 的 invalid/retry budget。因此 composite evaluation 的 `invalid_actions` 可能表示 Planner contract mismatch，不一定是 VLA action array 非法。
+
 ## Runtime
 
 ```python
@@ -184,9 +210,10 @@ run(agent, pipeline, environment, task, **kwargs) -> dict[str, Any]
 
 ```text
 session_id, success, task_progress, steps, invalid_actions, replans,
-latency_seconds, termination_reason, trace_path
+planner_calls, action_chunks, environment_steps, latency_seconds,
+termination_reason, trace_path
 ```
 
 正常终止原因包括 `task_success`、`environment_done`、`pipeline_terminal`、`invalid_action_limit`、`retry_limit`、`step_limit` 和 `timeout`。未处理异常记录为 `exception`，同时保存 `error_type` 与 `error`。资源关闭错误写入 `close_errors`，不会覆盖 episode 结果。
 
-`replans` 当前只在 invalid action 时递增，不表示 Planner 的总调用次数。
+`planner_calls` 是 planner 总调用次数。`replans` 统计 invalid action 触发的重新规划，以及 Pipeline 明确报告的 subtask/skill 变化；同一 active skill 的定期 planner check 不计为 replan。

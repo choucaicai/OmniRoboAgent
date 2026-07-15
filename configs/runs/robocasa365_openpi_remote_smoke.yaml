@@ -1,0 +1,36 @@
+agent_config: ../agents/robocasa365_openpi_remote.yaml
+
+pipeline:
+  class_path: omniroboagent.pipelines.SkillExecutionPipeline
+  init_args:
+    action_execution_mode: receding_horizon
+    execute_steps: 5
+    planner_check_interval_chunks: 1
+
+runtime:
+  class_path: omniroboagent.runtimes.SyncRuntime
+  init_args:
+    max_steps: 120
+    max_invalid_actions: 2
+    max_retries: 2
+    timeout_seconds: 1800
+    output_dir: runs/robocasa365_openpi_remote_smoke/traces
+
+environment:
+  class_path: omniroboagent.environments.benchmarks.robocasa.RoboCasaEnvironment
+  init_args:
+    enable_render: true
+    render_gpu_device_id: 0
+    camera_height: 256
+    camera_width: 256
+
+benchmark:
+  class_path: omniroboagent.evals.benchmarks.robocasa.RoboCasa365Evaluator
+  init_args:
+    task_set: atomic_seen
+    split: pretrain
+    max_tasks: 1
+    episodes_per_task: 1
+    episode_indices: [0]
+    seed: 0
+    output_dir: runs/robocasa365_openpi_remote_smoke

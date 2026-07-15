@@ -1,0 +1,18 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.TaskSkillPlanner
+
+skill_backend:
+  name: openpi_remote
+  init_args:
+    host: localhost
+    port: 8000
+    timeout_seconds: 120
+
+verifier:
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
+
+memory:
+  class_path: omniroboagent.agent_core.InMemoryMemory

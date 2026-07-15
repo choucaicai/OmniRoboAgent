@@ -1,0 +1,18 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.TaskSkillPlanner
+
+skill_backend:
+  name: groot_remote
+  init_args:
+    host: localhost
+    port: 5555
+    timeout_seconds: 120
+
+verifier:
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
+
+memory:
+  class_path: omniroboagent.agent_core.InMemoryMemory

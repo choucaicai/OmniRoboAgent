@@ -32,7 +32,7 @@ Status: `IN_PROGRESS`
 - 首个模型使用 `Qwen3.5-9B`，OpenAI-compatible endpoint 为 `http://127.0.0.1:8000`。
 - smoke evaluation 使用 EB-ALFRED `base` subset 的 episode index `0`。
 - 默认 prompt 参考 EmbodiedBench action-space 表达，但改为每轮只输出一个 skill。
-- OpenPI compatibility 固定参考 commit `51fb06be280a967e59292cf63bb597aa3efdab6c`。
+- RoboCasa OpenPI client 固定参考 fork commit `5a6beda9ff99da30b4e1b59320f6a32971d7c397`；原 Physical-Intelligence client 的 `numpy<2` metadata 与当前 RoboCasa 不兼容。
 
 ## Open Questions
 

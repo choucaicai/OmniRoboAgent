@@ -2,12 +2,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from omniroboagent.agents import DefaultAgent
+from omniroboagent.agent_core import (
+    DefaultAgent,
+    InMemoryMemory,
+    Planner,
+    Verifier,
+)
 from omniroboagent.backends.skills import LanguageSkillBackend
-from omniroboagent.contracts import Environment, Pipeline, Planner, Verifier
-from omniroboagent.memory import InMemoryMemory
-from omniroboagent.pipelines import DirectPipeline
-from omniroboagent.runtime import SyncRuntime
+from omniroboagent.environments import Environment
+from omniroboagent.pipelines import DirectPipeline, Pipeline
+from omniroboagent.runtimes import SyncRuntime
 
 
 class FakePlanner(Planner):

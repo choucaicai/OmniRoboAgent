@@ -4,8 +4,13 @@ from typing import Any
 
 import yaml
 
-from omniroboagent.contracts import BaseAgent, Environment, Pipeline, Runtime
+from omniroboagent.agent_core.agents.base import BaseAgent
+from omniroboagent.backends.skills.base import SkillBackend
+from omniroboagent.backends.skills.registry import create_skill_backend
+from omniroboagent.environments.base import Environment
 from omniroboagent.exceptions import ConfigError
+from omniroboagent.pipelines.base import Pipeline
+from omniroboagent.runtimes.base import Runtime
 
 
 def load_yaml(path: str | Path) -> dict[str, Any]:
@@ -48,12 +53,30 @@ def build_agent(config: dict[str, Any]) -> BaseAgent:
     missing = sorted(required - config.keys())
     if missing:
         raise ConfigError(f"Agent config is missing: {', '.join(missing)}")
+    skill_backend_spec = config["skill_backend"]
+    if isinstance(skill_backend_spec, dict) and "name" in skill_backend_spec:
+        if "class_path" in skill_backend_spec:
+            raise ConfigError(
+                "skill_backend must define either name or class_path, not both"
+            )
+        init_args = skill_backend_spec.get("init_args", {})
+        if not isinstance(init_args, dict):
+            raise ConfigError("init_args for skill_backend name must be a mapping")
+        skill_backend = create_skill_backend(
+            skill_backend_spec["name"],
+            **{key: instantiate(value) for key, value in init_args.items()},
+        )
+    else:
+        skill_backend = instantiate(skill_backend_spec)
+    if not isinstance(skill_backend, SkillBackend):
+        raise ConfigError("Configured skill_backend does not implement SkillBackend")
+
     agent = instantiate(
         config["agent"],
         planner=instantiate(config["planner"]),
         verifier=instantiate(config["verifier"]),
         memory=instantiate(config["memory"]),
-        skill_backend=instantiate(config["skill_backend"]),
+        skill_backend=skill_backend,
     )
     if not isinstance(agent, BaseAgent):
         raise ConfigError("Configured agent does not implement BaseAgent")

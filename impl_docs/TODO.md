@@ -11,7 +11,7 @@
 - [x] `DONE` 首个远程 policy backend 直接兼容 OpenPI WebSocket 协议。
 - [ ] `TODO` 确认项目许可证。
 - [x] `DONE` 首个模型使用 `Qwen3.5-9B`，OpenAI-compatible endpoint 为 `http://127.0.0.1:8000`。
-- [x] `DONE` OpenPI client protocol 固定参考 commit `51fb06be280a967e59292cf63bb597aa3efdab6c`。
+- [x] `DONE` RoboCasa OpenPI client 固定到兼容 NumPy 2 的 fork commit `5a6beda9ff99da30b4e1b59320f6a32971d7c397`。
 - [ ] `TODO` 确认首轮 EB-ALFRED episode 列表和正式评测数量。
 
 ## 1. Project Foundation
@@ -26,7 +26,9 @@
 - [x] `DONE` 配置 benchmark submodule，并在根 README 记录 clone、安装和启动流程。
 - [x] `DONE` 使用 Docsify 将 `docs/` 作为 GitHub Pages Markdown 文档站。
 - [x] `DONE` 将 `impl_docs/` 和 `docs/` 与当前实现、配置及 smoke 结果同步（[计划](plans/0002-documentation-sync.md)）。
-- [ ] `TODO` 按已确认的 package architecture 重组 core 与 integrations，保持现有行为不变（[计划](plans/0003-package-architecture.md)）。
+- [x] `DONE` 按已确认的 package architecture 重组 core 与 integrations，保持现有行为不变（[计划](plans/0003-package-architecture.md)）。
+- [x] `DONE` 将 Agent Core 重组为按组件类型划分的子 packages（[计划](plans/0004-agent-core-subpackages.md)）。
+- [x] `DONE` 拆分 benchmark evaluation、environment 和 external integration ownership（[计划](plans/0005-eval-environment-ownership.md)）。
 - [ ] `TODO` 配置基础 CI，执行 lint、type check 和 unit tests。
 
 ## 2. Data And Configuration Policy
@@ -75,10 +77,11 @@
 - [x] `DONE` 实现 OpenPI healthcheck、timeout、断线重连和客户端关闭。
 - [x] `DONE` 实现 action chunk full 模式的 `execute_steps=None` 传递语义。
 - [x] `DONE` 实现 action chunk receding-horizon 模式和正整数 `execute_steps` 传递语义。
-- [ ] `TODO` 在首个连续控制 Environment 中验证 full/receding-horizon action chunk 的实际执行。
-- [ ] `TODO` 在出现第二个 backend 后再实现 backend registry。
+- [x] `DONE` 在 RoboCasa GR00T real rollouts 中验证 full action chunk 的连续控制执行。
+- [ ] `TODO` 使用真实 OpenPI checkpoint 在 RoboCasa 中验证 receding-horizon action chunk；当前只有 fake/schema test 和可运行配置。
+- [x] `DONE` 实现最小 `SkillBackendRegistry`，内置 GR00T remote、OpenPI remote 和 local，并保留 `class_path` fallback。
 
-## 6. EB-ALFRED Integration
+## 6. EB-ALFRED Environment And Evaluation
 
 - [x] `DONE` 安装并验证 EmbodiedBench、EB-ALFRED dataset、AI2-THOR binary、兼容依赖和 Xvfb 软件渲染环境。
 - [x] `DONE` 实现 `EBAlfredEnvironment` adapter。
@@ -102,13 +105,30 @@
 - [x] `DONE` 配置和文档记录 model、prompt、依赖版本、episode 和运行命令。
 - [x] `DONE` 记录首份 smoke 指标和重复无效动作失败类型。
 
-## 8. Later Integrations
+## 8. RoboCasa365 Evaluation
 
-- [ ] `TODO` 接入 RoboCasa，验证连续控制或 VLA skill backend。
+- [ ] `IN_PROGRESS` 实现 RoboCasa365 evaluation-first Agent + VLA case（[计划](plans/0006-robocasa365-evaluation.md)）。
+- [x] `DONE` 添加固定 commit 的 `benchmarks/RoboCasa` submodule，并提供不覆盖已有数据的本地 assets 软链流程。
+- [x] `DONE` 实现 `RoboCasaEnvironment` 和 `RoboCasa365Evaluator`，支持官方 `task_set`、`pretrain` / `target` split 和可复现 smoke overrides。
+- [x] `DONE` 实现 chunk-level `SkillExecutionPipeline`，在每个 action chunk 后验证，并按检查间隔继续 skill 或 replan。
+- [x] `DONE` 实现 GR00T remote server/backend、OpenPI remote server/backend 和 local in-process backend 三种 policy mode。
+- [x] `DONE` 完成 GR00T remote/local 单任务 smoke，并在 `atomic_seen` 的同一组 5 个 task 上验证 `pretrain` / `target` split；保存 resolved config、episode trace 和 summary。
+- [x] `DONE` 接通 LLM Agent 的 composite-to-atomic skill contract，并完成 `composite_seen` / `composite_unseen` 的 GR00T remote/local split matrix；40 episodes 为 1 success、0 exception，用户文档记录真实 subtask sequence 和失败模式。
+- [ ] `TODO` 分离 composite Planner 和 subtask visual verifier，增加 visual history、稳定 execution identity、原子 decomposition 约束和失败恢复。
+- [ ] `TODO` 拆分 Planner/policy/Environment/benchmark 错误指标，并验证 macro skill catalog、skill 和 trusted skill ID 一致性。
+- [ ] `TODO` 限制长 episode working memory，增加关键视觉 artifact，并实现 evaluator resume、completed-episode skip 和 atomic result write。
+- [ ] `TODO` 使用真实 OpenPI checkpoint 完成相同 task/scenario smoke；当前只有 server/client/schema 和 fake protocol test。
+- [ ] `TODO` 将已验证的 custom GR00T policy source 固定到其他用户可获取的 commit/package，并记录 checkpoint digest、policy RNG、Conda/CUDA/GPU 和 dependency lock。
+- [ ] `TODO` 将正式 split matrix 的 experiment manifest/RunConfig 纳入版本控制，并在结果中保存完整 resolved AgentConfig/RunConfig、Planner prompt/schema、skill map 和 camera 参数。
+- [x] `DONE` 补充 RoboCasa 官方 assets 安装、可选本地软链、server、本地运行、evaluation 配置和 troubleshooting 用户文档。
+- [ ] `TODO` 先确认正式 RoboCasa task-set scope，再与官方 evaluator 对齐随机 50-scenario manifest、reset identity、low-level horizon 和 aggregation；从 environment horizon 派生或校验 Runtime action-chunk budget，随后增加可控 worker/GPU 并行。
+
+## 9. Later Extensions
+
 - [ ] `TODO` 评估 RoboNeuron action contract 与开放 action payload 的兼容方式。
-- [ ] `TODO` 接入本地模型 backend。
+- [ ] `TODO` 接入本地 LLM/VLM planner backend（不含 RoboCasa365 计划中的 local VLA policy）。
 - [ ] `TODO` 在同步闭环稳定后实现 async runtime。
 - [ ] `TODO` 在真实检索需求出现后实现 semantic/spatial memory。
-- [ ] `TODO` 在第二个 benchmark 接入后抽象统一 benchmark runner。
+- [x] `DONE` 第二个 benchmark 接入后继续复用统一 CLI/RunConfig 入口，同时保留各 benchmark 的具体 runner，不引入无需求的 Evaluator hierarchy。
 - [ ] `TODO` 评估 BEHAVIOR-1K adapter。
-- [ ] `TODO` 设计 ROS2 和真机 integration，保持 core 不依赖 ROS2。
+- [ ] `TODO` 设计 ROS2 和 human text I/O integrations，保持 core 不依赖外部通信实现。

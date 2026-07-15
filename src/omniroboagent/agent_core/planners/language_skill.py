@@ -2,7 +2,8 @@ import json
 import re
 from typing import Any
 
-from omniroboagent.contracts import LLMBackend, Planner
+from omniroboagent.agent_core.planners.base import Planner
+from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import PlannerOutputError
 
 DEFAULT_LANGUAGE_SKILL_PROMPT = """You are an embodied agent operating in a home.

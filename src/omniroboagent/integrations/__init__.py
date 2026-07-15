@@ -1,1 +1,1 @@
-"""Optional environment and benchmark integrations."""
+"""ROS2 and human interface integrations."""

@@ -1,0 +1,25 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.TaskSkillPlanner
+
+skill_backend:
+  name: local
+  init_args:
+    policy:
+      class_path: omniroboagent.backends.skills.GR00TLocalPolicyAdapter
+      init_args:
+        policy_class_path: gr00t.model_moe_v1.policy.Gr00tPolicy
+        data_config: panda_omron
+        embodiment_tag: new_embodiment
+        denoising_steps: 4
+        device: cuda:0
+        memory_queue_size: 0
+    entrypoint: predict
+
+verifier:
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
+
+memory:
+  class_path: omniroboagent.agent_core.InMemoryMemory

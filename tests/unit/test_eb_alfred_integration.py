@@ -2,17 +2,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from omniroboagent.agents import DefaultAgent
-from omniroboagent.backends.skills import LanguageSkillBackend
-from omniroboagent.contracts import Planner
-from omniroboagent.integrations.embodiedbench import (
-    EBAlfredBenchmark,
-    EBAlfredEnvironment,
+from omniroboagent.agent_core import (
+    DefaultAgent,
+    EnvironmentVerifier,
+    InMemoryMemory,
+    Planner,
 )
-from omniroboagent.memory import InMemoryMemory
+from omniroboagent.backends.skills import LanguageSkillBackend
+from omniroboagent.environments.benchmarks.embodiedbench import EBAlfredEnvironment
+from omniroboagent.evals.benchmarks.embodiedbench import EBAlfredBenchmark
 from omniroboagent.pipelines import DirectPipeline
-from omniroboagent.runtime import SyncRuntime
-from omniroboagent.verifiers import EnvironmentVerifier
+from omniroboagent.runtimes import SyncRuntime
 
 
 class FakeEBAlfEnv:

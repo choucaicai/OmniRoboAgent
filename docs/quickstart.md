@@ -53,7 +53,7 @@ ruff format --check src tests
 mypy
 ```
 
-默认测试不启动模型、AI2-THOR 或 OpenPI server。
+默认测试不启动模型、AI2-THOR、RoboCasa simulator、GR00T 或 OpenPI server。
 
 ## 4. Run EB-ALFRED
 
@@ -96,3 +96,5 @@ runs/eb_alfred_smoke/
 当前 `base[0]` 的已验证 smoke 结果是 `progress=0.3333`、14 steps，任务未成功完成。该结果用于验证闭环和记录路径，不是 Planner 效果基线。
 
 输出当前不会自动保存 resolved YAML 和 package version。正式实验需要同时保留所用的 `configs/agents/*.yaml` 和 `configs/runs/*.yaml`。
+
+RoboCasa365 的三种 VLA backend、server 和输出格式见 [RoboCasa365 评测](robocasa365.md)。

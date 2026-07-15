@@ -1,7 +1,9 @@
 from typing import Any
 
-from omniroboagent.contracts import BaseAgent, Environment, Pipeline
+from omniroboagent.agent_core.agents.base import BaseAgent
+from omniroboagent.environments.base import Environment
 from omniroboagent.exceptions import PlannerOutputError
+from omniroboagent.pipelines.base import Pipeline
 
 
 class DirectPipeline(Pipeline):

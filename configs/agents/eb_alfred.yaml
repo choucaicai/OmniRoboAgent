@@ -1,8 +1,8 @@
 agent:
-  class_path: omniroboagent.agents.DefaultAgent
+  class_path: omniroboagent.agent_core.DefaultAgent
 
 planner:
-  class_path: omniroboagent.planners.LanguageSkillPlanner
+  class_path: omniroboagent.agent_core.LanguageSkillPlanner
   init_args:
     backend:
       class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
@@ -21,7 +21,7 @@ skill_backend:
   class_path: omniroboagent.backends.skills.LanguageSkillBackend
 
 verifier:
-  class_path: omniroboagent.verifiers.EnvironmentVerifier
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
 
 memory:
-  class_path: omniroboagent.memory.InMemoryMemory
+  class_path: omniroboagent.agent_core.InMemoryMemory

@@ -2,5 +2,7 @@
 - [快速开始](quickstart.md)
 - [配置说明](configuration.md)
 - [接口文档](interfaces.md)
-- [EB-ALFRED 评测](eb_alfred.md)
+- Benchmarks
+  - [EB-ALFRED 评测](eb_alfred.md)
+  - [RoboCasa365 评测](robocasa365.md)
 - [自定义组件](custom_components.md)

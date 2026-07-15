@@ -1,6 +1,6 @@
 # OmniRoboAgent Architecture
 
-Status: `v0.1` vertical slice implemented; EB-ALFRED smoke verified; package reorganization planned
+Status: `v0.1` package architecture implemented; EB-ALFRED, RoboCasa atomic GR00T, and composite Agent evaluation verified
 
 ## 1. Objective
 
@@ -12,7 +12,7 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 框架需要支持不同 LLM/VLM、规则或学习型 skill、仿真 benchmark 和真实机器人，同时保持推理流程、决策逻辑和运行调度解耦。
 
-当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、`SyncRuntime`、OpenAI-compatible LLM、OpenPI WebSocket policy client 和 EB-ALFRED adapter。RoboCasa、真实 OpenPI server、async runtime、ROS2 和真机 integration 尚未实现。
+当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline` / `SkillExecutionPipeline`、`SyncRuntime`、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。真实 OpenPI checkpoint smoke、async runtime、ROS2 和真机 integration 尚未完成。
 
 ## 2. Design Principles
 
@@ -72,7 +72,13 @@ Pipeline 不负责启动模型服务、policy server 或仿真器进程。
 
 `BaseAgent` 对应 Agent Core，组合 Planner、Verifier、Memory 和 SkillBackend。`DefaultAgent` 只委托这些组件，不固化 Pipeline，也不直接依赖 EB-ALFRED、ROS2、OpenAI SDK 或 OpenPI。
 
-在 package ownership 上，Agent Core 及其内部决策组件统一归入 `agents/`。当前实现仍是平铺的 `agents.py`、`planners.py`、`verifiers.py` 和 `memory.py`；目标结构将在一次不改变行为的 package 重组中落地。
+在 package ownership 上，Agent Core 及其内部决策组件统一归入 `agent_core/`。`agents/`、`planners/`、`verifiers/` 和 `memories/` 分别保存对应 contract 与具体实现；每个子 package 使用 `base.py` 定义 contract，并按实现职责增加独立模块。`agent_core/__init__.py` 提供当前组件的统一公开入口。
+
+### Planner
+
+`LanguageSkillPlanner` 从 Environment 提供的语言 skill 列表中选择一个动作。`TaskSkillPlanner` 将 concrete benchmark task name 直接作为 policy skill，用于 RoboCasa atomic task。
+
+`SubtaskSkillPlanner` 用于 composite task。Environment 通过 observation 的 `available_skills` 暴露 atomic macro catalog；Planner 使用 OpenAI-compatible multimodal structured output 生成 `skill`、具体 `subtask` 和 `execution_status`，再通过 AgentConfig 中的可信映射补充 `skill_id`。模型不能直接提供或覆盖 skill ID。`continue_subtask` 必须与当前 active skill/subtask 一致，否则在调用 VLA 前抛出 `PlannerOutputError`。
 
 ### LLMBackend
 
@@ -82,11 +88,15 @@ Backend 只关闭客户端连接，不启动或关闭远程服务端进程。
 
 ### SkillBackend
 
-接收 Pipeline 构造的普通字典，生成任意 Python Action payload，但不执行动作。第一版远程 policy 实现为 `OpenPIWebSocketPolicyBackend`，直接兼容 OpenPI WebSocket client/server 协议。
+接收 Pipeline 构造的普通字典，生成任意 Python Action payload，但不执行动作。当前实现包括 language passthrough、GR00T ZeroMQ remote、OpenPI WebSocket remote 和 in-process local policy。
 
 SkillBackend 不要求统一 Action 基类。字符串、字典、NumPy array、OpenPI action chunk 或自定义对象均可直接返回。
 
 EB-ALFRED 使用 `LanguageSkillBackend`。Pipeline 将 Planner 选择并校验后的单个 language skill 放入 `inputs["skill"]`，backend 返回同一个对象，不解析、不复制，也不执行。
+
+`SkillBackendRegistry` 只将 `groot_remote`、`openpi_remote`、`local` 等稳定配置名映射到具体 backend；模型协议和 schema 仍由 backend 自己处理。自定义实现使用 `class_path` fallback，不做自动 discovery。
+
+GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显式 `skill_id`，因此严格要求 `skill == task_name`。Composite 路径携带可信非负 `skill_id` 时，request 保留 composite `task`，同时发送 atomic macro `skill`、`skill_id` 和 concrete subtask；Environment 和 Evaluator 不感知 GR00T schema。
 
 ### Environment
 
@@ -94,7 +104,9 @@ EB-ALFRED 使用 `LanguageSkillBackend`。Pipeline 将 Planner 选择并校验�
 
 对于 action chunk，`DirectPipeline` 根据自身配置向 Environment 传递 `execute_steps`。`full` 模式传入 `None`，`receding_horizon` 模式传入正整数；具体 Environment 决定如何执行该 action payload。
 
-`environments/` 只定义框架环境 contract 和不依赖外部 SDK 的内置实现。依赖 benchmark、模拟器、ROS2 或真实机器人系统的 adapter 属于 `integrations/`，并实现 `Environment` contract。依赖方向只能是 `integrations -> environments`。
+`RoboCasaEnvironment` 默认将当前 concrete task name 暴露为唯一 `available_skills`，保持 atomic 行为。Composite RunConfig 可以显式提供非空、唯一的 macro skill catalog；Environment 只负责把 catalog 放入 observation，不负责 Planner 选择或 GR00T skill ID 映射。
+
+`environments/base.py` 定义框架环境 contract。依赖 benchmark 或模拟器的 adapter 放在 `environments/benchmarks/<framework>/`，并实现 `Environment` contract；核心执行模块只依赖 `base.py`，不 import 具体 adapter 或可选 SDK。ROS2 与 human text I/O 不属于 benchmark environment ownership，统一归入 `integrations/`。
 
 ### Verifier
 
@@ -118,7 +130,7 @@ EB-ALFRED 使用 `LanguageSkillBackend`。Pipeline 将 Planner 选择并校验�
 | Model raw output | 保留 provider 原始结构，需要时由 Planner 转换 |
 | Memory event | 可 JSON 序列化的 `dict`，不可序列化 payload 记录摘要或引用 |
 
-具体 benchmark 对象只在 integration 内出现。Integration 负责构造 Pipeline 能理解的 observation 和 result 字典，不把第三方 SDK 类型扩散到其他模块。
+具体 benchmark environment 对象只在 `environments/benchmarks/` 和对应 `evals/benchmarks/` 内出现。Environment adapter 负责构造 Pipeline 能理解的 observation 和 result 字典，evaluation runner 负责任务遍历与指标聚合；两者都不能把第三方 SDK 类型扩散到 core。
 
 ## 6. Interface Shape
 
@@ -159,21 +171,25 @@ class Runtime:
 
 ## 7. Package Ownership And Dependency Direction
 
-目标 package ownership：
+当前 package ownership：
 
 | Package | Responsibility |
 | --- | --- |
-| `agents/` | Agent Core、Planner、Verifier 和 Memory |
+| `agent_core/agents/` | `BaseAgent` contract 和 Agent 组合实现 |
+| `agent_core/planners/` | `Planner` contract 和任务规划实现 |
+| `agent_core/verifiers/` | `Verifier` contract 和验证实现 |
+| `agent_core/memories/` | `Memory` contract 和记忆实现 |
 | `pipelines/` | 调用顺序、模块输入、状态转换和终止语义 |
 | `runtimes/` | episode 生命周期、限制、日志、异常捕获和资源释放 |
 | `environments/` | 框架 `Environment` contract |
+| `environments/benchmarks/` | benchmark 和 simulator environment adapter |
+| `evals/benchmarks/` | benchmark task loop、结果保存和指标聚合 |
 | `backends/llm/` | `LLMBackend` contract 和模型客户端实现 |
 | `backends/skills/` | `SkillBackend` contract 和 policy/rule backend 实现 |
-| `integrations/benchmarks/` | benchmark、模拟器和 evaluator adapter |
 | `integrations/ros2/` | ROS2 连接和 message 转换，planned |
-| `integrations/human_interface/` | 人类输入、确认、反馈和接管接口，planned |
+| `integrations/human_interface/` | 人类文本输入输出、确认、反馈和接管接口，planned |
 
-Contract 不再集中在单个 `contracts.py`，而是放回所属 package 的 `base.py`。`agents` 内部当前实现较少，因此 Planner、Verifier 和 Memory 各使用一个直接模块，不再增加子 package 层级。
+Contract 不集中在单个 `contracts.py`，而是放在所属 package 的 `base.py`。Agent、Planner、Verifier 和 Memory 的 contract 分别归入 `agent_core/` 下对应的子 package，具体实现不能反向定义或持有其他层的 contract。
 
 ```text
 applications / CLI
@@ -181,25 +197,29 @@ applications / CLI
         +----------> runtimes
         |               |
         |               +----------> pipelines
-        |               +----------> agents
+        |               +----------> agent_core
         |               +----------> environments
         |
+        +----------> evals
         +----------> integrations
 
-pipelines ----------> agents
+pipelines ----------> agent_core
 pipelines ----------> environments
-agents -------------> backends
-integrations/benchmarks ----> environments
-integrations/ros2 ----------> environments       # planned
+agent_core ----------> backends
+evals/benchmarks ----> agent_core / pipelines / runtimes
+evals/benchmarks ----> environments/benchmarks
+environments/benchmarks ----> environments
+integrations/ros2 ----------> framework contracts       # planned
 integrations/human_interface -> framework contracts  # planned
 ```
 
 约束：
 
-- `agents`、`pipelines`、`runtimes` 和 `environments` 不 import `integrations`。
-- `agents`、`pipelines`、`runtimes` 和 `environments` 不 import ROS2、LangGraph、OpenAI SDK 或 benchmark SDK。
-- `integrations` 依赖框架 contract，负责第三方 task、observation、action 和 result 的类型转换。
-- `environments` 不反向依赖任何具体 benchmark、ROS2 或 human interface。
+- `agent_core`、`pipelines`、`runtimes` 和 `environments/base.py` 不 import `evals` 或 `integrations`。
+- `agent_core`、`pipelines`、`runtimes` 和 `environments/base.py` 不 import ROS2、LangGraph、OpenAI SDK 或 benchmark SDK。
+- `environments/benchmarks` 可以依赖对应 benchmark SDK，并负责 observation、action 和 result 的类型转换。
+- `evals/benchmarks` 可以依赖具体 benchmark environment，但 environment 不反向依赖 evaluator。
+- `integrations` 只负责 ROS2 和 human text I/O 等外部交互，不保存 benchmark runner 或 environment adapter。
 - CLI 只组装实现，不包含核心推理逻辑。
 
 ## 8. Configuration And Composition
@@ -209,17 +229,17 @@ integrations/human_interface -> framework contracts  # planned
 - `AgentConfig`：只定义 Agent Core 的 Planner、LLMBackend、Verifier、Memory 和 SkillBackend。
 - `RunConfig`：定义 AgentConfig 路径、Pipeline、Runtime、Environment、任务、限制和输出目录。
 
-所有可替换组件支持通过 `class_path` 和 `init_args` 加载：
+所有可替换组件支持通过 `class_path` 和 `init_args` 加载；SkillBackend 还支持最小 `name + init_args` registry：
 
-以下配置反映当前可运行实现。package 重组完成前，不提前修改 dotted `class_path`：
+以下配置反映当前可运行实现：
 
 ```yaml
 # configs/agents/eb_alfred.yaml
 agent:
-  class_path: omniroboagent.agents.DefaultAgent
+  class_path: omniroboagent.agent_core.DefaultAgent
 
 planner:
-  class_path: omniroboagent.planners.LanguageSkillPlanner
+  class_path: omniroboagent.agent_core.LanguageSkillPlanner
   init_args:
     backend:
       class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
@@ -238,10 +258,10 @@ skill_backend:
   class_path: omniroboagent.backends.skills.LanguageSkillBackend
 
 verifier:
-  class_path: omniroboagent.verifiers.EnvironmentVerifier
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
 
 memory:
-  class_path: omniroboagent.memory.InMemoryMemory
+  class_path: omniroboagent.agent_core.InMemoryMemory
 ```
 
 ```yaml
@@ -254,7 +274,7 @@ pipeline:
     action_execution_mode: full
 
 runtime:
-  class_path: omniroboagent.runtime.SyncRuntime
+  class_path: omniroboagent.runtimes.SyncRuntime
   init_args:
     max_steps: 30
     max_invalid_actions: 10
@@ -263,7 +283,7 @@ runtime:
     output_dir: runs/eb_alfred_smoke/traces
 
 environment:
-  class_path: omniroboagent.integrations.embodiedbench.EBAlfredEnvironment
+  class_path: omniroboagent.environments.benchmarks.embodiedbench.EBAlfredEnvironment
   init_args:
     eval_set: base
     selected_indexes: [0]
@@ -272,32 +292,36 @@ environment:
     embodiedbench_root: benchmarks/EmbodiedBench
 
 benchmark:
-  class_path: omniroboagent.integrations.embodiedbench.EBAlfredBenchmark
+  class_path: omniroboagent.evals.benchmarks.embodiedbench.EBAlfredBenchmark
   init_args:
     output_dir: runs/eb_alfred_smoke
 ```
 
-自定义组件的构造函数参数由各组件自己定义。第一版只实现简单 dotted-path import，不引入 registry、plugin manager 或依赖注入框架。
+自定义组件的构造函数参数由各组件自己定义。除显式 `SkillBackendRegistry` 外，不引入自动 discovery、plugin manager 或依赖注入框架。
 
-package 重组完成后，目标公开路径为：
+当前公开路径为：
 
 ```text
-omniroboagent.agents.DefaultAgent
-omniroboagent.agents.LanguageSkillPlanner
-omniroboagent.agents.EnvironmentVerifier
-omniroboagent.agents.InMemoryMemory
+omniroboagent.agent_core.DefaultAgent
+omniroboagent.agent_core.LanguageSkillPlanner
+omniroboagent.agent_core.SubtaskSkillPlanner
+omniroboagent.agent_core.EnvironmentVerifier
+omniroboagent.agent_core.InMemoryMemory
 omniroboagent.pipelines.DirectPipeline
+omniroboagent.pipelines.SkillExecutionPipeline
 omniroboagent.runtimes.SyncRuntime
-omniroboagent.integrations.benchmarks.embodiedbench.EBAlfredEnvironment
-omniroboagent.integrations.benchmarks.embodiedbench.EBAlfredBenchmark
+omniroboagent.environments.benchmarks.embodiedbench.EBAlfredEnvironment
+omniroboagent.evals.benchmarks.embodiedbench.EBAlfredBenchmark
+omniroboagent.environments.benchmarks.robocasa.RoboCasaEnvironment
+omniroboagent.evals.benchmarks.robocasa.RoboCasa365Evaluator
 ```
 
 ## 9. Remote Service Lifecycle
 
-- vLLM/OpenAI-compatible server 和 OpenPI policy server 由用户提前启动。
+- vLLM/OpenAI-compatible、GR00T 和 OpenPI policy server 由用户提前启动。
 - OmniRoboAgent 启动 episode 前执行客户端 healthcheck。
 - HTTP backend 负责 timeout、有限重试、usage 和关闭 HTTP client。
-- OpenPI backend 直接使用 OpenPI WebSocket 协议，负责连接、timeout、断线重连和关闭客户端连接。
+- GR00T backend 使用 ZeroMQ + `torch.save` 协议；OpenPI backend 使用 WebSocket + msgpack 协议。二者负责 healthcheck、timeout、一次重连和关闭客户端连接。
 - OmniRoboAgent 不启动、停止或监控远程服务端进程。
 - `OpenAICompatibleLLMBackend` 第一版支持文本、单图和多图输入。
 
@@ -322,34 +346,30 @@ pipeline:
 
 `full` 执行完整 chunk；`receding_horizon` 只执行前 `execute_steps` 步，然后重新观察并再次请求 policy。
 
-## 10. Integrations
+## 10. Evaluation, Environments And Integrations
 
-`integrations/` 是第三方系统接入层，不定义框架核心 contract。它按接入类型分组：
+### Benchmark Environments
 
-- `benchmarks/`：接入 benchmark、模拟器、dataset task loader 和 evaluator。
+`environments/benchmarks/` 保存具体 benchmark 或 simulator 的执行 adapter。每个 adapter 负责加载任务和 observation、校验并执行 action、整理环境反馈，以及关闭 simulator。当前实现 `EBAlfredEnvironment` 和 `RoboCasaEnvironment`；后者逐步执行连续 action chunk，支持默认 concrete task skill 或显式 macro skill catalog，并使用官方 wrapper 的 `_check_success()` 结果作为 ground truth。
+
+### Benchmark Evaluation
+
+`evals/benchmarks/` 保存 evaluation runner 和指标聚合。runner 组合 Agent、Pipeline、Runtime 和具体 Environment，负责遍历任务、保存逐 episode 结果并生成 summary。当前实现 `EBAlfredBenchmark` 和具体的 `RoboCasa365Evaluator`；尚未抽象通用 Evaluator hierarchy。
+
+Benchmark SDK 作为对应 environment 的独立 Conda 依赖安装。AgentConfig 不包含 benchmark 信息，同一个 Evaluator/Environment 通过替换 AgentConfig 在 GR00T remote、OpenPI remote 和 local policy 之间切换。BEHAVIOR support 在实际接入时再增加，不预先创建空目录。
+
+### External Integrations
+
+`integrations/` 只用于不属于 benchmark environment/evaluation 的外部交互接口：
+
 - `ros2/`：连接 ROS2 node、topic、service、action 和 message；后续实现。
-- `human_interface/`：接入人类任务输入、确认、纠错、反馈和接管；后续实现。
+- `human_interface/`：接入人类文本任务输入、输出、确认、纠错、反馈和接管；后续实现。
 
 `ros2` 主要承担机器人系统连接，不包含 Planner 策略。`human_interface` 不被强制建模为 Environment，因为人类可以作为任务来源、Verifier、审批者或 Runtime 控制者。二者当前只定义架构边界，不创建空目录、占位 class 或配置项。
 
-### Benchmark Integrations
-
-具体 benchmark 不进入 core。每个 integration 负责：
-
-- 枚举或加载任务。
-- 创建并关闭具体 environment。
-- 将 benchmark observation 交给 Pipeline。
-- 接收任意 action payload，并转换为 benchmark 可执行动作。
-- 将执行反馈整理为普通字典。
-- 聚合 benchmark 指标和保存原始结果。
-
-当前只实现 `integrations/embodiedbench/eb_alfred.py`，其中包含 `EBAlfredEnvironment` 和 `EBAlfredBenchmark`。目标位置是 `integrations/benchmarks/embodiedbench/eb_alfred.py`，将在 package 重组时迁移。RoboCasa 和 BEHAVIOR adapters 在实际接入时再创建，不预先生成空目录。
-
-Benchmark SDK 作为对应 integration 的 optional dependency 安装。AgentConfig 不包含 benchmark 信息，同一个 AgentConfig 可以被多个 RunConfig 复用。
-
 ## 11. Repository Structure
 
-当前 `v0.1` 使用平铺的 `agents.py`、`planners.py`、`verifiers.py`、`memory.py`、`pipelines.py`、`runtime.py` 和 `contracts.py`。以下是已确认但尚未实施的目标 package layout：
+当前 `v0.1` package layout：
 
 ```text
 OmniRoboAgent/
@@ -357,24 +377,50 @@ OmniRoboAgent/
 ├── rules/
 ├── src/
 │   └── omniroboagent/
-│       ├── agents/
+│       ├── agent_core/
 │       │   ├── __init__.py
-│       │   ├── base.py
-│       │   ├── default.py
-│       │   ├── planners.py
-│       │   ├── verifiers.py
-│       │   └── memory.py
+│       │   ├── agents/
+│       │   │   ├── __init__.py
+│       │   │   ├── base.py
+│       │   │   └── default.py
+│       │   ├── planners/
+│       │   │   ├── __init__.py
+│       │   │   ├── base.py
+│       │   │   ├── language_skill.py
+│       │   │   ├── subtask_skill.py
+│       │   │   └── task_skill.py
+│       │   ├── verifiers/
+│       │   │   ├── __init__.py
+│       │   │   ├── base.py
+│       │   │   └── environment.py
+│       │   └── memories/
+│       │       ├── __init__.py
+│       │       ├── base.py
+│       │       ├── in_memory.py
+│       │       └── jsonl.py
 │       ├── pipelines/
 │       │   ├── __init__.py
 │       │   ├── base.py
-│       │   └── direct.py
+│       │   ├── direct.py
+│       │   └── skill_execution.py
 │       ├── runtimes/
 │       │   ├── __init__.py
 │       │   ├── base.py
 │       │   └── sync.py
 │       ├── environments/
 │       │   ├── __init__.py
-│       │   └── base.py
+│       │   ├── base.py
+│       │   └── benchmarks/
+│       │       ├── embodiedbench/
+│       │       │   └── eb_alfred.py
+│       │       └── robocasa/
+│       │           └── environment.py
+│       ├── evals/
+│       │   └── benchmarks/
+│       │       ├── embodiedbench/
+│       │       │   └── eb_alfred.py
+│       │       └── robocasa/
+│       │           └── evaluator.py
 │       ├── __init__.py
 │       ├── cli.py
 │       ├── config.py
@@ -388,13 +434,13 @@ OmniRoboAgent/
 │       │   └── skills/
 │       │       ├── __init__.py
 │       │       ├── base.py
+│       │       ├── groot.py
 │       │       ├── language.py
-│       │       └── openpi.py
+│       │       ├── local.py
+│       │       ├── openpi.py
+│       │       └── registry.py
 │       └── integrations/
-│           ├── benchmarks/
-│           │   └── embodiedbench/
-│           │       ├── __init__.py
-│           │       └── eb_alfred.py
+│           ├── __init__.py
 │           ├── ros2/                # planned, create when implemented
 │           └── human_interface/     # planned, create when implemented
 ├── tests/
@@ -403,12 +449,18 @@ OmniRoboAgent/
 │   ├── agents/
 │   └── runs/
 ├── scripts/
-│   └── run_eb_alfred_xvfb.sh
+│   ├── link_robocasa_assets.sh
+│   ├── run_eb_alfred_xvfb.sh
+│   ├── serve_robocasa_groot.py
+│   └── serve_robocasa_openpi.py
+├── benchmarks/
+│   ├── EmbodiedBench/             # submodule
+│   └── RoboCasa/                  # submodule
 ├── docs/
 └── pyproject.toml
 ```
 
-`ros2/` 和 `human_interface/` 在树中表达目标 ownership，但实际目录只在出现首个实现时创建，避免预先生成空模块。package 重组必须独立进行，不与 Pipeline、Runtime 或 payload 行为修改混合。
+`ros2/` 和 `human_interface/` 在树中表达 planned ownership，但实际目录只在出现首个实现时创建，避免预先生成空模块。
 
 ## 12. First Vertical Slice: EB-ALFRED
 
@@ -440,17 +492,21 @@ episode limit                -> Runtime termination
 | Language skill backend | Implemented |
 | OpenPI WebSocket client | Implemented with fake client tests; real server smoke pending |
 | EB-ALFRED adapter and `base[0]` smoke | Implemented and verified |
-| Target package architecture | Documented; source migration pending |
-| Resolved config/framework version copied into results | Not implemented |
+| Package architecture | Implemented and unit tested |
+| SkillBackend registry | Implemented with explicit names and `class_path` fallback |
+| RoboCasa365 Environment/Evaluator | Implemented; atomic and composite GR00T remote/local split matrices verified |
+| RoboCasa composite Agent contract | Implemented with `SubtaskSkillPlanner`, macro catalog, trusted skill ID mapping, and shared local/remote request schema |
+| RoboCasa OpenPI real checkpoint | Server/client/schema implemented; real smoke pending |
+| Resolved config/framework version copied into results | Partial for RoboCasa365: task/component/version metadata implemented, full resolved AgentConfig/RunConfig pending; EB-ALFRED pending |
 | Native EmbodiedBench evaluator alignment | Pending |
-| RoboCasa, async runtime, ROS2, human interface and real robot | Not implemented |
+| Async runtime, ROS2, human interface and real robot | Not implemented |
 
 ## 14. Evolution Path
 
 1. 已使用 fake environment 验证 core loop。
 2. 已完成 EB-ALFRED 单 episode 同步闭环；正式 episode 集合和原生 evaluator 对齐待完成。
-3. 在不改变行为的前提下完成 core 和 integrations package 重组。
-4. 接入 RoboCasa 与 VLA/policy skill backend。
+3. 已在不改变行为的前提下完成 Agent Core、Environment、Evaluation 和 Integration ownership 重组。
+4. 已接入 RoboCasa 与 GR00T/OpenPI/local VLA backend，并验证 atomic 与 composite Agent split matrix；OpenPI 真实 smoke 和原生 evaluator 对齐待完成。
 5. 根据真实需求加入 async runtime 和多环境调度。
 6. 加入 semantic/spatial memory 和 learned verifier。
 7. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。

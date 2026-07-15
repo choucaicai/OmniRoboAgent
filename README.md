@@ -6,7 +6,7 @@ OmniRoboAgent 是面向具身 Agent 的模块化构建、运行与评估框架�
 Observe -> Plan -> Act -> Verify -> Update or Stop
 ```
 
-当前实现包含同步 Runtime、可替换 Agent 组件、OpenAI-compatible LLM、OpenPI WebSocket policy 和 EB-ALFRED integration。
+当前实现包含同步 Runtime、可替换 Agent 组件、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 的 atomic/composite Agent、GR00T/OpenPI/local VLA evaluation 路径。
 
 ## Clone
 
@@ -25,7 +25,7 @@ cd OmniRoboAgent
 git submodule update --init --recursive
 ```
 
-拉取主仓库更新后，使用同一命令让 submodule 回到主仓库记录的 commit。不要直接在 `benchmarks/EmbodiedBench` 中提交本项目代码。
+拉取主仓库更新后，使用同一命令让 submodule 回到主仓库记录的 commit。不要直接在 `benchmarks/EmbodiedBench` 或 `benchmarks/RoboCasa` 中提交本项目代码。
 
 ## Install
 
@@ -50,6 +50,12 @@ uv pip install --python "$CONDA_PREFIX/bin/python" --editable . --group dev
 ```bash
 conda activate omniagent
 uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[openpi]'
+```
+
+GR00T remote client 使用 ZeroMQ：
+
+```bash
+uv pip install --python "$CONDA_PREFIX/bin/python" --editable '.[groot-client]'
 ```
 
 `uv.lock` 需要提交。修改依赖后更新并检查 lockfile：
@@ -112,12 +118,20 @@ DISPLAY_ID=2 CONDA_ENV=omniagent-eb \
   bash scripts/run_eb_alfred_xvfb.sh configs/runs/eb_alfred_smoke.yaml
 ```
 
+RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/composite Agent、GR00T/OpenPI server、本地模型和 smoke 配置见 [RoboCasa365 评测](docs/robocasa365.md)。
+
 ## Documentation
+
+### Guides
 
 - [在线文档](https://choucaicai.github.io/OmniRoboAgent/)
 - [快速开始](docs/quickstart.md)
 - [配置说明](docs/configuration.md)
 - [接口文档](docs/interfaces.md)
-- [EB-ALFRED 评测](docs/eb_alfred.md)
 - [自定义组件](docs/custom_components.md)
 - [整体架构](impl_docs/architecture/overview.md)
+
+### Benchmarks
+
+- [EB-ALFRED 评测](docs/eb_alfred.md)
+- [RoboCasa365 评测](docs/robocasa365.md)

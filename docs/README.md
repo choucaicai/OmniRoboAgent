@@ -1,29 +1,26 @@
-# Tutorials
+# OmniRoboAgent Documentation
 
-OmniRoboAgent 的安装、配置、接口和 benchmark 使用文档。在线站点支持侧边栏导航和全文搜索，内容直接来自本目录 Markdown。
+OmniRoboAgent 的安装、配置、接口和 benchmark 使用文档。
 
 | Document | Content |
 | --- | --- |
 | [Quickstart](quickstart.md) | 安装、healthcheck、首次运行和输出文件 |
 | [Configuration](configuration.md) | `AgentConfig`、`RunConfig` 和 `class_path` |
 | [Interfaces](interfaces.md) | Core contracts、默认实现和数据边界 |
-| [EB-ALFRED](eb_alfred.md) | 环境安装、display、smoke evaluation 和指标 |
 | [Custom Components](custom_components.md) | 自定义 Planner、Verifier、SkillBackend、Environment 和 Pipeline |
 
-这些文档描述当前实现。计划但尚未实现的能力仍以 [`impl_docs/plans/`](https://github.com/choucaicai/OmniRoboAgent/tree/master/impl_docs/plans) 为准。
+## Benchmarks
 
-当前可直接运行的是同步单环境 Runtime 和 EB-ALFRED language-skill 闭环。OpenPI client 已实现并经过 fake client 测试，但真实 policy server smoke、RoboCasa、async runtime、ROS2 和真机 integration 尚未完成。
+### EB-ALFRED
 
-## Local Preview
+[EB-ALFRED Evaluation](eb_alfred.md) 说明 EmbodiedBench/AI2-THOR 环境安装、Xvfb、smoke evaluation、输出指标和已验证结果。
 
-从项目根目录启动静态 server：
+### RoboCasa365
 
-```bash
-python -m http.server 8000 --directory docs
-```
+[RoboCasa365 Evaluation](robocasa365.md) 说明官方 assets、atomic/composite Agent、GR00T remote/local、OpenPI remote、真实 subtask 和 evaluation 结果。
 
-然后访问 `http://127.0.0.1:8000`。Docsify 在浏览器中直接加载 Markdown，不需要单独 build。
+## Future Roadmap
 
-## GitHub Pages
-
-GitHub Pages 原生支持发布仓库根目录的 `docs/`。首次使用时，在仓库 `Settings -> Pages -> Build and deployment` 中选择 `Deploy from a branch`，branch 选择 `master`，folder 选择 `/docs`，然后保存。
+- Real OpenPI policy server validation
+- Async runtime
+- ROS2 and real-robot integration
