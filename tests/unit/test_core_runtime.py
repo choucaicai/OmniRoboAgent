@@ -236,3 +236,40 @@ def test_runtime_records_exception_termination(tmp_path: Path) -> None:
     assert result["termination_reason"] == "exception"
     assert result["error_type"] == "RuntimeError"
     assert result["error"] == "environment failed"
+
+
+def test_runtime_resets_agent_memory_for_each_session(tmp_path: Path) -> None:
+    agent = make_agent()
+    environment = FakeEnvironment(
+        [
+            {
+                "task_success": True,
+                "task_progress": 1.0,
+                "last_action_success": True,
+                "done": True,
+            }
+        ]
+    )
+    runtime = SyncRuntime(output_dir=tmp_path)
+
+    runtime.run(
+        agent,
+        DirectPipeline(),
+        environment,
+        "task",
+        session_id="first",
+        close_resources=False,
+    )
+    assert len(agent.memory.events) == 1
+
+    runtime.run(
+        agent,
+        DirectPipeline(),
+        environment,
+        "task",
+        session_id="second",
+        close_resources=False,
+    )
+
+    assert len(agent.memory.events) == 1
+    agent.close()

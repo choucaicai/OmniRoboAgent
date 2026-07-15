@@ -38,6 +38,23 @@ memory:
 
 `DefaultAgent` 会把这四个组件组合起来。HTTP、WebSocket 等协议差异只出现在 backend，不创建协议专用 Agent 子类。
 
+RoboCasa composite Agent 使用 bounded TieredMemory：
+
+```yaml
+memory:
+  class_path: omniroboagent.agent_core.TieredMemory
+  init_args:
+    visual_window_size: 4
+    recent_event_limit: 20
+    summary_max_chars: 4096
+    camera_keys:
+      - video.robot0_agentview_left
+      - video.robot0_agentview_right
+      - video.robot0_eye_in_hand
+```
+
+`event_path` 是可选 append-only JSONL；不配置时长期 event memory 保留在当前 Agent 进程中。每个 Runtime session 会清空 working frames 和当前 summary，但保留 event memory。
+
 SkillBackend 支持 registry 稳定名称：
 
 ```yaml

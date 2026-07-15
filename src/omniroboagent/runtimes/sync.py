@@ -64,6 +64,7 @@ class SyncRuntime(Runtime):
             if not health.get("healthy", False):
                 raise RuntimeError(f"Agent healthcheck failed: {health}")
 
+            agent.reset(session_id)
             state["observation"] = environment.reset(task)
             self._append_trace(
                 trace_path,

@@ -161,6 +161,23 @@ class RoboCasa365Evaluator:
                         None,
                     ),
                 },
+                "memory": {
+                    "visual_window_size": getattr(
+                        getattr(agent, "memory", None),
+                        "visual_window_size",
+                        None,
+                    ),
+                    "recent_event_limit": getattr(
+                        getattr(agent, "memory", None),
+                        "recent_event_limit",
+                        None,
+                    ),
+                    "summary_max_chars": getattr(
+                        getattr(agent, "memory", None),
+                        "summary_max_chars",
+                        None,
+                    ),
+                },
                 "runtime": {
                     "max_steps": getattr(runtime, "max_steps", None),
                     "max_invalid_actions": getattr(

@@ -44,7 +44,8 @@ impl_docs/
     ├── 2026-07-15-skill-execution-state-graph-design.md
     ├── 2026-07-15-skill-agent-memory-implementation-plan.md
     ├── 2026-07-15-skill-execution-state-graph-implementation.md
-    └── 2026-07-15-composable-agent-base.md
+    ├── 2026-07-15-composable-agent-base.md
+    └── 2026-07-15-tiered-agent-memory.md
 ```
 
 ## Responsibilities

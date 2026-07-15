@@ -1,5 +1,10 @@
 from omniroboagent.agent_core.agents import BaseAgent, DefaultAgent
-from omniroboagent.agent_core.memories import InMemoryMemory, JsonlMemory, Memory
+from omniroboagent.agent_core.memories import (
+    InMemoryMemory,
+    JsonlMemory,
+    Memory,
+    TieredMemory,
+)
 from omniroboagent.agent_core.planners import (
     LanguageSkillPlanner,
     Planner,
@@ -24,5 +29,6 @@ __all__ = [
     "SubtaskSkillPlanner",
     "SubtaskVerifier",
     "TaskSkillPlanner",
+    "TieredMemory",
     "Verifier",
 ]

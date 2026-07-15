@@ -1,6 +1,6 @@
 # Tiered Agent Memory
 
-Status: TODO
+Status: IN_PROGRESS
 
 ## Goal
 
@@ -14,11 +14,16 @@ Status: TODO
 - 第一阶段使用标准库和现有 JSONL/artifact 机制，不引入 vector database 或 embedding dependency。
 - raw frame 只进入 bounded working set 或独立 artifact；长期 event record 只保存摘要和引用。
 
+## Resolved Decisions
+
+- 第一阶段默认视觉窗口 `K=4`，每个 timestep 可包含配置的多 camera；真实 RoboCasa audit 后再调整。
+- 文本 summary 使用 deterministic transition ledger，不调用 LLM。
+- 长期 event memory 保存在进程内结构化列表，可选 append-only JSONL；暂不引入 SQLite 或 semantic index。
+
 ## Open Questions
 
-- 默认视觉窗口 `K`、关键帧保存规则和每 camera 的采样频率需要通过 RoboCasa RSS/quality audit 决定。
-- 文本 summary 使用规则模板还是 LLM；第一阶段优先确定性 execution ledger summary。
-- 跨 episode retrieval 达到明确需求后，再决定 JSONL scan、SQLite index 或 semantic index。
+- RoboCasa real smoke 后确认 `K=4` 对 RSS、LLM latency 和完成判断的实际影响。
+- 跨进程和跨 run retrieval 出现明确需求后，再决定持久化索引。
 
 ## Scope
 
@@ -59,13 +64,15 @@ artifact_refs / timestamp
 
 ## Tasks
 
-1. [ ] 扩展 Memory contract：`reset()`、`update()`、`recall()`、`close()`，默认实现保持现有 Memory 兼容。
-2. [ ] 实现 bounded visual working memory，优先保存 artifact reference 和 camera/step metadata。
-3. [ ] 将 skill graph transition 写入 append-only event memory。
-4. [ ] 实现 bounded deterministic text summary，并在 execution close/episode end 更新。
+1. [x] 扩展 Memory contract：`reset()`、`update()`、`recall()`、`close()`，默认实现保持现有 Memory 兼容。
+2. [x] 实现 bounded visual working memory，优先保存 artifact reference 和 camera/step metadata。
+3. [x] 将 skill graph transition 写入 append-only event memory。
+4. [x] 实现 bounded deterministic text summary，并在 execution close/episode end 更新。
 5. [ ] 在 Agent/Pipeline 输入中显式传递 memory context，增加序列化和容量测试。
 6. [ ] 用 RoboCasa 长 episode audit K、RSS、artifact 数量和 planner/verifier context 大小。
-7. [ ] 更新 architecture、configuration、TODO 和 change record。
+7. [ ] 完成 memory context 接入后更新 architecture、configuration、TODO 和最终 change record。
+
+Core implementation record: [2026-07-15 tiered agent memory](../changes/2026-07-15-tiered-agent-memory.md).
 
 ## Acceptance Criteria
 

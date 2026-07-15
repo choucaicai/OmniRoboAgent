@@ -36,16 +36,25 @@ class BaseAgent(ABC):
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
         self.memory.update(state, event)
 
+    def reset(self, session_id: str) -> None:
+        self.memory.reset(session_id)
+
+    def recall(self, query: dict[str, Any]) -> dict[str, Any]:
+        return self.memory.recall(query)
+
     def healthcheck(self) -> dict[str, Any]:
         planner = self.planner.healthcheck()
         verifier = self.verifier.healthcheck()
+        memory = self.memory.healthcheck()
         skill_backend = self.skill_backend.healthcheck()
         return {
             "healthy": bool(planner.get("healthy"))
             and bool(verifier.get("healthy"))
+            and bool(memory.get("healthy"))
             and bool(skill_backend.get("healthy")),
             "planner": planner,
             "verifier": verifier,
+            "memory": memory,
             "skill_backend": skill_backend,
         }
 

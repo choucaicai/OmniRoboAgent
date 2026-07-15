@@ -82,4 +82,12 @@ verifier:
         enable_thinking: false
 
 memory:
-  class_path: omniroboagent.agent_core.InMemoryMemory
+  class_path: omniroboagent.agent_core.TieredMemory
+  init_args:
+    visual_window_size: 4
+    recent_event_limit: 20
+    summary_max_chars: 4096
+    camera_keys:
+      - video.robot0_agentview_left
+      - video.robot0_agentview_right
+      - video.robot0_eye_in_hand

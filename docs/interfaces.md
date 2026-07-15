@@ -144,15 +144,30 @@ benchmark `task_success`、environment done 和 action failure 优先于视觉�
 ## Memory
 
 ```python
+reset(session_id: str) -> None
 update(state: dict[str, Any], event: dict[str, Any]) -> None
+recall(query: dict[str, Any]) -> dict[str, Any]
+healthcheck() -> dict[str, Any]
+close() -> None
 ```
 
-- `InMemoryMemory`：保存当前进程中的 event 列表。
+- `InMemoryMemory`：保存当前 episode 的 event 列表，reset 时清空。
 - `JsonlMemory`：append-only JSONL；array、image 和自定义对象记录摘要。
+- `TieredMemory`：bounded visual working frames、structured long-term events 和 bounded deterministic text summary。
+
+`TieredMemory.recall()` 返回：
+
+```text
+working_frames
+recent_events
+summary
+```
+
+`visual_window_size` 默认 `4`，按 observation timestep 计数，每个 timestep 可以包含多 camera。raw frames 只存在 bounded working deque；event JSONL 不保存 raw observation、action tensor 或 provider raw response。`event_path` 可选，未配置时 event memory 保存在当前 Agent 进程中。
 
 Runtime 自己始终写 episode trace，因此 Memory 是否持久化不会影响评测结果文件。
 
-`JsonlMemory` 不会在构造时清空已有文件；重复使用同一路径会继续 append。Runtime session trace 则会在同名 session 开始时清空。
+`JsonlMemory` 和 `TieredMemory.event_path` 不会在构造时清空已有文件；重复使用同一路径会继续 append。Runtime session trace 则会在同名 session 开始时清空。
 
 ## Environment
 
@@ -185,7 +200,7 @@ close() -> None
 
 `DefaultAgent` 只委托 Planner、Verifier、Memory 和 SkillBackend，不包含 Pipeline。
 
-`BaseAgent` constructor 固定组合 Planner、Verifier、Memory 和 SkillBackend。继承类实现 `plan()`、`predict_action()` 和 `verify()`；基类提供 `update()`、`healthcheck()` 和幂等 `close()`。`healthcheck()` 同时检查 Planner、Verifier 和 SkillBackend；`close()` 会尝试关闭全部四个组件，并聚合 close error。
+`BaseAgent` constructor 固定组合 Planner、Verifier、Memory 和 SkillBackend。继承类实现 `plan()`、`predict_action()` 和 `verify()`；基类提供 `reset()`、`update()`、`recall()`、`healthcheck()` 和幂等 `close()`。`healthcheck()` 同时检查四个组件；`close()` 会尝试关闭全部四个组件，并聚合 close error。
 
 ## Pipeline
 

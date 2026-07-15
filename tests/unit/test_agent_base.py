@@ -105,7 +105,13 @@ def test_base_agent_healthcheck_reports_composed_components() -> None:
     health = agent.healthcheck()
 
     assert health["healthy"] is True
-    assert set(health) == {"healthy", "planner", "verifier", "skill_backend"}
+    assert set(health) == {
+        "healthy",
+        "planner",
+        "verifier",
+        "memory",
+        "skill_backend",
+    }
 
 
 def test_base_agent_close_is_idempotent() -> None:

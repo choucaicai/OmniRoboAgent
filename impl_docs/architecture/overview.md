@@ -162,9 +162,9 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 ### Memory
 
-当前提供 `InMemoryMemory` 和 `JsonlMemory`。此外，`SyncRuntime` 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。Semantic、spatial 和 skill experience memory 在出现明确检索需求后增加。当前 episode 的控制状态保存在 Runtime 的 `state` 字典中，不建立 `AgentContext` 类。
+当前提供 `InMemoryMemory`、`JsonlMemory` 和 `TieredMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working memory，但不删除长期 event memory；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
 
-计划中的集中 Memory 采用一个组合式 `TieredMemory`，内部区分 bounded visual working memory、append-only event memory 和 bounded text summary。raw frames 只保存在长度为 `K` 的 working set 或独立 artifact 中；长期 record 只保存结构化摘要和引用。Planner/Verifier 必须通过显式 recall 输入读取这些内容，Memory 不得直接修改 proposal、verification 或 transition。该能力尚未实现，见 [0009 plan](../plans/0009-tiered-agent-memory.md)。
+`TieredMemory` 组合 bounded visual working memory、structured event memory 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；raw frame 不进入长期 event JSONL。长期 record 只保存 execution/attempt identity、transition、reason、confidence、evidence summary 和 artifact references。`recall()` 稳定返回 `working_frames`、`recent_events` 和 `summary`，但 Planner/Verifier 的显式消费仍由下一 TODO 接入。见 [0009 plan](../plans/0009-tiered-agent-memory.md)。
 
 ## 5. Data Policy
 

@@ -4,7 +4,12 @@ from typing import Any
 import numpy as np
 import pytest
 
-from omniroboagent.agent_core import DefaultAgent, SubtaskSkillPlanner, SubtaskVerifier
+from omniroboagent.agent_core import (
+    DefaultAgent,
+    SubtaskSkillPlanner,
+    SubtaskVerifier,
+    TieredMemory,
+)
 from omniroboagent.backends.skills.openpi import (
     OpenPIRoboCasaPolicyBackend,
     OpenPIWebSocketPolicyBackend,
@@ -57,12 +62,16 @@ def test_robocasa_composite_config_uses_independent_subtask_verifier() -> None:
 
     planner = instantiate(config["planner"])
     verifier = instantiate(config["verifier"])
+    memory = instantiate(config["memory"])
 
     assert isinstance(planner, SubtaskSkillPlanner)
     assert isinstance(verifier, SubtaskVerifier)
     assert verifier.check_interval_chunks == 8
+    assert isinstance(memory, TieredMemory)
+    assert memory.visual_window_size == 4
     planner.close()
     verifier.close()
+    memory.close()
 
 
 @pytest.mark.parametrize(
