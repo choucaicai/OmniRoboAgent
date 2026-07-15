@@ -85,9 +85,11 @@ environment_result
 verification
 transition
 completed_executions
+failed_executions
+execution_history
 ```
 
-`active_execution` 至少需要稳定的 execution identity、当前 skill/subtask、attempt/chunk counters 和 status。具体字段在实现计划中确定，未稳定前继续使用普通 `dict`。
+`active_execution` 固定保存 `execution_id`、`attempt_id`、attempt/chunk/failure counters、skill/subtask、grounded arguments、expected outcome 和 status。retry 保留 `execution_id` 并增加 `attempt_id`；replan/fallback 创建新的 `execution_id`。详细字段和 transition table 见 [0007 plan](../plans/0007-skill-execution-state-graph.md)。
 
 Node 表示一个有明确输入、输出和副作用边界的逻辑阶段，不要求每个 node 对应独立 class、module 或公共接口。第一版可以保留在 `SkillExecutionPipeline.step()` 及少量必要的 private methods 中；只有能够独立测试或明显降低复杂度时才提取函数。
 
@@ -117,6 +119,8 @@ task_success -> terminate
 `BaseAgent` 对应 Agent Core，组合 Planner、Verifier、Memory 和 SkillBackend。`DefaultAgent` 只委托这些组件，不固化 Pipeline，也不直接依赖 EB-ALFRED、ROS2、OpenAI SDK 或 OpenPI。
 
 在 package ownership 上，Agent Core 及其内部决策组件统一归入 `agent_core/`。`agents/`、`planners/`、`verifiers/` 和 `memories/` 分别保存对应 contract 与具体实现；每个子 package 使用 `base.py` 定义 contract，并按实现职责增加独立模块。`agent_core/__init__.py` 提供当前组件的统一公开入口。
+
+后续组合式基类重构将由 `BaseAgent` 统一持有组件、healthcheck、memory update 和 close lifecycle，继承类继续实现 `plan()`、`predict_action()` 和 `verify()`。该工作尚未实施，不能把 Pipeline、Runtime 或 Environment ownership 移入 Agent。见 [0008 plan](../plans/0008-composable-agent-base.md)。
 
 ### Planner
 
@@ -159,6 +163,8 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 ### Memory
 
 当前提供 `InMemoryMemory` 和 `JsonlMemory`。此外，`SyncRuntime` 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。Semantic、spatial 和 skill experience memory 在出现明确检索需求后增加。当前 episode 的控制状态保存在 Runtime 的 `state` 字典中，不建立 `AgentContext` 类。
+
+计划中的集中 Memory 采用一个组合式 `TieredMemory`，内部区分 bounded visual working memory、append-only event memory 和 bounded text summary。raw frames 只保存在长度为 `K` 的 working set 或独立 artifact 中；长期 record 只保存结构化摘要和引用。Planner/Verifier 必须通过显式 recall 输入读取这些内容，Memory 不得直接修改 proposal、verification 或 transition。该能力尚未实现，见 [0009 plan](../plans/0009-tiered-agent-memory.md)。
 
 ## 5. Data Policy
 

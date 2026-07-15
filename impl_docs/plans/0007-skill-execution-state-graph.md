@@ -1,6 +1,6 @@
 # Skill Execution State Graph
 
-Status: TODO
+Status: IN_PROGRESS
 
 ## Goal
 
@@ -16,11 +16,51 @@ Status: TODO
 - 一次 `Pipeline.step()` 最多执行一个 Environment action/verification cycle。
 - node 是逻辑阶段，不要求拆成独立 class、module 或公共接口；不实现通用 Graph engine、builder 或 registry。
 
-## Open Questions
+## Resolved Contract
 
-- `active_execution` 第一版必须固定哪些字段：`execution_id`、`attempt_id`、skill、subtask、expected outcome、counters 和 status 中哪些需要跨模块持久化。
-- Subtask Verifier 第一版使用规则、VLM 还是组合实现，以及 evidence 的最小结构。
-- Recovery 第一版只支持 retry-current/replan/abort，还是同时加入 fallback skill 和 backtrack。
+Pipeline-owned state 继续使用 Runtime 的普通 `state` 字典，不新增 graph class：
+
+```text
+active_execution
+verification
+transition
+completed_executions
+failed_executions
+execution_history
+```
+
+`active_execution` 第一版固定以下字段：
+
+```text
+execution_id / attempt_id / attempt_count
+skill / skill_id / subtask
+grounded_arguments / expected_outcome
+status
+chunk_count / attempt_chunk_count / failure_count
+uncertain_count / no_progress_count / last_progress_marker
+planner_output
+```
+
+- `execution_id` 在一次 episode 内稳定；retry 只增加 `attempt_id`，replan/fallback 创建新的 `execution_id`。
+- Planner proposal 只包含 `skill`、可选可信 `skill_id`、`subtask`、`grounded_arguments` 和 `expected_outcome`；不再输出 completion status。
+- Subtask Verifier 输出 `execution_status`、`reason`、`confidence`、`evidence`，并透传 benchmark authoritative `task_success`。
+- Pipeline 只解释 structured result，不读取 raw image 或 free-text reasoning 判断完成。
+- Recovery 第一版支持固定的 `retry_current -> replan -> fallback -> abort` 路径；fallback 只有在配置了明确 proposal 时可用。
+
+Transition table：
+
+| Condition | State action | Next logical node |
+| --- | --- | --- |
+| `task_success` | close active execution, record completion | terminal |
+| `completed` | close active execution, append completed ledger | plan on next Runtime step |
+| `in_progress` | keep active execution | act on next Runtime step |
+| `failed` | apply recovery policy | act, plan, fallback, or terminal |
+| `uncertain` within budget | keep active execution | verify again without Environment action |
+| `uncertain` exhausted | apply recovery policy | plan, fallback, or terminal |
+| chunk/attempt budget exhausted | record classified failure | plan, fallback, or terminal |
+| no-progress/repeated/A-B-A loop | record classified failure | fallback or terminal |
+
+`planner_check_interval_chunks` 仅作为旧配置兼容参数保留，不再允许 Planner 在 `in_progress` execution 中判断 continue。后续视觉检查频率属于 Subtask Verifier 配置。
 
 ## Scope
 
@@ -41,15 +81,14 @@ Status: TODO
 
 ## Tasks
 
-1. [ ] 定义 Pipeline-owned graph state 的最小字段、初始化、清理和 JSON trace 摘要规则。
-2. [ ] 明确六个逻辑 node 的 contract；简单阶段保持内联，只为独立测试或明显降低复杂度的阶段提取 private method。
-3. [ ] 调整 Planner proposal contract，使新 execution 包含可验证的 skill/subtask identity 和 completion target；Planner 不输出完成判定。
-4. [ ] 增加 Subtask Verifier contract，输出 `in_progress`、`completed`、`failed`、`uncertain`、reason 和 evidence。
-5. [ ] 实现 transition table：completed -> close/record/plan-next，in-progress -> continue，failed -> recover，uncertain -> reobserve/reverify，task-success -> terminate。
-6. [ ] 实现 recovery policy、attempt budget、no-progress detection 和 repeated-execution loop detection。
-7. [ ] 保证每次 `Pipeline.step()` 最多调用一次 `Environment.execute()`，并继续由 Runtime 累计全局 step/retry/timeout。
-8. [ ] 增加 unit tests，覆盖每条 transition、state cleanup、trace event、budget 和 terminal path。
-9. [ ] 更新 architecture、TODO、用户接口文档和 change record，并运行 pytest、Ruff、mypy、Markdown links 和 `git diff --check`。
+1. [x] 定义 Pipeline-owned graph state、transition table、recovery 顺序和 trace 摘要边界。
+2. [ ] 调整 Planner proposal contract；增加独立 Subtask Verifier 和 focused contract tests。
+3. [ ] 实现 graph state 初始化、`plan/act/execute/verify/transition` 路由和 ledger。
+4. [ ] 实现 retry/replan/fallback/abort、attempt/chunk budget、no-progress 和 loop detection。
+5. [ ] 保证每次 `Pipeline.step()` 最多调用一次 `Environment.execute()`，uncertain reverify 调用零次。
+6. [ ] 增加 transition unit tests，覆盖 first plan、continue、completed、failed、uncertain、budget、no-progress、loop、task success 和 cleanup。
+7. [ ] 迁移 RoboCasa configs，保持 `DirectPipeline`、EB-ALFRED 和 atomic/composite config loading 兼容。
+8. [ ] 更新 architecture、TODO、用户文档和 change record，并运行 pytest、Ruff、mypy、Markdown links 和 `git diff --check`。
 
 ## Acceptance Criteria
 
