@@ -127,6 +127,27 @@ Runtime 不要求 `decision` 字段。
 
 多数场景只需继续使用 `DefaultAgent` 并替换组件。只有 Agent 本身的委托方式需要改变时才继承 `BaseAgent`；HTTP、WebSocket 或本地推理差异应实现为 backend，不能据此创建协议专用 Agent。
 
+自定义 Agent 必须调用 `BaseAgent` constructor，并只实现三个决策方法：
+
+```python
+from typing import Any
+
+from omniroboagent.agent_core import BaseAgent
+
+
+class MyAgent(BaseAgent):
+    def plan(self, inputs: dict[str, Any]) -> Any:
+        return self.planner.plan(inputs)
+
+    def predict_action(self, inputs: dict[str, Any]) -> Any:
+        return self.skill_backend.predict(inputs)
+
+    def verify(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        return self.verifier.verify(inputs)
+```
+
+`update()`、healthcheck 和幂等 close 由 `BaseAgent` 提供。Agent 不应持有或执行 Pipeline、Runtime、Environment。
+
 ## Resource Rules
 
 - Planner 负责关闭自己的 LLM backend。

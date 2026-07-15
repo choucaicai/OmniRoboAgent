@@ -185,7 +185,7 @@ close() -> None
 
 `DefaultAgent` 只委托 Planner、Verifier、Memory 和 SkillBackend，不包含 Pipeline。
 
-`healthcheck()` 同时检查 Planner、Verifier 和 SkillBackend；三者都 healthy 时 Agent 才 healthy。`close()` 依次关闭 Planner、Verifier、SkillBackend 和 Memory 的客户端资源。
+`BaseAgent` constructor 固定组合 Planner、Verifier、Memory 和 SkillBackend。继承类实现 `plan()`、`predict_action()` 和 `verify()`；基类提供 `update()`、`healthcheck()` 和幂等 `close()`。`healthcheck()` 同时检查 Planner、Verifier 和 SkillBackend；`close()` 会尝试关闭全部四个组件，并聚合 close error。
 
 ## Pipeline
 

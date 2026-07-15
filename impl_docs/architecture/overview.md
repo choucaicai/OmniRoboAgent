@@ -120,7 +120,7 @@ task_success -> terminate
 
 在 package ownership 上，Agent Core 及其内部决策组件统一归入 `agent_core/`。`agents/`、`planners/`、`verifiers/` 和 `memories/` 分别保存对应 contract 与具体实现；每个子 package 使用 `base.py` 定义 contract，并按实现职责增加独立模块。`agent_core/__init__.py` 提供当前组件的统一公开入口。
 
-后续组合式基类重构将由 `BaseAgent` 统一持有组件、healthcheck、memory update 和 close lifecycle，继承类继续实现 `plan()`、`predict_action()` 和 `verify()`。该工作尚未实施，不能把 Pipeline、Runtime 或 Environment ownership 移入 Agent。见 [0008 plan](../plans/0008-composable-agent-base.md)。
+`BaseAgent` 统一持有 Planner、Verifier、Memory 和 SkillBackend，提供 memory update、healthcheck 和幂等 close lifecycle；继承类只实现 `plan()`、`predict_action()` 和 `verify()`。`DefaultAgent` 保持纯组件委托，公开 class path 和 AgentConfig 不变。Agent 不持有 Pipeline、Runtime 或 Environment。见 [0008 plan](../plans/0008-composable-agent-base.md)。
 
 ### Planner
 
