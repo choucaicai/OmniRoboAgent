@@ -6,6 +6,7 @@ from typing import Any
 
 from omniroboagent.agent_core.agents.base import BaseAgent
 from omniroboagent.environments.base import Environment
+from omniroboagent.observability.base import EpisodeRecorder
 from omniroboagent.pipelines.base import Pipeline
 from omniroboagent.runtimes.base import Runtime
 from omniroboagent.serialization import to_jsonable
@@ -19,16 +20,20 @@ class SyncRuntime(Runtime):
         max_retries: int = 10,
         timeout_seconds: float | None = None,
         output_dir: str | Path = "runs",
+        observability: EpisodeRecorder | None = None,
     ) -> None:
         if max_steps <= 0:
             raise ValueError("max_steps must be positive")
         if max_invalid_actions <= 0 or max_retries <= 0:
             raise ValueError("max_invalid_actions and max_retries must be positive")
+        if observability is not None and not isinstance(observability, EpisodeRecorder):
+            raise TypeError("observability must implement EpisodeRecorder")
         self.max_steps = max_steps
         self.max_invalid_actions = max_invalid_actions
         self.max_retries = max_retries
         self.timeout_seconds = timeout_seconds
         self.output_dir = Path(output_dir)
+        self.observability = observability
 
     def run(
         self,
@@ -59,14 +64,35 @@ class SyncRuntime(Runtime):
         }
         result: dict[str, Any]
         close_errors: list[str] = []
+        observability_errors: list[str] = []
+        recorder_active = False
 
         try:
+            if self.observability is not None:
+                try:
+                    self.observability.start(session_dir, session_id, task)
+                    recorder_active = True
+                except Exception as error:
+                    observability_errors.append(
+                        f"start: {type(error).__name__}: {error}"
+                    )
             health = agent.healthcheck()
             if not health.get("healthy", False):
                 raise RuntimeError(f"Agent healthcheck failed: {health}")
 
             agent.reset(session_id)
             state["observation"] = environment.reset(task)
+            if recorder_active and self.observability is not None:
+                try:
+                    self.observability.record_observation(
+                        state["observation"],
+                        step=0,
+                        labels=["step=0", "episode start", f"task={task}"],
+                    )
+                except Exception as error:
+                    observability_errors.append(
+                        f"initial observation: {type(error).__name__}: {error}"
+                    )
             self._append_trace(
                 trace_path,
                 {"event": "episode_start", "session_id": session_id, "task": task},
@@ -103,6 +129,17 @@ class SyncRuntime(Runtime):
                         **last_output,
                     },
                 )
+                if recorder_active and self.observability is not None:
+                    try:
+                        self.observability.record_step(
+                            state["step"],
+                            last_output,
+                            state.get("observation"),
+                        )
+                    except Exception as error:
+                        observability_errors.append(
+                            f"step {state['step']}: {type(error).__name__}: {error}"
+                        )
 
                 if pipeline.is_terminal(last_output, state):
                     success = bool(last_output.get("success", False))
@@ -157,6 +194,14 @@ class SyncRuntime(Runtime):
                     "error": str(error),
                 },
             )
+            if recorder_active and self.observability is not None:
+                try:
+                    self.observability.record_exception(state["step"], error)
+                except Exception as recorder_error:
+                    observability_errors.append(
+                        "exception record: "
+                        f"{type(recorder_error).__name__}: {recorder_error}"
+                    )
         finally:
             if close_resources:
                 for resource in (environment, agent):
@@ -170,6 +215,17 @@ class SyncRuntime(Runtime):
 
         if close_errors:
             result["close_errors"] = close_errors
+        if recorder_active and self.observability is not None:
+            try:
+                artifacts = self.observability.finish(result)
+                recorder_errors = artifacts.pop("observability_errors", [])
+                result.update(artifacts)
+                if isinstance(recorder_errors, list):
+                    observability_errors.extend(str(item) for item in recorder_errors)
+            except Exception as error:
+                observability_errors.append(f"finish: {type(error).__name__}: {error}")
+        if observability_errors:
+            result["observability_errors"] = observability_errors
 
         result_path.write_text(
             json.dumps(to_jsonable(result), ensure_ascii=False, indent=2),

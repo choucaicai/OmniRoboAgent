@@ -31,11 +31,12 @@ history
 
 运行顺序：
 
-1. 检查 Agent health。
-2. `agent.reset(session_id)`。
-3. `environment.reset(task)` 获取初始 observation。
-4. 循环调用 `pipeline.step()`，直到 Pipeline terminal 或 Runtime limit。
-5. 写入 result/trace，并按 ownership 关闭资源。
+1. 启动可选的 episode recorder。
+2. 检查 Agent health。
+3. `agent.reset(session_id)`。
+4. `environment.reset(task)` 获取初始 observation 并记录首帧。
+5. 循环调用 `pipeline.step()`，直到 Pipeline terminal 或 Runtime limit；每个 step 通知 recorder。
+6. 写入 result/trace、结束 recorder，并按 ownership 关闭资源。
 
 ## Limits
 
@@ -48,6 +49,13 @@ runtime:
     max_retries: 10
     timeout_seconds: 1800
     output_dir: runs/example/traces
+    observability:
+      class_path: omniroboagent.observability.LocalEpisodeRecorder
+      init_args:
+        record_agent_trace: true
+        record_video: true
+        video_camera_keys: [camera.front]
+        video_fps: 4
 ```
 
 Runtime 可能产生 `timeout`、`invalid_action_limit`、`retry_limit`、`step_limit`、Pipeline terminal reason 或 `exception`。每条退出路径都会写明确的 `termination_reason`。
@@ -58,9 +66,14 @@ Runtime 可能产生 `timeout`、`invalid_action_limit`、`retry_limit`、`step_
 <output_dir>/<session_id>/
 ├── result.json
 ├── trace.jsonl
+├── agent_trace.jsonl          # configured recorder
+├── episode.mp4                # configured recorder with camera frames
+├── artifact_manifest.json     # configured recorder
 └── artifacts/
 ```
 
 `result.json` 包含 success、progress、steps、invalid actions、replans、planner calls、action chunks、environment steps、latency 和 termination reason。`trace.jsonl` 保存 episode start、每个 step、exception 和 episode end。
+
+启用 recorder 后，artifact paths 和 video frame count 也会写入 `result.json`。Recorder 失败记录在 `observability_errors`，不改变 episode success 或 termination reason。详细字段、FFmpeg 要求和当前帧率限制见 [Observability](observability.md)。
 
 下一节：[Environment](environment.md)。

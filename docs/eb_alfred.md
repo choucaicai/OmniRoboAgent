@@ -123,6 +123,8 @@ observe
 
 每个 episode 还保存完整 `trace.jsonl` 和 `result.json`，可与 EmbodiedBench 原生 evaluator 的 `task_success`、`task_progress`、`num_steps` 和 invalid-action 指标对齐。
 
+当前 `configs/runs/eb_alfred_smoke.yaml` 还配置 `LocalEpisodeRecorder`，从 observation 的 `head_rgb` 每个 Runtime step 记录一帧，并生成 `agent_trace.jsonl`、`episode.mp4` 和 `artifact_manifest.json`。启用视频前确认 `ffmpeg -version` 可执行。该功能已通过本地 FFmpeg smoke，尚未重跑本节的历史真实 EB-ALFRED episode，因此下面的 2026-07-12 输出不包含这些 artifacts。
+
 当前只验证了 OmniRoboAgent adapter 的输出，尚未在相同 episode 上完成 EmbodiedBench 原生 evaluator 数值对齐。`replans` 是框架统计的 invalid-action replan 次数，不是 EmbodiedBench 原生字段。
 
 ## Verified Smoke Result

@@ -67,6 +67,7 @@
 - [x] `DONE` 实现结构化 event、日志和错误记录。
 - [x] `DONE` 实现 step、invalid action、retry 和 wall-time 限制。
 - [x] `DONE` 实现 mock environment 闭环集成测试。
+- [x] `DONE` 实现独立 observability package，生成 Agent trace、episode video 和 artifact manifest（[计划](plans/0012-episode-observability-artifacts.md)）。
 
 ## 5. Embodied Agent Skill Execution
 

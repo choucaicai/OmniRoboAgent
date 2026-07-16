@@ -13,6 +13,13 @@ runtime:
     max_retries: 10
     timeout_seconds: 1800
     output_dir: runs/eb_alfred_smoke/traces
+    observability:
+      class_path: omniroboagent.observability.LocalEpisodeRecorder
+      init_args:
+        record_agent_trace: true
+        record_video: true
+        video_camera_keys: [head_rgb]
+        video_fps: 2
 
 environment:
   class_path: omniroboagent.environments.benchmarks.embodiedbench.EBAlfredEnvironment

@@ -11,6 +11,7 @@
   - [Skill Backend](components/skill_backend.md)
   - [Pipeline](components/pipeline.md)
   - [Runtime](components/runtime.md)
+  - [Observability](components/observability.md)
   - [Environment](components/environment.md)
   - [Evaluation](components/evaluation.md)
 - [自定义组件](custom_components.md)

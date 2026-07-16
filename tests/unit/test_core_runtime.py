@@ -11,6 +11,7 @@ from omniroboagent.agent_core import (
 )
 from omniroboagent.backends.skills import LanguageSkillBackend
 from omniroboagent.environments import Environment
+from omniroboagent.observability import EpisodeRecorder, LocalEpisodeRecorder
 from omniroboagent.pipelines import DirectPipeline, Pipeline
 from omniroboagent.runtimes import SyncRuntime
 
@@ -99,6 +100,93 @@ def test_runtime_success_writes_trace(tmp_path: Path) -> None:
         "episode_start",
         "step",
         "episode_end",
+    ]
+
+
+def test_runtime_writes_agent_trace_and_manifest(tmp_path: Path) -> None:
+    environment = FakeEnvironment(
+        [
+            {
+                "task_success": True,
+                "task_progress": 1.0,
+                "last_action_success": True,
+                "done": True,
+            }
+        ]
+    )
+    runtime = SyncRuntime(
+        output_dir=tmp_path,
+        observability=LocalEpisodeRecorder(record_video=False),
+    )
+
+    result = runtime.run(
+        make_agent(),
+        DirectPipeline(),
+        environment,
+        "find mug",
+        session_id="recorded",
+    )
+
+    agent_trace = Path(result["agent_trace_path"])
+    manifest = Path(result["artifact_manifest_path"])
+    assert result["success"] is True
+    assert result["video_path"] is None
+    assert [
+        json.loads(line)["event"] for line in agent_trace.read_text().splitlines()
+    ] == ["episode_start", "agent_step", "episode_end"]
+    assert json.loads(manifest.read_text(encoding="utf-8"))["artifacts"] == {
+        "result": "result.json",
+        "trace": "trace.jsonl",
+        "agent_trace": "agent_trace.jsonl",
+        "video": None,
+        "artifacts_dir": None,
+    }
+
+
+class FailingRecorder(EpisodeRecorder):
+    def start(self, session_dir: Path, session_id: str, task: Any) -> None:
+        raise RuntimeError("recorder unavailable")
+
+    def record_observation(
+        self,
+        observation: Any,
+        *,
+        step: int,
+        labels: list[str] | None = None,
+    ) -> None:
+        raise AssertionError("inactive recorder must not receive observations")
+
+    def record_step(self, step: int, output: dict[str, Any], observation: Any) -> None:
+        raise AssertionError("inactive recorder must not receive steps")
+
+    def record_exception(self, step: int, error: Exception) -> None:
+        raise AssertionError("inactive recorder must not receive exceptions")
+
+    def finish(self, result: dict[str, Any]) -> dict[str, Any]:
+        raise AssertionError("inactive recorder must not finish")
+
+
+def test_observability_failure_does_not_change_episode_result(tmp_path: Path) -> None:
+    environment = FakeEnvironment(
+        [
+            {
+                "task_success": True,
+                "task_progress": 1.0,
+                "last_action_success": True,
+                "done": True,
+            }
+        ]
+    )
+
+    result = SyncRuntime(
+        output_dir=tmp_path,
+        observability=FailingRecorder(),
+    ).run(make_agent(), DirectPipeline(), environment, "find mug")
+
+    assert result["success"] is True
+    assert result["termination_reason"] == "task_success"
+    assert result["observability_errors"] == [
+        "start: RuntimeError: recorder unavailable"
     ]
 
 

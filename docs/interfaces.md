@@ -6,8 +6,9 @@ Agent Core 负责组合决策组件，其他 framework components 负责模型�
 CLI / Application
        |
        v
-    Runtime -------- lifecycle, limits, trace
+    Runtime -------- lifecycle, limits, recorder hooks
        |
+       +-------> Observability -> Agent trace / video / manifest
        v
     Pipeline ------- call order, inputs, transitions
        |       \
@@ -31,6 +32,7 @@ Evaluation -> runs Agent + Pipeline + Runtime + Environment over task sets
 | [Skill Backend](components/skill_backend.md) | `predict(inputs) -> Any` | language、GR00T remote/local、OpenPI remote、local policy |
 | [Pipeline](components/pipeline.md) | `step()`、`is_terminal()` | `DirectPipeline`、`SkillExecutionPipeline` |
 | [Runtime](components/runtime.md) | `run(agent, pipeline, environment, task)` | `SyncRuntime` |
+| [Observability](components/observability.md) | episode recorder lifecycle | `LocalEpisodeRecorder` |
 | [Environment](components/environment.md) | `reset()`、`execute()`、`close()` | EB-ALFRED、RoboCasa adapters |
 | [Evaluation](components/evaluation.md) | benchmark-specific `run()` | `EBAlfredBenchmark`、`RoboCasa365Evaluator` |
 
@@ -52,6 +54,7 @@ OmniRoboAgent 只固定运行控制需要的最小 contract：
 
 - Pipeline 依赖 Agent Core 和 Environment contract。
 - Runtime 依赖 Pipeline、Agent Core 和 Environment contract，但不解释 Planner 或 Verifier 语义。
+- Runtime 只调用 Observability contract；recorder 不依赖具体 benchmark SDK。
 - Agent Core 可以依赖 backend contract，不依赖具体 benchmark SDK。
 - benchmark adapters 和 evaluators 可以依赖对应 SDK，不得把 SDK 类型扩散进 core。
 - integrations 用于 ROS2 和 human I/O；当前仍是 planned surface，不属于已实现 benchmark path。

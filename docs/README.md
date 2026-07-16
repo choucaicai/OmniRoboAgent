@@ -35,6 +35,7 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 | [Skill Backend](components/skill_backend.md) | 将计划转换为 environment 可执行的 action payload |
 | [Pipeline](components/pipeline.md) | 定义调用顺序、输入构造和状态转换 |
 | [Runtime](components/runtime.md) | 管理 episode lifecycle、limits、trace 和资源释放 |
+| [Observability](components/observability.md) | 保存 Agent trace、episode video 和 artifact manifest |
 | [Environment](components/environment.md) | 连接 benchmark、simulator 或 robot 并执行 action |
 | [Evaluation](components/evaluation.md) | 遍历任务、聚合指标并保存可复现输出 |
 

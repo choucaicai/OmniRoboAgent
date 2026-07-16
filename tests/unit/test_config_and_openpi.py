@@ -16,7 +16,9 @@ from omniroboagent.backends.skills.openpi import (
 )
 from omniroboagent.config import build_agent, instantiate, load_yaml
 from omniroboagent.exceptions import BackendError, ConfigError
+from omniroboagent.observability import LocalEpisodeRecorder
 from omniroboagent.pipelines import SkillExecutionPipeline
+from omniroboagent.runtimes import SyncRuntime
 
 
 def test_build_agent_from_component_specs() -> None:
@@ -92,6 +94,45 @@ def test_robocasa_run_configs_load_skill_execution_pipeline(path: str) -> None:
     pipeline = instantiate(config["pipeline"])
 
     assert isinstance(pipeline, SkillExecutionPipeline)
+
+
+@pytest.mark.parametrize(
+    ("path", "camera_keys", "fps"),
+    [
+        ("configs/runs/eb_alfred_smoke.yaml", ["head_rgb"], 2),
+        (
+            "configs/runs/robocasa365_groot_composite_remote_smoke.yaml",
+            [
+                "video.robot0_agentview_left",
+                "video.robot0_agentview_right",
+                "video.robot0_eye_in_hand",
+            ],
+            4,
+        ),
+        (
+            "configs/runs/robocasa365_groot_composite_local_smoke.yaml",
+            [
+                "video.robot0_agentview_left",
+                "video.robot0_agentview_right",
+                "video.robot0_eye_in_hand",
+            ],
+            4,
+        ),
+    ],
+)
+def test_demo_run_configs_enable_observability(
+    path: str,
+    camera_keys: list[str],
+    fps: int,
+) -> None:
+    runtime = instantiate(load_yaml(path)["runtime"])
+
+    assert isinstance(runtime, SyncRuntime)
+    assert isinstance(runtime.observability, LocalEpisodeRecorder)
+    assert runtime.observability.record_agent_trace is True
+    assert runtime.observability.record_video is True
+    assert runtime.observability.video_camera_keys == camera_keys
+    assert runtime.observability.video_fps == fps
 
 
 class FakeWebSocket:

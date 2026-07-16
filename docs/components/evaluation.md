@@ -36,6 +36,8 @@ Benchmark output 通常包括：
 
 `resolved_config.json` 的覆盖范围由 evaluator 定义。当前 RoboCasa evaluator 会记录 task/split/seed、component classes、关键 limits、package versions、repository state 和 policy health；EB-ALFRED 仍需用户同时保留 AgentConfig 与 RunConfig。
 
+当 Runtime 配置 [Observability](observability.md) 时，每个 `traces/<session_id>/` 还包含精简 Agent trace、episode video 和 artifact manifest。RoboCasa `resolved_config.json` 会记录 recorder class、video 开关、camera keys 和 FPS。
+
 不要把不同 benchmark 的 task schema 或 metrics 强行统一成一个固定结果类。需要跨 benchmark 比较时，应在上层明确指标映射和 aggregation 口径。
 
 继续阅读 [Custom Components](../custom_components.md) 或具体 [Benchmarks](../README.md#benchmarks)。

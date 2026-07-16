@@ -323,12 +323,17 @@ runs/robocasa365_<mode>_smoke/
         │           ├── video.robot0_agentview_right.png
         │           └── video.robot0_eye_in_hand.png
         ├── result.json
-        └── trace.jsonl
+        ├── trace.jsonl
+        ├── agent_trace.jsonl
+        ├── episode.mp4
+        └── artifact_manifest.json
 ```
 
 `artifacts/key_events/` 只在启用 key-event artifact 的关键 transition 中创建。`events.jsonl` 保存文本 evidence 和 PNG references，不包含 raw image。
 
-`resolved_config.json` 记录 task/split/seed、component class、Pipeline/Runtime/Memory 限制、RoboCasa/robosuite/OmniRoboAgent commit 与 dirty 状态、Python/package version 和 policy server health metadata。`summary.json` 包含 overall/per-task success rate、macro average、success/failure/exception、planner calls、replans、action chunks、environment steps、invalid actions、latency 和 termination reasons。
+当前 composite remote/local smoke 配置使用三路 `video.*` camera，每个 Runtime action-chunk step 记录一帧。`agent_trace.jsonl` 保存 Planner/skill/subtask、action 摘要、verification、transition 和 environment feedback；`episode.mp4` 使用 FFmpeg 编码三路横向画面。当前不记录 action chunk 内的 low-level simulator frames。该能力已通过 unit 和本地 FFmpeg smoke，尚未重跑真实 RoboCasa Agent episode。
+
+`resolved_config.json` 记录 task/split/seed、component class、Pipeline/Runtime/Memory/Observability 设置、RoboCasa/robosuite/OmniRoboAgent commit 与 dirty 状态、Python/package version 和 policy server health metadata。`summary.json` 包含 overall/per-task success rate、macro average、success/failure/exception、planner calls、replans、action chunks、environment steps、invalid actions、latency 和 termination reasons。
 
 ## Verified Atomic GR00T Evaluation
 

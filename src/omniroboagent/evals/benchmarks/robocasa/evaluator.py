@@ -13,7 +13,9 @@ from omniroboagent.runtimes.base import Runtime
 from omniroboagent.serialization import to_jsonable
 
 
-def _class_path(value: Any) -> str:
+def _class_path(value: Any) -> str | None:
+    if value is None:
+        return None
     cls = type(value)
     return f"{cls.__module__}.{cls.__qualname__}"
 
@@ -130,6 +132,9 @@ class RoboCasa365Evaluator:
                     "memory": _class_path(getattr(agent, "memory", None)),
                     "pipeline": _class_path(pipeline),
                     "runtime": _class_path(runtime),
+                    "observability": _class_path(
+                        getattr(runtime, "observability", None)
+                    ),
                     "environment": _class_path(self.environment),
                 },
                 "pipeline": {
@@ -195,6 +200,28 @@ class RoboCasa365Evaluator:
                     ),
                     "max_retries": getattr(runtime, "max_retries", None),
                     "timeout_seconds": getattr(runtime, "timeout_seconds", None),
+                },
+                "observability": {
+                    "record_agent_trace": getattr(
+                        getattr(runtime, "observability", None),
+                        "record_agent_trace",
+                        None,
+                    ),
+                    "record_video": getattr(
+                        getattr(runtime, "observability", None),
+                        "record_video",
+                        None,
+                    ),
+                    "video_camera_keys": getattr(
+                        getattr(runtime, "observability", None),
+                        "video_camera_keys",
+                        None,
+                    ),
+                    "video_fps": getattr(
+                        getattr(runtime, "observability", None),
+                        "video_fps",
+                        None,
+                    ),
                 },
                 "policy_health": to_jsonable(agent.healthcheck()),
             }

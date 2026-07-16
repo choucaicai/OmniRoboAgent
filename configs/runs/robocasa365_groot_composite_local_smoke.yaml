@@ -14,6 +14,16 @@ runtime:
     max_retries: 3
     timeout_seconds: 7200
     output_dir: runs/robocasa365_groot_composite_local_smoke/traces
+    observability:
+      class_path: omniroboagent.observability.LocalEpisodeRecorder
+      init_args:
+        record_agent_trace: true
+        record_video: true
+        video_camera_keys:
+          - video.robot0_agentview_left
+          - video.robot0_agentview_right
+          - video.robot0_eye_in_hand
+        video_fps: 4
 
 environment:
   class_path: omniroboagent.environments.benchmarks.robocasa.RoboCasaEnvironment

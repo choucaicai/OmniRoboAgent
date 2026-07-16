@@ -12,7 +12,7 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 框架需要支持不同 LLM/VLM、规则或学习型 skill、仿真 benchmark 和真实机器人，同时保持推理流程、决策逻辑和运行调度解耦。
 
-当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、显式 graph-state `SkillExecutionPipeline`、独立 `SubtaskVerifier`、`SyncRuntime`、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。迁移后的 RoboCasa composite 固定真实 checkpoint smoke 已完成；真实 OpenPI checkpoint smoke、正式多 episode 质量评测、async runtime、ROS2 和真机 integration 尚未完成。
+当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、显式 graph-state `SkillExecutionPipeline`、独立 `SubtaskVerifier`、`SyncRuntime`、独立 episode observability artifacts、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。迁移后的 RoboCasa composite 固定真实 checkpoint smoke 已完成；真实 OpenPI checkpoint smoke、正式多 episode 质量评测、async runtime、ROS2 和真机 integration 尚未完成。
 
 ## 2. Design Principles
 
@@ -35,6 +35,8 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
                      | lifecycle/limits/logs|
                      +----------+-----------+
                                 |
+                                +-------> Observability
+                                |          trace/video/manifest
                                 v
                      +----------------------+
                      |       Pipeline       |
@@ -62,6 +64,8 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 负责 session/episode 生命周期、资源创建与释放、step/timeout 限制、日志和异常捕获。Runtime 维护普通 `state` 字典中的 `task`、`observation`、`step` 三个基础字段，但不解释 Planner、Verifier 或 Action 内容。
 
 Runtime 调用 Pipeline 的终止判断，不固定 Verifier 的 `decision` 取值。
+
+可选 `EpisodeRecorder` 通过 Runtime lifecycle hook 接收初始 observation、每步 Pipeline output、exception 和最终 result。当前 `LocalEpisodeRecorder` 生成精简 `agent_trace.jsonl`、H.264 `episode.mp4` 和 `artifact_manifest.json`；recording failure 写入 `observability_errors`，不覆盖 episode success 或 termination reason。视频当前每个 Runtime step 记录一帧，不包含 action chunk 内的 low-level simulator frames。
 
 ### Pipeline
 
@@ -238,6 +242,7 @@ class Runtime:
 | `agent_core/memories/` | `Memory` contract 和记忆实现 |
 | `pipelines/` | 调用顺序、模块输入、状态转换和终止语义 |
 | `runtimes/` | episode 生命周期、限制、日志、异常捕获和资源释放 |
+| `observability/` | episode Agent trace、video 和 artifact manifest recorder |
 | `environments/` | 框架 `Environment` contract |
 | `environments/benchmarks/` | benchmark 和 simulator environment adapter |
 | `evals/benchmarks/` | benchmark task loop、结果保存和指标聚合 |
@@ -260,6 +265,7 @@ applications / CLI
         +----------> evals
         +----------> integrations
 
+runtimes ----------> observability
 pipelines ----------> agent_core
 pipelines ----------> environments
 agent_core ----------> backends
@@ -272,7 +278,7 @@ integrations/human_interface -> framework contracts  # planned
 
 约束：
 
-- `agent_core`、`pipelines`、`runtimes` 和 `environments/base.py` 不 import `evals` 或 `integrations`。
+- `agent_core`、`pipelines`、`runtimes`、`observability` 和 `environments/base.py` 不 import `evals` 或 `integrations`。
 - `agent_core`、`pipelines`、`runtimes` 和 `environments/base.py` 不 import ROS2、LangGraph、OpenAI SDK 或 benchmark SDK。
 - `environments/benchmarks` 可以依赖对应 benchmark SDK，并负责 observation、action 和 result 的类型转换。
 - `evals/benchmarks` 可以依赖具体 benchmark environment，但 environment 不反向依赖 evaluator。

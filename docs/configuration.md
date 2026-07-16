@@ -155,6 +155,29 @@ memory:
 
 启用 key-event artifacts 后，Memory 将关键事件 frames 保存到 Runtime session 的 `artifacts/key_events/`。`camera_keys` 必须与 Environment observation 实际字段一致。
 
+## Episode Observability
+
+Agent trace 和视频属于 Runtime session artifacts，通过可选 recorder 配置：
+
+```yaml
+runtime:
+  class_path: omniroboagent.runtimes.SyncRuntime
+  init_args:
+    output_dir: runs/example/traces
+    observability:
+      class_path: omniroboagent.observability.LocalEpisodeRecorder
+      init_args:
+        record_agent_trace: true
+        record_video: true
+        video_camera_keys:
+          - camera.front
+          - camera.wrist
+        video_fps: 4
+        ffmpeg_path: ffmpeg
+```
+
+`record_agent_trace` 和 `record_video` 可以独立关闭。启用视频时，camera keys 必须匹配 observation，系统还需要 FFmpeg。完整输出和错误语义见 [Observability](components/observability.md)。
+
 ## Checked-in Examples
 
 `configs/agents/` 和 `configs/runs/` 是当前 benchmark smoke 的可运行示例，其中的 model ID、endpoint、port、GPU ID、task subset 和 limits 只在对应文件范围内有效：

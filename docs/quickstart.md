@@ -76,6 +76,9 @@ Runtime 为每个 session 写：
 <runtime.output_dir>/<session_id>/
 ├── result.json
 ├── trace.jsonl
+├── agent_trace.jsonl          # observability enabled
+├── episode.mp4                # video enabled and frames available
+├── artifact_manifest.json     # observability enabled
 └── artifacts/
 ```
 
@@ -88,4 +91,4 @@ Benchmark evaluator 通常另外写：
 └── resolved_config.json    # evaluator 支持时
 ```
 
-输出覆盖范围见 [Runtime](components/runtime.md) 和 [Evaluation](components/evaluation.md)。下一步阅读 [Configuration](configuration.md)。
+仓库的 EB-ALFRED 和 RoboCasa composite smoke RunConfig 已启用本地 Agent trace 与视频记录。视频要求系统可执行 `ffmpeg`；当前每个 Runtime step 记录一帧。输出覆盖范围见 [Runtime](components/runtime.md)、[Observability](components/observability.md) 和 [Evaluation](components/evaluation.md)。下一步阅读 [Configuration](configuration.md)。
