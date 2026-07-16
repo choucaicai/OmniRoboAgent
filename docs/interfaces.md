@@ -64,7 +64,7 @@ Planner 要求 response content 是 JSON object。该对象可以使用 `skill`�
 
 `SubtaskSkillPlanner` 用于 RoboCasa composite task。它从 observation 的 `available_skills` 中选择 macro skill，生成具体 `subtask`、结构化 `grounded_arguments` 和可观察的 `expected_outcome`，并通过 AgentConfig 中的可信 `skill_ids` 映射补充整数 ID。Planner 只提出 execution proposal，不判断 subtask completion；continue 由 Pipeline 保持同一个 `active_execution` 实现，不依赖模型重复相同 wording。
 
-两个 LLM Planner 都显式读取 `memory_context.summary`、最近 10 条 `recent_events` 和 `working_frames`。summary/events 进入 text prompt，working frames 作为按时间排序的 image content；缺少 memory context 时行为保持兼容。
+两个 LLM Planner 都显式读取 `memory_context.summary`、最近 10 条 `recent_events`、最近 10 条 `key_events` 和 `working_frames`。summary/events 进入 text prompt，working frames 作为按时间排序的 image content；key-event artifact references 默认只作为文本 metadata，不自动加载全部历史图片。缺少 memory context 时行为保持兼容。
 
 模型 JSON 字段为 `reasoning`、`skill`、`subtask`、`grounded_arguments` 和 `expected_outcome`。Planner 返回值额外包含本地映射的 `skill_id`、原始 `model_output` 和 `raw_response`；`reasoning` 用于 trace，不作为 GR00T language instruction。Composite VLA request 使用 `subtask` 覆盖 `annotation.human.task_description`。
 
@@ -144,7 +144,7 @@ task_success / task_progress / last_action_success / environment_done
 
 benchmark `task_success`、environment done 和 action failure 优先于视觉模型。配置 `backend` 后，Verifier 比较 action 前后 observation 与 active execution 的 `expected_outcome`；`check_interval_chunks` 控制视觉语义检查频率。未配置 backend 时，成功执行且没有结构化 completion evidence 的 action 返回 `in_progress`。
 
-`SubtaskVerifier` 的 VLM 请求显式包含 `memory_context.summary`、最近 events 和 working frames。Pipeline 只负责传递 context，不读取图像或 summary 判断 completion。
+`SubtaskVerifier` 的 VLM 请求显式包含 `memory_context.summary`、最近 transitions、最近 key events 和 working frames。Pipeline 只负责传递 context，不读取图像或 summary 判断 completion。
 
 ## Memory
 
@@ -158,23 +158,51 @@ close() -> None
 
 - `InMemoryMemory`：保存当前 episode 的 event 列表，reset 时清空。
 - `JsonlMemory`：append-only JSONL；array、image 和自定义对象记录摘要。
-- `TieredMemory`：bounded visual working frames、structured long-term events 和 bounded deterministic text summary。
+- `TieredMemory`：bounded visual working frames、bounded recent transitions、structured long-term key events 和 bounded deterministic text summary。
 
 `TieredMemory.recall()` 返回：
 
 ```text
 working_frames
 recent_events
+key_events
 summary
 ```
 
-`visual_window_size` 默认 `4`，按 observation timestep 计数，每个 timestep 可以包含多 camera。raw frames 只存在 bounded working deque；event JSONL 不保存 raw observation、action tensor 或 provider raw response。`event_path` 可选，未配置时 event memory 保存在当前 Agent 进程中。
+`visual_window_size` 默认 `4`，按 observation timestep 计数，每个 timestep 可以包含多 camera。`recent_event_limit` 限制当前 session 的普通 transition；`key_event_limit` 限制每次 recall 返回的长期关键事件数量。session reset 会清空 working frames、recent events 和当前 summary，但保留 key events。
 
-Pipeline 使用 `session_id` 查询当前 episode context，避免默认把其他 episode 的 event 注入 Planner/Verifier；调用方显式设置其他 scope 时仍可访问长期 event memory。
+Pipeline 为 event 提供确定性 `event_type`。当前关键类型为：
+
+```text
+subtask_completed
+subtask_failed
+recovery_started
+fallback_used
+execution_aborted
+task_success
+task_failed
+```
+
+`save_key_event_artifacts=true` 时，Runtime 通过 state 提供 session-scoped `artifact_dir`。Memory 只在关键事件发生时保存当前 observation 中配置的 camera frame：
+
+```text
+<runtime.output_dir>/<session_id>/artifacts/key_events/
+├── events.jsonl
+└── step-<step>-<sequence>-subtask_completed/
+    ├── video.robot0_agentview_left.png
+    ├── video.robot0_agentview_right.png
+    └── video.robot0_eye_in_hand.png
+```
+
+`events.jsonl` 保存 event ID、execution/attempt identity、skill/subtask、expected outcome、reason、confidence、evidence、task progress、recovery action 和 artifact references，不内联 raw observation、action tensor 或 provider raw response。支持 PIL image、NumPy-like array、bytes 和本地图片路径；不支持的 frame 类型会产生明确异常。
+
+`event_path` 仍是可选的全 transition append-only JSONL，不受关键事件 artifact 开关影响。未配置 `save_key_event_artifacts` 时，key events 只保存在当前 Agent 进程中。
+
+Pipeline 使用 `session_id` 查询当前 episode context，避免默认把其他 episode 的 key event 注入 Planner/Verifier；调用方显式设置 `scope=global` 时仍可访问跨 session key events。
 
 Runtime 自己始终写 episode trace，因此 Memory 是否持久化不会影响评测结果文件。
 
-`JsonlMemory` 和 `TieredMemory.event_path` 不会在构造时清空已有文件；重复使用同一路径会继续 append。Runtime session trace 则会在同名 session 开始时清空。
+`JsonlMemory`、`TieredMemory.event_path` 和 key-event `events.jsonl` 都使用 append-only 写入。Runtime session trace 则会在同名 session 开始时清空。
 
 ## Environment
 

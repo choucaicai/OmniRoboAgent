@@ -69,6 +69,8 @@ def test_robocasa_composite_config_uses_independent_subtask_verifier() -> None:
     assert verifier.check_interval_chunks == 8
     assert isinstance(memory, TieredMemory)
     assert memory.visual_window_size == 4
+    assert memory.key_event_limit == 20
+    assert memory.save_key_event_artifacts is True
     planner.close()
     verifier.close()
     memory.close()

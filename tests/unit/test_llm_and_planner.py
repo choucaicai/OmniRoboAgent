@@ -95,6 +95,12 @@ def test_language_skill_planner_uses_explicit_memory_context() -> None:
             "memory_context": {
                 "summary": "the mug was last seen near the sink",
                 "recent_events": [{"status": "in_progress"}],
+                "key_events": [
+                    {
+                        "event_type": "subtask_completed",
+                        "text_summary": "opened the cabinet",
+                    }
+                ],
                 "working_frames": [{"cameras": {"head": memory_image}}],
             },
         }
@@ -102,6 +108,7 @@ def test_language_skill_planner_uses_explicit_memory_context() -> None:
 
     content = backend.inputs["messages"][1]["content"]
     assert "mug was last seen" in content[0]["text"]
+    assert "opened the cabinet" in content[0]["text"]
     assert content[-1]["image_url"]["url"] is memory_image
 
 

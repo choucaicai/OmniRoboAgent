@@ -17,5 +17,6 @@ class InMemoryMemory(Memory):
         return {
             "working_frames": [],
             "recent_events": list(self.events),
+            "key_events": [],
             "summary": "",
         }

@@ -46,16 +46,20 @@ memory:
   init_args:
     visual_window_size: 4
     recent_event_limit: 20
+    key_event_limit: 20
     summary_max_chars: 4096
+    save_key_event_artifacts: true
     camera_keys:
       - video.robot0_agentview_left
       - video.robot0_agentview_right
       - video.robot0_eye_in_hand
 ```
 
-`event_path` 是可选 append-only JSONL；不配置时长期 event memory 保留在当前 Agent 进程中。每个 Runtime session 会清空 working frames 和当前 summary，但保留 event memory。
+`recent_event_limit` 限制当前 session 的普通 transition，`key_event_limit` 限制 recall 返回的长期关键事件数量。每个 Runtime session 会清空 working frames、recent events 和当前 summary，但保留 key events。
 
-`DirectPipeline` 和 `SkillExecutionPipeline` 会在 plan/verify 阶段显式生成 `memory_context`。当前 RoboCasa composite Planner/Verifier 会消费最近 4 个 timestep 的三路 camera frames、最近 20 条结构化 events 和 bounded summary。
+`save_key_event_artifacts` 默认 `false`。启用后，subtask complete/fail、recovery、fallback、abort 和 task terminal 会在 Runtime session 目录下写 `artifacts/key_events/events.jsonl` 与当前 camera PNG。普通 `in_progress` transition 不写图片。`event_path` 仍是可选的全 transition append-only JSONL。
+
+`DirectPipeline` 和 `SkillExecutionPipeline` 会在 plan/verify 阶段显式生成 `memory_context`。当前 RoboCasa composite Planner/Verifier 会消费最近 4 个 timestep 的三路 camera frames、最近 20 条 transitions、最近 20 条 key events 和 bounded summary。历史关键帧默认不重新注入 prompt，只传递 artifact references。
 
 SkillBackend 支持 registry 稳定名称：
 

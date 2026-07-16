@@ -11,7 +11,12 @@ class Memory(ABC):
         raise NotImplementedError
 
     def recall(self, query: dict[str, Any]) -> dict[str, Any]:
-        return {"working_frames": [], "recent_events": [], "summary": ""}
+        return {
+            "working_frames": [],
+            "recent_events": [],
+            "key_events": [],
+            "summary": "",
+        }
 
     def healthcheck(self) -> dict[str, Any]:
         return {"healthy": True}

@@ -162,11 +162,15 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 ### Memory
 
-当前提供 `InMemoryMemory`、`JsonlMemory` 和 `TieredMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working memory，但不删除长期 event memory；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
+当前提供 `InMemoryMemory`、`JsonlMemory` 和 `TieredMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working frames、recent events 和 summary，但不删除长期 key events；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
 
-`TieredMemory` 组合 bounded visual working memory、structured event memory 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；raw frame 不进入长期 event JSONL。长期 record 只保存 execution/attempt identity、transition、reason、confidence、evidence summary 和 artifact references。
+`TieredMemory` 组合 bounded visual working memory、bounded recent transitions、长期 structured key events 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；普通 transition 只进入 bounded recent deque，可选 `event_path` 继续保存全 transition JSONL。
 
-Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events` 和 `summary`。LLM Planner 将 summary/recent events 放入文本 prompt，并把 working frames 作为独立 image content；visual SubtaskVerifier 同样显式消费这些字段。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md)。
+Pipeline 根据已经确定的 transition 生成 `subtask_completed`、`subtask_failed`、`recovery_started`、`fallback_used`、`execution_aborted`、`task_success` 或 `task_failed` event type。Memory 不重新判断状态，只保存 reason、confidence、evidence、expected outcome、task progress 和 recovery action。
+
+启用 key-event artifacts 后，Runtime 在 state 中提供 session-scoped `artifact_dir`；Memory 将关键事件发生后的配置 camera frame 保存为 PNG，并在同目录 append `events.jsonl`。raw frame 不进入 JSONL，长期 record 只保存 execution/attempt identity、文本 evidence 和 artifact references。
+
+Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events`、`key_events` 和 `summary`。LLM Planner/Verifier 将 summary、recent/key events 放入文本 prompt，并把 working frames 作为独立 image content；历史 key-event PNG 默认不自动加载。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md) 和 [0010 plan](../plans/0010-key-event-memory.md)。
 
 ## 5. Data Policy
 
@@ -174,7 +178,7 @@ Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_
 
 | Data | Policy |
 |---|---|
-| Runtime state | 普通可修改 `dict`，基础字段为 `task`、`observation`、`step` |
+| Runtime state | 普通可修改 `dict`，基础字段为 `task`、`observation`、`step`；当前同步 Runtime 还提供 `session_id` 和 session-scoped `artifact_dir` |
 | Pipeline graph state | Runtime state 中由当前 Pipeline 拥有并验证的普通字段；不包含 Agent、Environment、model client 或通用 Graph 对象 |
 | Planner output | `Any`，由当前 Pipeline 解释 |
 | SkillBackend output | `Any`，直接交给 Environment 执行 |

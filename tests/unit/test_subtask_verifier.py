@@ -91,6 +91,12 @@ def test_subtask_verifier_calls_vlm_with_before_after_images() -> None:
     inputs["memory_context"] = {
         "summary": "the door was moving toward closed",
         "recent_events": [{"status": "in_progress"}],
+        "key_events": [
+            {
+                "event_type": "subtask_completed",
+                "text_summary": "the cabinet is open",
+            }
+        ],
         "working_frames": [
             {"cameras": {"history": Image.new("RGB", (2, 2), "green")}}
         ],
@@ -104,6 +110,7 @@ def test_subtask_verifier_calls_vlm_with_before_after_images() -> None:
     assert sum(item["type"] == "image_url" for item in content) == 3
     assert "expected_outcome" in content[0]["text"]
     assert "door was moving" in content[0]["text"]
+    assert "cabinet is open" in content[0]["text"]
 
 
 def test_subtask_verifier_defers_semantic_check_by_chunk_interval() -> None:

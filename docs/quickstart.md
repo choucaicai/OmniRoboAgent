@@ -93,6 +93,16 @@ runs/eb_alfred_smoke/
 
 每次使用相同 session id 重跑时会覆盖该 session 的 trace，不会把两次实验拼接到一起。
 
+配置 `TieredMemory(save_key_event_artifacts=true)` 时，Runtime 还会在对应 session 下创建：
+
+```text
+artifacts/key_events/
+├── events.jsonl
+└── step-.../*.png
+```
+
+普通 `in_progress` step 不保存图片，只有完成、失败、recovery、fallback、abort 和 task terminal 等关键事件会产生 artifact。
+
 当前 `base[0]` 的已验证 smoke 结果是 `progress=0.3333`、14 steps，任务未成功完成。该结果用于验证闭环和记录路径，不是 Planner 效果基线。
 
 输出当前不会自动保存 resolved YAML 和 package version。正式实验需要同时保留所用的 `configs/agents/*.yaml` 和 `configs/runs/*.yaml`。

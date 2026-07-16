@@ -6,6 +6,7 @@ from omniroboagent.agent_core import (
     DefaultAgent,
     InMemoryMemory,
     Planner,
+    TieredMemory,
     Verifier,
 )
 from omniroboagent.backends.skills import LanguageSkillBackend
@@ -89,6 +90,7 @@ def test_runtime_success_writes_trace(tmp_path: Path) -> None:
 
     assert result["success"] is True
     assert result["termination_reason"] == "task_success"
+    assert result["last_output"]["event_type"] == "task_success"
     assert result["steps"] == 1
     assert environment.closed is True
     trace = Path(result["trace_path"])
@@ -98,6 +100,41 @@ def test_runtime_success_writes_trace(tmp_path: Path) -> None:
         "step",
         "episode_end",
     ]
+
+
+def test_runtime_provides_memory_artifact_directory(tmp_path: Path) -> None:
+    environment = FakeEnvironment(
+        [
+            {
+                "task_success": True,
+                "task_progress": 1.0,
+                "last_action_success": True,
+                "done": True,
+            }
+        ]
+    )
+    agent = DefaultAgent(
+        planner=FakePlanner(),
+        verifier=FakeVerifier(),
+        memory=TieredMemory(
+            camera_keys=[],
+            save_key_event_artifacts=True,
+        ),
+        skill_backend=LanguageSkillBackend(),
+    )
+
+    SyncRuntime(output_dir=tmp_path).run(
+        agent,
+        DirectPipeline(),
+        environment,
+        {"instruction": "find mug"},
+        session_id="session",
+    )
+
+    key_event_path = tmp_path / "session" / "artifacts" / "key_events" / "events.jsonl"
+    assert json.loads(key_event_path.read_text(encoding="utf-8"))["event_type"] == (
+        "task_success"
+    )
 
 
 def test_runtime_replans_after_failed_action(tmp_path: Path) -> None:

@@ -54,6 +54,7 @@ class SyncRuntime(Runtime):
             "observation": None,
             "step": 0,
             "session_id": session_id,
+            "artifact_dir": str(session_dir / "artifacts"),
             "history": [],
         }
         result: dict[str, Any]

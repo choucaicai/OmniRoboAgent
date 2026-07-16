@@ -79,7 +79,9 @@ memory:
   init_args:
     visual_window_size: 4
     recent_event_limit: 20
+    key_event_limit: 20
     summary_max_chars: 4096
+    save_key_event_artifacts: true
     camera_keys:
       - video.robot0_agentview_left
       - video.robot0_agentview_right

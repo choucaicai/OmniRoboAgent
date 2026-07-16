@@ -113,6 +113,7 @@ composite task
   -> atomic GR00T checkpoint
   -> SubtaskVerifier compares before/after evidence
   -> deterministic transition/recovery
+  -> TieredMemory records key event text + current frame artifacts
   -> RoboCasa authoritative success
 ```
 
@@ -189,7 +190,7 @@ reason / confidence / evidence
 
 `SkillExecutionPipeline` 使用 `execution_id`/`attempt_id` 维护 active execution。`in_progress` 继续执行而不调用 Planner；`completed` 关闭 execution 并规划下一 subtask；`failed` 进入 retry/replan/fallback/abort；`uncertain` 先 reverify。`max_chunks_per_skill=27` 是 hard execution budget。
 
-当前 composite AgentConfig 使用 `TieredMemory(visual_window_size=4)`。Planner 和 visual Verifier 会收到同一 episode 最近 4 个 observation timestep 的三路 camera frames、最近 transition events 和 bounded summary。该路径已通过 unit tests 和下面的固定 Qwen+GR00T real smoke。
+当前 composite AgentConfig 使用 `TieredMemory(visual_window_size=4, key_event_limit=20, save_key_event_artifacts=true)`。Planner 和 visual Verifier 会收到同一 episode 最近 4 个 observation timestep 的三路 camera frames、最近 20 条 transition events、最近 20 条 key events 和 bounded summary。完成、失败、recovery、fallback、abort 和 task terminal 会保存当前三路 camera PNG；普通 `in_progress` step 不保存图片。
 
 ### Migrated State-Graph Fixed Smoke
 
@@ -210,6 +211,8 @@ reason / confidence / evidence
 这说明状态控制和可诊断性优于旧流程：Planner 不再每 8 chunks 重复判断，也不会在没有视觉证据时过早切到 placement。但是该 episode 的 success 和 progress 没有提升，主要失败点是 atomic `Pick_Place` policy 没有抓起 straw。K=4 使 Planner 单次 prompt 从首步 642 tokens 增长到后续 5535-5982 tokens；Planner 总 latency 虽下降 13.12 s，12 次 visual verifier 使 episode 总 latency 增加 15.32 s。当前 trace 未记录 verifier backend usage/latency，且本轮未采样 peak RSS。
 
 这不是严格的模型质量 A/B：两次使用相同 checkpoint 和 simulator seed，但 OmniRoboAgent commit、Python dependency set 不同，diffusion policy RNG 也未固定。还需要同 manifest 多 episode matrix。固定 smoke 同时暴露了一个 recovery gap：语义相同的 `Pick_Place` proposal 因 `grounded_arguments` / `expected_outcome` 变化而未触发 repeated-execution loop detection，当前 smoke config 也没有设置 `max_no_progress_steps` 或 `max_replans`。
+
+该 fixed smoke 运行时还没有 key-event PNG persistence，因此历史输出中没有视觉 artifact。当前配置已启用该能力并通过 unit tests，真实 Qwen+GR00T artifact smoke 尚未重跑。
 
 以下是 state-graph 迁移前 40-episode matrix 中 `Qwen3.5-9B` 的实际输出，不是手写示例；这些结果用于历史对照，不代表上面的迁移后 fixed smoke：
 
@@ -312,11 +315,20 @@ runs/robocasa365_<mode>_smoke/
 ├── summary.json
 └── traces/
     └── robocasa-<split>-<task>-<index>/
+        ├── artifacts/
+        │   └── key_events/
+        │       ├── events.jsonl
+        │       └── step-<step>-<event>/
+        │           ├── video.robot0_agentview_left.png
+        │           ├── video.robot0_agentview_right.png
+        │           └── video.robot0_eye_in_hand.png
         ├── result.json
         └── trace.jsonl
 ```
 
-`resolved_config.json` 记录 task/split/seed、component class、Pipeline/Runtime 限制、RoboCasa/robosuite/OmniRoboAgent commit 与 dirty 状态、Python/package version 和 policy server health metadata。`summary.json` 包含 overall/per-task success rate、macro average、success/failure/exception、planner calls、replans、action chunks、environment steps、invalid actions、latency 和 termination reasons。
+`artifacts/key_events/` 只在启用 key-event artifact 的关键 transition 中创建。`events.jsonl` 保存文本 evidence 和 PNG references，不包含 raw image。
+
+`resolved_config.json` 记录 task/split/seed、component class、Pipeline/Runtime/Memory 限制、RoboCasa/robosuite/OmniRoboAgent commit 与 dirty 状态、Python/package version 和 policy server health metadata。`summary.json` 包含 overall/per-task success rate、macro average、success/failure/exception、planner calls、replans、action chunks、environment steps、invalid actions、latency 和 termination reasons。
 
 ## Verified Atomic GR00T Evaluation
 
@@ -377,7 +389,7 @@ Composite 表中的 `invalid_actions` 属于旧 Planner contract，包含没有�
 | P0 | Error and metric taxonomy | Planner contract error 被统计到 `invalid_actions` | 分开记录 `planner_errors`、`policy_errors`、`environment_errors`、contract retries 和对应 termination reason |
 | P0 | Skill contract consistency | GR00T backend 只校验 `skill_id` 类型，不验证 skill/catalog/ID 一致性 | 在调用 policy 前验证 Planner skill、RunConfig catalog 和 trusted ID mapping 一致 |
 | P1 | Experiment reproducibility | 当前 checkpoint 依赖未发布的 `model_moe_v1` 和 data config；12 组 atomic/composite matrix 的临时 RunConfig 未纳入版本控制；`resolved_config.json` 只保存部分参数；policy RNG 未固定 | 固定可获取 source、environment lock、checkpoint digest 和 policy seed；提交 experiment manifest/RunConfig，并保存完整 resolved AgentConfig/RunConfig、Planner prompt/schema、skill map 和 camera 参数 |
-| P1 | Bounded memory and diagnostics | `TieredMemory(K=4)` 已限制 visual working set，fixed smoke 最多保留 12 张 frame；尚无 peak RSS、关键视觉 artifact 和 verifier usage trace | 使用 peak-RSS sampler 验证长 episode 内存上界，保存关键帧引用，并记录 Planner/Verifier context、token 和 latency |
+| P1 | Bounded memory and diagnostics | `TieredMemory(K=4)` 已限制 visual working set；key-event JSONL/PNG 已实现并通过 unit tests，但尚未完成 real smoke、peak RSS 和 verifier usage trace | 重跑 fixed smoke 核对 artifact 数量与内容，使用 peak-RSS sampler 验证内存上界，并记录 Planner/Verifier context、token 和 latency |
 | P1 | Resumable evaluation | Evaluator 和 Runtime 启动时会重建 `episodes.jsonl` / trace，长跑中断后不能原地续跑 | 支持 run manifest、跳过已完成 episode，并对 episode、trace/result、summary 和 resolved config 做 atomic write 与一致性检查 |
 | P2 | Formal-scale evaluation | 当前只跑每组 5 tasks、每 task 1 episode，且串行单环境 | 完成 task set x split x policy 的正式 50-rollout protocol、置信区间和可控并行 worker/GPU 调度 |
 | P2 | Additional policy validation | OpenPI 只有 client/server/schema 和 fake protocol test | 使用真实 OpenPI checkpoint 完成与 GR00T 相同 scenario 的 smoke 和 matrix |

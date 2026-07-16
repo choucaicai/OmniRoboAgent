@@ -172,9 +172,19 @@ class RoboCasa365Evaluator:
                         "recent_event_limit",
                         None,
                     ),
+                    "key_event_limit": getattr(
+                        getattr(agent, "memory", None),
+                        "key_event_limit",
+                        None,
+                    ),
                     "summary_max_chars": getattr(
                         getattr(agent, "memory", None),
                         "summary_max_chars",
+                        None,
+                    ),
+                    "save_key_event_artifacts": getattr(
+                        getattr(agent, "memory", None),
+                        "save_key_event_artifacts",
                         None,
                     ),
                 },

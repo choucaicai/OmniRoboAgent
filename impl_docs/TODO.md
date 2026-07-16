@@ -81,6 +81,7 @@
 - [x] `DONE` 将 `BaseAgent` 演进为统一组件 ownership 和 lifecycle 的组合式抽象基类，同时保持 `DefaultAgent` 配置兼容（[计划](plans/0008-composable-agent-base.md)）。
 - [x] `DONE` 实现 bounded visual working memory、长期 event memory 和 bounded text summary 的集中分层 Memory（[计划](plans/0009-tiered-agent-memory.md)）。
 - [x] `DONE` 为 Planner/Verifier 提供显式 memory recall 输入，不允许 Memory 隐式修改 decision 或 Pipeline transition。
+- [x] `DONE` 为 `TieredMemory` 增加关键事件记忆和视觉 artifacts，记录 subtask completion/failure、recovery 和 task terminal，并显式提供给 Planner/Verifier（[计划](plans/0010-key-event-memory.md)）。
 
 ## 6. Backend Support
 
@@ -131,7 +132,7 @@
 - [x] `DONE` 接通 LLM Agent 的 composite-to-atomic skill contract，并完成 `composite_seen` / `composite_unseen` 的 GR00T remote/local split matrix；40 episodes 为 1 success、0 exception，用户文档记录真实 subtask sequence 和失败模式。
 - [x] `DONE` RoboCasa composite Agent 配置已接入独立 visual `SubtaskVerifier`、`TieredMemory(K=4)` 和 structured execution evidence；固定 `DeliverStraw` real smoke 完成 12 次 visual checks，正确关闭 `Open_Door`，但最终 success 仍为 0。
 - [ ] `TODO` 拆分 Planner/policy/Environment/benchmark 错误指标，并验证 macro skill catalog、skill 和 trusted skill ID 一致性。
-- [ ] `TODO` 为 RoboCasa memory/verifier audit 增加 peak RSS、Verifier backend usage/latency 和关键视觉 artifact；调整 semantic-equivalent repeated execution detection，并配置 `max_no_progress_steps` / `max_replans` 后复跑 fixed matrix。
+- [ ] `TODO` 重跑 RoboCasa real smoke 审计 key-event artifact 数量/内容、peak RSS 和 Verifier backend usage/latency；调整 semantic-equivalent repeated execution detection，并配置 `max_no_progress_steps` / `max_replans` 后复跑 fixed matrix。
 - [ ] `TODO` Evaluator resume、completed-episode skip 和 atomic result write 继续在 RoboCasa plan 中跟踪。
 - [ ] `TODO` 使用真实 OpenPI checkpoint 完成相同 task/scenario smoke；当前只有 server/client/schema 和 fake protocol test。
 - [ ] `TODO` 将已验证的 custom GR00T policy source 固定到其他用户可获取的 commit/package，并记录 checkpoint digest、policy RNG、Conda/CUDA/GPU 和 dependency lock。

@@ -103,7 +103,15 @@ class DirectPipeline(Pipeline):
             }
         )
         decision = self._decision(verification)
+        event_type = "transition"
+        if decision == "success":
+            event_type = "task_success"
+        elif decision == "failure":
+            event_type = "task_failed"
+        elif decision == "retry":
+            event_type = "recovery_started"
         event = {
+            "event_type": event_type,
             "planner_output": planner_output,
             "skill": skill,
             "action": action,

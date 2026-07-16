@@ -12,13 +12,13 @@ Status: IN_PROGRESS
 - control state 的唯一真值仍在 Pipeline/Runtime state；Memory 只保存 observation facts、execution events、summary 和 artifact references。
 - Planner/Verifier 只能通过显式 `memory_context`/`recall()` 输入读取 memory，Memory 不暗中修改 proposal 或 transition。
 - 第一阶段使用标准库和现有 JSONL/artifact 机制，不引入 vector database 或 embedding dependency。
-- raw frame 只进入 bounded working set 或独立 artifact；长期 event record 只保存摘要和引用。
+- raw frame 只进入 bounded working set 或独立 artifact；长期 key event record 只保存摘要和引用。
 
 ## Resolved Decisions
 
 - 第一阶段默认视觉窗口 `K=4`，每个 timestep 可包含配置的多 camera；真实 RoboCasa audit 后再调整。
 - 文本 summary 使用 deterministic transition ledger，不调用 LLM。
-- 长期 event memory 保存在进程内结构化列表，可选 append-only JSONL；暂不引入 SQLite 或 semantic index。
+- 长期 key event memory 保存在进程内结构化列表，可选写入 session artifact JSONL；暂不引入 SQLite 或 semantic index。
 
 ## Open Questions
 
@@ -28,14 +28,17 @@ Status: IN_PROGRESS
 
 ## Scope
 
-集中 `TieredMemory` 包含三个明确层次：
+集中 `TieredMemory` 包含四个明确层次：
 
 ```text
 visual_working_memory
   bounded deque[K] of frame/artifact references and observation summaries
 
-event_memory
-  append-only execution/verification/transition records
+recent_events
+  bounded deque[N] of ordinary transition records
+
+key_events
+  long-term salient execution/recovery/terminal records and artifact references
 
 text_summary
   bounded task state, completed/failed executions, blockers and salient facts
@@ -52,9 +55,9 @@ artifact_refs / timestamp
 
 生命周期：
 
-- `reset(session_id)` 清空 episode working frames 和当前 summary，不删除长期 event memory。
+- `reset(session_id)` 清空 episode working frames、recent events 和当前 summary，不删除长期 key events。
 - `update(state, event)` 接收 Pipeline 已形成的结构化 event，提取 bounded summary 和 artifact reference。
-- `recall(query)` 返回命名分区，不直接拼接 prompt：`working_frames`、`recent_events`、`summary`。
+- `recall(query)` 返回命名分区，不直接拼接 prompt：`working_frames`、`recent_events`、`key_events`、`summary`。
 - `close()` flush 持久化 store；不关闭 Planner/Verifier backend。
 
 ## Out of Scope
@@ -76,10 +79,12 @@ artifact_refs / timestamp
    - [ ] 使用 peak-RSS 采样器重复运行，并在 verifier trace 中记录 backend usage/latency。
    - [ ] 运行相同 manifest 的多 episode matrix，区分控制逻辑改善与 success-rate 改善。
 7. [x] 完成 memory context 接入后更新 architecture、configuration、TODO 和 change record。
+8. [x] 增加关键事件分区和 current-frame visual artifacts（[0010 plan](0010-key-event-memory.md)）。
 
 Core implementation record: [2026-07-15 tiered agent memory](../changes/2026-07-15-tiered-agent-memory.md).
 Context integration record: [2026-07-15 memory context integration](../changes/2026-07-15-memory-context-integration.md).
 Fixed smoke record: [2026-07-15 tiered memory RoboCasa smoke](../changes/2026-07-15-tiered-memory-robocasa-smoke.md).
+Key event record: [2026-07-16 key event memory](../changes/2026-07-16-key-event-memory.md).
 
 ## RoboCasa Fixed Smoke Audit
 
@@ -115,10 +120,10 @@ Verified observations:
 ## Acceptance Criteria
 
 - working frames 数量始终不超过配置的 `K`。
-- 长期 event memory 不内联 raw frame、action tensor 或 provider raw response。
+- 长期 key event memory 不内联 raw frame、action tensor 或 provider raw response。
 - summary 有明确长度上限和更新时机。
 - recall 返回稳定命名字段，并且不改变 Pipeline graph state。
-- episode reset 后 working memory 清空，长期 event record 保留。
+- episode reset 后 working frames、recent events 和 summary 清空，长期 key event record 保留。
 
 ## Risks
 

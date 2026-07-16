@@ -166,6 +166,7 @@ class SubtaskVerifier(Verifier):
         memory_context = inputs.get("memory_context")
         if isinstance(memory_context, Mapping):
             recent_events = memory_context.get("recent_events", [])
+            key_events = memory_context.get("key_events", [])
             prompt["memory_context"] = to_jsonable(
                 {
                     "summary": memory_context.get("summary", ""),
@@ -173,6 +174,9 @@ class SubtaskVerifier(Verifier):
                         recent_events[-10:]
                         if isinstance(recent_events, list)
                         else recent_events
+                    ),
+                    "key_events": (
+                        key_events[-10:] if isinstance(key_events, list) else key_events
                     ),
                 }
             )

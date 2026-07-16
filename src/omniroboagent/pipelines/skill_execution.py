@@ -443,6 +443,25 @@ class SkillExecutionPipeline(DirectPipeline):
             environment_result.get("executed_steps", 0)
         )
         evidence_summary = self._evidence_summary(verification)
+        event_type = "transition"
+        if next_status == "task_success":
+            event_type = "task_success"
+        elif decision == "failure":
+            event_type = (
+                "task_failed"
+                if termination_reason == "environment_done"
+                else "execution_aborted"
+            )
+        elif recovery_action == "replan":
+            event_type = "subtask_failed"
+        elif recovery_action == "retry_current":
+            event_type = "recovery_started"
+        elif recovery_action == "fallback":
+            event_type = "fallback_used"
+        elif next_status == "plan":
+            event_type = "subtask_completed"
+        elif next_status == "failed":
+            event_type = "subtask_failed"
         state.setdefault("history", []).append(
             {
                 "step": state["step"],
@@ -471,6 +490,7 @@ class SkillExecutionPipeline(DirectPipeline):
         )
 
         event = {
+            "event_type": event_type,
             "planner_output": planner_output,
             "planner_called": planner_called,
             "replanned": replanned,

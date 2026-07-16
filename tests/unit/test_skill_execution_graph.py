@@ -173,6 +173,7 @@ def test_completed_execution_is_recorded_and_next_step_plans() -> None:
     first = pipeline.step(agent, environment, state)
 
     assert first["next_status"] == "plan"
+    assert first["event_type"] == "subtask_completed"
     assert state["active_execution"] is None
     assert state["completed_executions"][0]["execution_id"] == "session:1"
 
@@ -199,6 +200,7 @@ def test_failed_execution_retries_current_attempt_then_replans() -> None:
     first = pipeline.step(agent, environment, state)
 
     assert first["recovery_action"] == "retry_current"
+    assert first["event_type"] == "recovery_started"
     assert state["active_execution"]["execution_id"] == "session:1"
     assert state["active_execution"]["attempt_id"] == "session:1:attempt:2"
     assert state["failed_executions"] == []
@@ -207,6 +209,7 @@ def test_failed_execution_retries_current_attempt_then_replans() -> None:
     second = pipeline.step(agent, environment, state)
 
     assert second["recovery_action"] == "replan"
+    assert second["event_type"] == "subtask_failed"
     assert state["active_execution"] is None
     assert state["failed_executions"][0]["attempt_count"] == 2
 
@@ -245,6 +248,7 @@ def test_task_success_terminates_and_cleans_active_execution() -> None:
     output = SkillExecutionPipeline().step(agent, environment, state)
 
     assert output["success"] is True
+    assert output["event_type"] == "task_success"
     assert output["termination_reason"] == "task_success"
     assert state["active_execution"] is None
     assert len(state["completed_executions"]) == 1
@@ -266,6 +270,7 @@ def test_chunk_budget_closes_execution_after_one_action_per_step() -> None:
 
     assert output["transition_reason"] == "chunk budget exhausted"
     assert output["recovery_action"] == "replan"
+    assert output["event_type"] == "subtask_failed"
     assert state["active_execution"] is None
     assert state["failed_executions"][0]["chunk_count"] == 2
     assert environment.calls == 2
@@ -384,6 +389,7 @@ def test_repeated_execution_loop_ignores_subtask_wording() -> None:
 
     assert output["transition_reason"] == "repeated execution loop detected"
     assert output["recovery_action"] == "abort"
+    assert output["event_type"] == "execution_aborted"
     assert environment.calls == 2
 
 
