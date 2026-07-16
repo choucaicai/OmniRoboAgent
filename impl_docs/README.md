@@ -25,7 +25,8 @@ impl_docs/
 │   ├── 0007-skill-execution-state-graph.md
 │   ├── 0008-composable-agent-base.md
 │   ├── 0009-tiered-agent-memory.md
-│   └── 0010-key-event-memory.md
+│   ├── 0010-key-event-memory.md
+│   └── 0011-user-doc-information-architecture.md
 └── changes/
     ├── README.md
     ├── 2026-07-11-conda-environment.md
@@ -49,7 +50,9 @@ impl_docs/
     ├── 2026-07-15-tiered-agent-memory.md
     ├── 2026-07-15-memory-context-integration.md
     ├── 2026-07-15-tiered-memory-robocasa-smoke.md
-    └── 2026-07-16-key-event-memory.md
+    ├── 2026-07-16-key-event-memory.md
+    ├── 2026-07-16-user-doc-skill-generality.md
+    └── 2026-07-16-user-doc-information-architecture.md
 ```
 
 ## Responsibilities

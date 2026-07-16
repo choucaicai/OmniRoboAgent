@@ -43,7 +43,7 @@ which uv
 uv pip install --python "$CONDA_PREFIX/bin/python" --editable . --group dev
 ```
 
-当前机器已安装的 `uv` 路径是 `/home/zzz/anaconda3/envs/omniagent/bin/uv`。若新环境中没有 `uv`，可先执行 `conda install -c conda-forge uv`。
+若环境中没有 `uv`，可先执行 `conda install -c conda-forge uv`，或按 [uv 官方安装说明](https://docs.astral.sh/uv/getting-started/installation/) 安装。
 
 可选的 OpenPI client 也安装到 `omniagent`：
 
@@ -98,7 +98,7 @@ git clone https://huggingface.co/datasets/EmbodiedBench/EB-ALFRED \
 
 ## Start
 
-先启动配置对应的 OpenAI-compatible vLLM server。默认 endpoint 是 `http://127.0.0.1:8000`，模型名是 `Qwen3.5-9B`；示例命令见 [SERVER.md](SERVER.md)。服务启动后检查：
+先准备 AgentConfig 所需的 model backend。当前内置 `OpenAICompatibleLLMBackend` 可以连接满足相应 endpoints 和 model capabilities 的本地 server、hosted API 或 gateway；其他协议可以实现自定义 `LLMBackend`。`configs/agents/eb_alfred.yaml` 中的 endpoint/model 是已验证 smoke example，不是项目级默认；[SERVER.md](SERVER.md) 只提供其中一种本地 serving 示例。配置完成后检查：
 
 ```bash
 conda activate omniagent-eb
@@ -127,7 +127,8 @@ RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/
 - [在线文档](https://choucaicai.github.io/OmniRoboAgent/)
 - [快速开始](docs/quickstart.md)
 - [配置说明](docs/configuration.md)
-- [接口文档](docs/interfaces.md)
+- [Agent Core](docs/agent_core/README.md)
+- [Framework Components](docs/interfaces.md)
 - [自定义组件](docs/custom_components.md)
 - [整体架构](impl_docs/architecture/overview.md)
 

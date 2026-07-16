@@ -17,7 +17,7 @@
 ## 1. Project Foundation
 
 - [x] `DONE` 创建项目级 `AGENTS.md`。
-- [x] `DONE` 创建文档维护结构和项目规则。
+- [x] `DONE` 创建并维护面向通用框架用户的 `docs/` / `impl_docs/` 文档 skill 与项目规则。
 - [x] `DONE` 编写整体架构设计文档。
 - [x] `DONE` 创建 Python package 和 `pyproject.toml`。
 - [x] `DONE` 创建最小命令行入口。
@@ -26,6 +26,7 @@
 - [x] `DONE` 配置 benchmark submodule，并在根 README 记录 clone、安装和启动流程。
 - [x] `DONE` 使用 Docsify 将 `docs/` 作为 GitHub Pages Markdown 文档站。
 - [x] `DONE` 将 `impl_docs/` 和 `docs/` 与当前实现、配置及 smoke 结果同步（[计划](plans/0002-documentation-sync.md)）。
+- [x] `DONE` 按通用框架使用路径重组用户文档，并拆分 Agent Core 与其他 framework components（[计划](plans/0011-user-doc-information-architecture.md)）。
 - [x] `DONE` 按已确认的 package architecture 重组 core 与 integrations，保持现有行为不变（[计划](plans/0003-package-architecture.md)）。
 - [x] `DONE` 将 Agent Core 重组为按组件类型划分的子 packages（[计划](plans/0004-agent-core-subpackages.md)）。
 - [x] `DONE` 拆分 benchmark evaluation、environment 和 external integration ownership（[计划](plans/0005-eval-environment-ownership.md)）。

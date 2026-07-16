@@ -103,7 +103,7 @@ Atomic 配置中，`model_moe_v1` 要求 planner skill 是 concrete RoboCasa tas
 
 ## Composite Agent With Atomic GR00T Skills
 
-Composite 配置保留 RoboCasa composite task 作为 Environment reset 和 success metric 的对象，由 `Qwen3.5-9B` 选择 atomic macro skill 和具体 subtask：
+Composite 配置保留 RoboCasa composite task 作为 Environment reset 和 success metric 的对象，由配置的 multimodal Planner model 选择 atomic macro skill 和具体 subtask：
 
 ```text
 composite task
@@ -133,7 +133,7 @@ Planner structured output 包含 `skill`、`subtask`、`grounded_arguments` 和 
 | `Turn_Lever` | 10 |
 | `Twist_Knob` | 11 |
 
-先按 [SERVER.md](../SERVER.md) 启动 `Qwen3.5-9B` OpenAI-compatible endpoint。Remote GR00T server 启动后运行：
+先启动 AgentConfig 对应的 model service；[SERVER.md](../SERVER.md) 记录当前 verified Qwen/vLLM setup，但不是唯一可用 provider 或 serving stack。Remote GR00T server 启动后运行：
 
 ```bash
 conda activate robocasa
@@ -147,7 +147,7 @@ omniroboagent run \
 
 ### Planner Output And Real Subtask Examples
 
-`Qwen3.5-9B` 每次只生成一个当前子任务。模型 structured output 不包含 `skill_id`：
+配置的 Planner model 每次只生成一个当前子任务。模型 structured output 不包含 `skill_id`：
 
 ```json
 {

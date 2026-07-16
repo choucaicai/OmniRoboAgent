@@ -44,7 +44,7 @@ State actual commands and results. Explicitly list checks that were not run and 
 - Use repository-relative paths and valid local Markdown links.
 - Distinguish current behavior, planned work, and historical changes.
 - Update existing plans and TODO entries instead of creating duplicate status sources.
-- Keep runnable usage guidance in `tutorial_docs/`.
+- Keep runnable usage guidance in `docs/`.
 - Preserve unrelated user edits and avoid retrospective rewrites unless required for correctness.
 
 ## Verification

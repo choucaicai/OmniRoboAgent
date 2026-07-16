@@ -2,6 +2,8 @@
 
 ## Fixed Versions
 
+以下是当前 verified smoke combination，不是 OmniRoboAgent 对 model provider、endpoint 或 hardware 的项目级默认：
+
 - EmbodiedBench: `9be4e980e9cd6bcb38373cd4aab7c32724bdd401`
 - EB-ALFRED dataset: `af55cc721725ed058830fd7a8aee66c1f69efbaa`
 - Python: `3.11`
@@ -64,9 +66,9 @@ Xvfb 使用 Mesa llvmpipe 软件渲染。当前 `base[0]` 实测完成 14 个环
 
 RunConfig 中的 `display: 1` 用于设置 EB-ALFRED module 的 X display，运行进程仍需要对应的 `DISPLAY=:1` 环境变量。项目脚本会同时处理两者的默认配置。
 
-## vLLM
+## Model Service
 
-按照仓库中的 [`SERVER.md`](https://github.com/choucaicai/OmniRoboAgent/blob/master/SERVER.md) 启动模型。检查：
+先启动 AgentConfig 对应的 model service。当前 `OpenAICompatibleLLMBackend` 不绑定具体 serving stack；服务需要满足配置所需的 OpenAI-compatible endpoints、multimodal input 和 structured output 能力。仓库 [`SERVER.md`](https://github.com/choucaicai/OmniRoboAgent/blob/master/SERVER.md) 是当前 verified vLLM example，不是 EB-ALFRED 或 OmniRoboAgent 的固定依赖。检查：
 
 ```bash
 omniroboagent health --agent-config configs/agents/eb_alfred.yaml
@@ -171,4 +173,4 @@ extra_body:
     enable_thinking: false
 ```
 
-仍失败时检查 `max_tokens`、vLLM structured output 支持和 episode trace 中保存的原始 response。
+仍失败时检查 `max_tokens`、model service 的 structured output 支持和 episode trace 中保存的原始 response。

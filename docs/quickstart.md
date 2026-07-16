@@ -3,48 +3,43 @@
 ## 1. Install
 
 ```bash
-cd /home/zzz/vla_code/OmniRoboAgent
+git clone --recurse-submodules https://github.com/choucaicai/OmniRoboAgent.git
+cd OmniRoboAgent
+conda create -n omniagent python=3.11 -y
 conda activate omniagent
 uv pip install --python "$CONDA_PREFIX/bin/python" --editable . --group dev
 ```
 
-依赖由 `uv + pyproject.toml + uv.lock` 管理。基础 `omniagent` 不安装 benchmark SDK；具体 benchmark 在测试时创建独立 Conda 环境。
+基础环境只包含 framework 和开发依赖，不安装 simulator 或 benchmark SDK。需要运行具体 benchmark 时，按对应页面创建独立环境：
 
-## 2. Check vLLM
+- [EB-ALFRED](eb_alfred.md)
+- [RoboCasa365](robocasa365.md)
 
-项目默认配置连接：
+## 2. Choose An AgentConfig
 
-```text
-http://127.0.0.1:8000/v1
-model: Qwen3.5-9B
+AgentConfig 组合 Agent、Planner、Verifier、Memory 和 SkillBackend。模型由 Planner/Verifier 内部的 [Model Backend](components/model_backend.md) 选择，不是 OmniRoboAgent 的固定依赖。
+
+使用 `OpenAICompatibleLLMBackend` 时，将 AgentConfig 中的值改为实际 endpoint 和 model ID：
+
+```yaml
+backend:
+  class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+  init_args:
+    base_url: <OPENAI_COMPATIBLE_BASE_URL>
+    model: <MODEL_ID>
 ```
 
-执行：
+该 adapter 可以连接满足所需 OpenAI-compatible endpoints 和 model capabilities 的本地 server、hosted API 或 gateway。其他协议通过自定义 `LLMBackend` 接入。仓库 `configs/agents/*.yaml` 中的具体 endpoint/model 只代表对应 smoke 配置。
+
+配置完成后检查所有 Agent components：
 
 ```bash
-omniroboagent health --agent-config configs/agents/eb_alfred.yaml
+omniroboagent health --agent-config <AGENT_CONFIG>
 ```
 
-成功结果包含：
+healthcheck 不会启动或关闭外部 model/policy server。成功输出中顶层 `healthy` 以及 planner、verifier、memory、skill_backend 的 `healthy` 均为 `true`。
 
-```json
-{
-  "healthy": true,
-  "planner": {
-    "healthy": true,
-    "model": "Qwen3.5-9B"
-  },
-  "skill_backend": {
-    "healthy": true
-  }
-}
-```
-
-本地地址请求不使用系统 HTTP proxy，避免 `127.0.0.1` 被代理转发。
-
-`base_url` 可以写为 `http://127.0.0.1:8000` 或带 `/v1` 的地址，backend 会统一规范为 `/v1`。vLLM 由用户启动和停止，OmniRoboAgent 只检查 `/v1/models` 并管理 HTTP client。
-
-## 3. Run Tests
+## 3. Run Fast Checks
 
 ```bash
 python -m pytest
@@ -53,58 +48,44 @@ ruff format --check src tests
 mypy
 ```
 
-默认测试不启动模型、AI2-THOR、RoboCasa simulator、GR00T 或 OpenPI server。
+默认 tests 不启动外部模型、AI2-THOR、RoboCasa simulator、GR00T 或 OpenPI server。
 
-## 4. Run EB-ALFRED
+## 4. Run A Config
 
-完成 [EB-ALFRED 环境安装](eb_alfred.md) 后执行：
-
-```bash
-bash scripts/run_eb_alfred_xvfb.sh
-```
-
-默认 smoke 配置运行：
-
-- eval set：`base`
-- episode：index `0`
-- 每轮只执行一个 language skill
-- 最大环境步骤：`30`
-- 最大 invalid actions：`10`
-- 输出目录：`runs/eb_alfred_smoke`
-
-脚本默认使用 Conda 环境 `omniagent-eb` 和 `DISPLAY=:1`。若 display 不存在，它会启动 Xvfb；脚本退出时只清理自己启动的 Xvfb。可通过环境变量覆盖：
+通用入口：
 
 ```bash
-DISPLAY_ID=2 CONDA_ENV=omniagent-eb \
-  bash scripts/run_eb_alfred_xvfb.sh configs/runs/eb_alfred_smoke.yaml
+omniroboagent run --config <RUN_CONFIG>
 ```
 
-## 5. Outputs
+RunConfig 选择 AgentConfig、Pipeline、Runtime、Environment、task 或 benchmark evaluator。仓库内当前可运行入口位于 `configs/runs/`。
+
+EB-ALFRED 提供包含 Xvfb 管理的脚本：
+
+```bash
+bash scripts/run_eb_alfred_xvfb.sh configs/runs/eb_alfred_smoke.yaml
+```
+
+RoboCasa 的 simulator/model 环境、assets 和 policy server 需要单独准备，不能在基础环境中直接运行。具体命令见 [RoboCasa365](robocasa365.md)。
+
+## 5. Inspect Outputs
+
+Runtime 为每个 session 写：
 
 ```text
-runs/eb_alfred_smoke/
+<runtime.output_dir>/<session_id>/
+├── result.json
+├── trace.jsonl
+└── artifacts/
+```
+
+Benchmark evaluator 通常另外写：
+
+```text
+<benchmark.output_dir>/
 ├── episodes.jsonl
 ├── summary.json
-└── traces/
-    └── eb-alfred-base-0/
-        ├── result.json
-        └── trace.jsonl
+└── resolved_config.json    # evaluator 支持时
 ```
 
-每次使用相同 session id 重跑时会覆盖该 session 的 trace，不会把两次实验拼接到一起。
-
-配置 `TieredMemory(save_key_event_artifacts=true)` 时，Runtime 还会在对应 session 下创建：
-
-```text
-artifacts/key_events/
-├── events.jsonl
-└── step-.../*.png
-```
-
-普通 `in_progress` step 不保存图片，只有完成、失败、recovery、fallback、abort 和 task terminal 等关键事件会产生 artifact。
-
-当前 `base[0]` 的已验证 smoke 结果是 `progress=0.3333`、14 steps，任务未成功完成。该结果用于验证闭环和记录路径，不是 Planner 效果基线。
-
-输出当前不会自动保存 resolved YAML 和 package version。正式实验需要同时保留所用的 `configs/agents/*.yaml` 和 `configs/runs/*.yaml`。
-
-RoboCasa365 的三种 VLA backend、server 和输出格式见 [RoboCasa365 评测](robocasa365.md)。
+输出覆盖范围见 [Runtime](components/runtime.md) 和 [Evaluation](components/evaluation.md)。下一步阅读 [Configuration](configuration.md)。

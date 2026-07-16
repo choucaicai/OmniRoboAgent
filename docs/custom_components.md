@@ -4,6 +4,38 @@
 
 自定义类必须位于当前 Python 环境可 import 的 module 中，构造参数放在 `init_args`。配置 loader 不做自动 plugin discovery；SkillBackend 额外支持显式 registry 注册。
 
+## Custom LLMBackend
+
+当模型服务不符合当前 OpenAI-compatible adapter 的 endpoints、payload 或鉴权方式时，实现 `LLMBackend`：
+
+```python
+from typing import Any
+
+from omniroboagent.backends.llm import LLMBackend
+
+
+class MyLLMBackend(LLMBackend):
+    def complete(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        return provider_client.complete(inputs)
+
+    def healthcheck(self) -> dict[str, Any]:
+        return {"healthy": provider_client.is_ready()}
+
+    def close(self) -> None:
+        provider_client.close()
+```
+
+在需要模型的 Planner 或 Verifier 内嵌配置：
+
+```yaml
+backend:
+  class_path: my_package.backends.MyLLMBackend
+  init_args:
+    option: value
+```
+
+Backend 负责 provider protocol、timeout、retry 和 client lifecycle；Planner/Verifier 继续负责 prompt、schema 和业务校验。
+
 ## Custom Planner
 
 ```python
@@ -40,6 +72,29 @@ class MyVerifier(Verifier):
 ```
 
 自定义 Pipeline 负责解释 `finished` 和 `action_valid`。Runtime 不读取这些字段。
+
+## Custom Memory
+
+```python
+from typing import Any
+
+from omniroboagent.agent_core import Memory
+
+
+class MyMemory(Memory):
+    def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
+        store.append(event)
+
+    def recall(self, query: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "working_frames": [],
+            "recent_events": store.recent(),
+            "key_events": [],
+            "summary": "",
+        }
+```
+
+Memory 只保存和返回信息，不应在 `recall()` 中直接改写 Planner proposal 或 Pipeline state。
 
 ## Custom SkillBackend
 
@@ -122,6 +177,40 @@ class MyPipeline(Pipeline):
 ```
 
 Runtime 不要求 `decision` 字段。
+
+## Custom Runtime
+
+只有 episode lifecycle 或调度方式确实需要变化时才继承 `Runtime`：
+
+```python
+from typing import Any
+
+from omniroboagent.runtimes import Runtime
+
+
+class MyRuntime(Runtime):
+    def run(self, agent, pipeline, environment, task: Any, **kwargs: Any):
+        # Own the outer episode loop and resource lifecycle here.
+        return {"success": False, "termination_reason": "custom"}
+```
+
+Runtime 不应解释具体 Planner output 或 Verifier status。调用顺序和 transition 属于 Pipeline。
+
+## Custom Benchmark
+
+当前 benchmark runner 没有统一 base class，只要求 stock CLI 调用的对象提供 `run(agent, pipeline, runtime) -> dict`：
+
+```python
+class MyBenchmark:
+    def __init__(self, environment, output_dir: str) -> None:
+        self.environment = environment
+        self.output_dir = output_dir
+
+    def run(self, agent, pipeline, runtime) -> dict:
+        return {"summary": {}, "episodes": []}
+```
+
+RunConfig 的 `benchmark.class_path` 会收到 CLI 注入的 `environment=`。Benchmark 负责 task loop、aggregation 和最终统一关闭复用资源。
 
 ## Custom Agent
 
