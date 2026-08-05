@@ -1,0 +1,68 @@
+/**:
+  ros__parameters:
+    common:
+      time_sync_en: false         # ONLY turn on when external time synchronization is really not possible
+      map_frame: "map"
+
+    preprocess:
+      lidar_type: 1               # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR,
+      scan_line: 4
+      blind: 4.0
+
+    mapping:
+      acc_cov: 0.1
+      gyr_cov: 0.1
+      b_acc_cov: 0.001
+      b_gyr_cov: 0.001
+      fov_degree:    90.0
+      det_range:     60.0
+      extrinsic_est_en:  true      # true: enable the online estimation of IMU-LiDAR extrinsic,
+      extrinsic_T: [0.011, 0.02329, -0.04412]
+      extrinsic_R: [ 1.0, 0.0, 0.0,
+                     0.0, 1.0, 0.0,
+                     0.0, 0.0, 1.0]
+
+    filter_size_map: 0.5 # bigger voxel size
+    sam:
+      # 下采样体素参数
+      odometrySurfLeafSize: 0.4
+      mappingCornerLeafSize: 0.2 #只保留  0.4  0.4  0.4内的一个点
+      mappingSurfLeafSize: 0.4 #0.8
+      filter_size_surf: 0.4
+      globMapVisLeafSize: 0.1 #可视化体素滤波
+
+
+
+      # 运动约束
+      z_tollerance: 1000.0
+      rotation_tollerance: 1000.0
+
+      # 多线程/调度参数
+      numberOfCores: 8
+      mappingProcessInterval: 0.15
+
+      # 周围关键帧选取参数
+      surroundingkeyframeAddingDistThreshold: 1.0
+      surroundingkeyframeAddingAngleThreshold: 0.1
+      surroundingKeyframeDensity: 2.0
+      surroundingKeyframeSearchRadius: 50.0
+
+      # 回环参数
+      loopClosureEnableFlag: false
+      loopClosureFrequency: 1.0
+      surroundingKeyframeSize: 50
+      historyKeyframeSearchRadius: 20.0
+      historyKeyframeSearchTimeDiff: 30.0
+      historyKeyframeSearchNum: 25
+      historyKeyframeFitnessScore: 0.3
+
+    publish:
+      path_en:  true
+      scan_publish_en:  true       # false: close all the point cloud output
+      dense_publish_en: true       # false: low down the points number in a global-frame point clouds scan.
+      scan_bodyframe_pub_en: true  # true: output the point cloud scans in IMU-body-frame
+
+    pcd_save:
+      pcd_save_en: true
+      interval: -1                 # how many LiDAR frames saved in each pcd file;
+                                   # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.

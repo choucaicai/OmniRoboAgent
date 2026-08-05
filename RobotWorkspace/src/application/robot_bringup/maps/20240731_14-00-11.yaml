@@ -1,0 +1,7 @@
+image: 20240731_14-00-11.pgm
+mode: trinary
+resolution: 0.05
+origin: [-5.3, -6.71, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>arm_servo_adapters</name>
+  <version>0.0.1</version>
+  <description>Robot teleoperation adapters with ROS2 and zenoh</description>
+
+  <maintainer email="xxxx@xxx.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <!-- 如果你有 Franka 或其他依赖也可以加 -->
+  <!-- <depend>franka_msgs</depend> -->
+
+</package>

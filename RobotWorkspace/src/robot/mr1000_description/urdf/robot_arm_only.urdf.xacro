@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="mk1000_fr3_arm_with_hand">
+
+  <!-- 参数：机械臂 ID 和前缀，跟你原来的一致 -->
+  <xacro:arg name="arm_id" default="fr3" />
+  <xacro:arg name="arm_prefix" default="mk1000_" />
+
+  <!-- 一个非常简单的 base_link，当成机械臂的基座坐标系 -->
+  <!-- <link name="base_link" /> -->
+
+  <!-- 引入 Franka 的臂和夹爪 xacro -->
+  <xacro:include filename="$(find franka_description)/robots/common/franka_arm.xacro" />
+  <xacro:include filename="$(find franka_description)/end_effectors/common/franka_hand.xacro" />
+  <xacro:include filename="$(find franka_description)/end_effectors/common/utils.xacro" />
+
+  <!-- 机械臂：直接挂在 base_link 上，xyz/rpy 全是 0 -->
+  <xacro:franka_arm 
+      arm_id="$(arg arm_id)"
+      arm_prefix="$(arg arm_prefix)"
+      joint_limits="${xacro.load_yaml('$(find franka_description)/robots/$(arg arm_id)/joint_limits.yaml')}"
+      inertials="${xacro.load_yaml('$(find franka_description)/robots/$(arg arm_id)/inertials.yaml')}"
+      kinematics="${xacro.load_yaml('$(find franka_description)/robots/$(arg arm_id)/kinematics.yaml')}"
+      dynamics="${xacro.load_yaml('$(find franka_description)/robots/$(arg arm_id)/dynamics.yaml')}"
+      connected_to="base_link"
+      xyz="0 0 0"
+      rpy="0 0 0"
+      gazebo="false">
+  </xacro:franka_arm>
+
+  <!-- 夹爪：挂在 link8 上，保持原来的参数 -->
+  <xacro:franka_hand 
+      arm_id="$(arg arm_id)"
+      arm_prefix="$(arg arm_prefix)"
+      connected_to="$(arg arm_prefix)$(arg arm_id)_link8" 
+      ee_id="franka_hand_white"
+      ee_inertials="${xacro.load_yaml('$(find franka_description)/end_effectors/franka_hand/inertials.yaml')}"
+      xyz_ee="0 0 0.002"
+      rpy_ee="0 0 -0.785398163"
+      gazebo="false">
+  </xacro:franka_hand>
+
+</robot>

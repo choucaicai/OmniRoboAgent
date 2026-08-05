@@ -1,0 +1,82 @@
+mk1000:
+  controller_manager:
+    ros__parameters:
+      update_rate: 1000  # Hz
+      lock_memory: true
+      cpu_affinity: 1
+      thread_priority: 98
+      fr3_arm_controller:
+        type: joint_trajectory_controller/JointTrajectoryController
+
+      joint_state_broadcaster:
+        type: joint_state_broadcaster/JointStateBroadcaster
+
+      franka_robot_state_broadcaster:
+        type: franka_robot_state_broadcaster/FrankaRobotStateBroadcaster
+        state_interfaces:
+          robot_state
+
+  franka_robot_state_broadcaster:
+    ros__parameters:
+      arm_id: fr3
+      robot_description_topic: /mk1000/robot_state_publisher #注意这里要的是节点名
+      lock_try_count: 100 # Number of attempts to acquire the lock in a single on_update()
+      lock_sleep_interval: 100 # microseconds sleep between attempts
+      lock_log_error: false #  Log error if lock acquisition fails - false == do not log  
+      lock_update_success: false # return update OK, although lock fails (no update occurs)
+
+
+  fr3_arm_controller:
+    ros__parameters:
+    #is_async: true
+      command_interfaces:
+        - effort
+      state_interfaces:
+        - position
+        - velocity
+      joints:
+        - mk1000_fr3_joint1
+        - mk1000_fr3_joint2
+        - mk1000_fr3_joint3
+        - mk1000_fr3_joint4
+        - mk1000_fr3_joint5
+        - mk1000_fr3_joint6
+        - mk1000_fr3_joint7
+      gains:
+        mk1000_fr3_joint1:
+          p: 600.
+          d: 30.
+          i: 0.
+          i_clamp: 1.
+        mk1000_fr3_joint2:
+          p: 600.
+          d: 30.
+          i: 0.
+          i_clamp: 1.
+        mk1000_fr3_joint3:
+          p: 600.
+          d: 30.
+          i: 0.
+          i_clamp: 1.
+        mk1000_fr3_joint4:
+          p: 600.
+          d: 30.
+          i: 0.
+          i_clamp: 1.
+        mk1000_fr3_joint5:
+          p: 250.
+          d: 10.
+          i: 0.
+          i_clamp: 1.
+        mk1000_fr3_joint6:
+          p: 150.
+          d: 10.
+          i: 0.
+          i_clamp: 1.
+        mk1000_fr3_joint7:
+          p: 50.
+          d: 5.
+          i: 0.
+          i_clamp: 1.
+
+

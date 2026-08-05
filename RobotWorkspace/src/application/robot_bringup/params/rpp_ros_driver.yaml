@@ -1,0 +1,14 @@
+/rpp_ros_driver:
+  ros__parameters:
+    port: /dev/ttyUSB0
+    baud_rate: 230400
+    control_rate: 25
+    motion_model: mecanum
+    wheel_radius: 0.1
+    wheel_base: 0.424
+    wheel_bias: 0.645
+    use_diff_twist: true
+    odom_frame: odom
+    base_frame: base_footprint
+    publish_odom: false
+    publish_odom_tf: false

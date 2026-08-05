@@ -1,0 +1,36 @@
+imu_topic: /livox/imu #imu话题
+lidar_topic: /livox/lidar #雷达话题
+body_frame: lidar_link
+world_frame: local
+lidar_type: livox #雷达类型 rslidar：速腾激光雷达 ，livox：mid360；速腾雷达使用时需要将SDK编译选项需要将点云类型设置为XYZIRT
+print_time_cost: false 
+
+lidar_filter_num: 2
+lidar_min_range: 0.5 #雷达范围，单位：m
+lidar_max_range: 30.0
+scan_resolution: 0.15 #雷达分辨率，单位：m
+map_resolution: 0.3 #地图分辨率，单位：m
+
+cube_len: 300 #地图分块的边长，可能用于区域分割，帮助系统在一定范围内更新地图。
+det_range: 60 #检测范围
+move_thresh: 1.5 #移动阈值，通常用于判断是否需要更新地图。
+
+na: 0.01 #加速度测量噪声的标准差。
+ng: 0.01 #角速度测量噪声的标准差。
+nba: 0.0001 #加速度零偏的标准差。
+nbg: 0.0001 #角速度零偏的标准差。
+
+
+imu_init_num: 20 #IMU初始化所需的样本数目，表示至少需要20次IMU数据用于初始化。
+
+near_search_num: 5 #邻近搜索的数量，可能用于点云匹配中最近邻搜索。
+
+ieskf_max_iter: 5 #ESKF的最大迭代次数，用于估计最优的状态
+
+gravity_align: true #是否进行重力对齐，true 表示在初始化时对齐IMU的重力方向。
+esti_il: false #是否估计雷达相对于IMU的外参（旋转和平移）
+
+r_il: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0] #imu到雷达的旋转矩阵
+t_il: [-0.011, -0.02329, 0.04412] #imu到雷达的平移向量 mid360参数[-0.011, -0.02329, 0.04412]  mr1000 [-0.390, 0.000, 0.534]
+
+lidar_cov_inv: 1000.0 #雷达协方差

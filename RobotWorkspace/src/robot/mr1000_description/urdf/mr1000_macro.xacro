@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot  xmlns:xacro="http://ros.org/wiki/xacro" name="mr1000_descriptionn_macro">
+<xacro:macro name="mr1000_descriptionn_macro">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="0.00535751635735848 -0.00475269926750788 0.286289355349785"
+        rpy="0 0 0" />
+      <mass
+        value="73.3229049522862" />
+      <inertia
+        ixx="1.12507968751992"
+        ixy="-0.00353362302473179"
+        ixz="-0.00068687827386116"
+        iyy="1.32736920331961"
+        iyz="0.00179315512394436"
+        izz="1.81443755191728" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="wheel_LF_LINK">
+    <inertial>
+      <origin
+        xyz="7.33709257794146E-08 5.99538122036947E-07 9.76971648636304E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.128480801908051" />
+      <inertia
+        ixx="3.93723310092569E-05"
+        ixy="1.82829550046287E-10"
+        ixz="-4.54218190438554E-06"
+        iyy="3.67038112753435E-05"
+        iyz="-1.99652333911727E-10"
+        izz="5.19399980479376E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0.945098039215686 0.905882352941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="wheel_LF_joint"
+    type="continuous">
+    <origin
+      xyz="0.212 0.323100000000001 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="wheel_LF_LINK" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="wheel_LB_link">
+    <inertial>
+      <origin
+        xyz="7.33709257239035E-08 5.9953812314717E-07 9.76971650912262E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.128480801908052" />
+      <inertia
+        ixx="3.93723310092559E-05"
+        ixy="1.82829524483969E-10"
+        ixz="-4.5421819043867E-06"
+        iyy="3.67038112753418E-05"
+        iyz="-1.9965234198184E-10"
+        izz="5.19399980479348E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0.945098039215686 0.905882352941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="wheel_LB_joint"
+    type="continuous">
+    <origin
+      xyz="-0.212 0.323099999999999 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="wheel_LB_link" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="wheel_RF_link">
+    <inertial>
+      <origin
+        xyz="-1.72597195591262E-07 -4.21214580992313E-07 9.67357931536128E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.128480070881773" />
+      <inertia
+        ixx="3.85807198293486E-05"
+        ixy="6.77499260642112E-10"
+        ixz="3.17154606250481E-06"
+        iyy="3.67031869876415E-05"
+        iyz="5.28586976932803E-11"
+        izz="5.27305600806975E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0.945098039215686 0.905882352941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="wheel_RF_joint"
+    type="continuous">
+    <origin
+      xyz="0.212000000000003 -0.3231 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="wheel_RF_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+  <link
+    name="wheel_RB_link">
+    <inertial>
+      <origin
+        xyz="-1.72597195535751E-07 -4.21214583379292E-07 9.6735793114755E-07"
+        rpy="0 0 0" />
+      <mass
+        value="0.128480070881772" />
+      <inertia
+        ixx="3.8580719829285E-05"
+        ixy="6.77499249851347E-10"
+        ixz="3.17154606250912E-06"
+        iyy="3.67031869875755E-05"
+        iyz="5.28587034496553E-11"
+        izz="5.27305600806512E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0.945098039215686 0.905882352941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://mr1000_description/meshes/wheel_LF_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="wheel_RB_joint"
+    type="continuous">
+    <origin
+      xyz="-0.211999999999997 -0.323100000000002 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="wheel_RB_link" />
+    <axis
+      xyz="0 -1 0" />
+  </joint>
+</xacro:macro>
+</robot>
