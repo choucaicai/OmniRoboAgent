@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="camera_bracket" params="prefix parent *origin">
+    <link name="${prefix}camera_bracket">
+      <inertial>
+        <origin
+          xyz="0.0134438110340833 -0.168362228593174 0.448374390946475"
+          rpy="0 0 0" />
+        <mass
+          value="17.8" />
+        <inertia
+          ixx="6.25233742851433"
+          ixy="-0.52125829292522"
+          ixz="-0.826110619533779"
+          iyy="4.1685965211151"
+          iyz="0.217129723015581"
+          izz="5.22932283924632" />
+      </inertial>
+      <visual>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://mr1000_description/meshes/camera_bracket.STL" />
+        </geometry>
+        <material
+          name="">
+          <color
+            rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+        </material>
+      </visual>
+      <collision>
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+        <geometry>
+          <mesh
+            filename="package://mr1000_description/meshes/camera_bracket.STL" />
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${prefix}camera_bracket_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent
+        link="${parent}" />
+      <child
+        link="${prefix}camera_bracket" />
+    </joint>
+
+  </xacro:macro>
+</robot>

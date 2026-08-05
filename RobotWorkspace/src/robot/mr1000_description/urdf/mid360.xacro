@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="mid360">
+    <xacro:macro name="mid360" params="prefix parent *origin">
+        <link name="${prefix}lidar_link">
+            <inertial>
+                <origin xyz="0.00130047182335188 8.71661430903336E-05 0.0397106473732433" rpy="0 0 0" />
+                <mass value="0.101936733121447" />
+                <inertia ixx="0.000117105373758523" ixy="1.11586540226324E-07" ixz="-3.34607877093784E-07" iyy="0.000115891247098562" iyz="2.66539587437291E-08" izz="0.000195379409514532" />
+            </inertial>
+            <visual>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://mr1000_description/meshes/mid360.STL" />
+                </geometry>
+                <material name="">
+                    <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+                </material>
+            </visual>
+            <collision>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <geometry>
+                    <mesh filename="package://mr1000_description/meshes/mid360.STL" />
+                </geometry>
+            </collision>
+        </link>
+        
+        <joint name="${prefix}lidar_joint" type="fixed">
+            <xacro:insert_block name="origin" />
+            <parent link="${parent}" />
+            <child link="${prefix}lidar_link" />
+            <axis xyz="0 0 0" />
+        </joint>
+
+		<link name="${prefix}livox_frame" />
+		<joint name="${prefix}imu_joint" type="fixed">
+            <origin xyz="0.011 0.02329 -0.04412" rpy="0 0 0" />
+			<parent link="${prefix}lidar_link" />
+			<child link="${prefix}livox_frame" />
+			<axis xyz="0 0 0" />
+		</joint>
+
+    </xacro:macro>
+
+</robot>

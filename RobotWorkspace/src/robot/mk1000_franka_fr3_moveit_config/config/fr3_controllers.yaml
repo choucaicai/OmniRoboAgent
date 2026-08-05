@@ -1,0 +1,26 @@
+controller_names:
+  - /mk1000/fr3_arm_controller
+  - /mk1000_fr3_gripper
+
+
+#  Arm Controllers
+/mk1000/fr3_arm_controller:
+  action_ns: follow_joint_trajectory
+  type: FollowJointTrajectory
+  default: true
+  joints:
+    - mk1000_fr3_joint1
+    - mk1000_fr3_joint2
+    - mk1000_fr3_joint3
+    - mk1000_fr3_joint4
+    - mk1000_fr3_joint5
+    - mk1000_fr3_joint6
+    - mk1000_fr3_joint7
+
+/mk1000_fr3_gripper:
+  action_ns: gripper_action
+  type: GripperCommand
+  default: true
+  joints:
+    - mk1000_fr3_finger_joint1
+    - mk1000_fr3_finger_joint2

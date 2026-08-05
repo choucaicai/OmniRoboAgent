@@ -1,0 +1,8 @@
+# Cache
+**build/
+**install/
+**log/
+**include/
+**interfaces/
+**/__pycache__/
+**/*.pyc

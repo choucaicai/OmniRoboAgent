@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="fr3">
+  <xacro:macro name="dual_arm_group_definition" params=" arm_id  left_prefix:='left_' right_prefix='right_'">
+    <!-- Define dual arm group -->
+    <group name="dual_arm">
+        <group name="${left_prefix}${arm_id}_arm"/>
+        <group name="${right_prefix}${arm_id}_arm"/>
+    </group>
+
+    <!-- Ready state for both arms -->
+    <group_state name="ready" group="dual_arm">
+      <joint name="${left_prefix}${arm_id}_joint1" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint2" value="${-pi/4}"/>
+      <joint name="${left_prefix}${arm_id}_joint3" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint4" value="${-3*pi/4}"/>
+      <joint name="${left_prefix}${arm_id}_joint5" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint6" value="${pi/2}"/>
+      <joint name="${left_prefix}${arm_id}_joint7" value="${pi/4}"/>
+      
+      <joint name="${right_prefix}${arm_id}_joint1" value="0"/>
+      <joint name="${right_prefix}${arm_id}_joint2" value="${-pi/4}"/>
+      <joint name="${right_prefix}${arm_id}_joint3" value="0"/>
+      <joint name="${right_prefix}${arm_id}_joint4" value="${-3*pi/4}"/>
+      <joint name="${right_prefix}${arm_id}_joint5" value="0"/>
+      <joint name="${right_prefix}${arm_id}_joint6" value="${pi/2}"/>
+      <joint name="${right_prefix}${arm_id}_joint7" value="${pi/4}"/>
+    </group_state>
+    
+    <!-- Extended state for both arms -->
+    <group_state name="extended" group="dual_arm">
+      <joint name="${left_prefix}${arm_id}_joint1" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint2" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint3" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint4" value="-0.1"/>
+      <joint name="${left_prefix}${arm_id}_joint5" value="0"/>
+      <joint name="${left_prefix}${arm_id}_joint6" value="${pi/2}"/>
+      <joint name="${left_prefix}${arm_id}_joint7" value="${pi/4}"/>
+      
+      <joint name="${right_prefix}${arm_id}_joint1" value="0"/>
+      <joint name="${right_prefix}${arm_id}_joint2" value="${-pi/4}"/>
+      <joint name="${right_prefix}${arm_id}_joint3" value="0"/>
+      <joint name="${right_prefix}${arm_id}_joint4" value="${-3*pi/4}"/>
+      <joint name="${right_prefix}${arm_id}_joint5" value="0"/>
+      <joint name="${right_prefix}${arm_id}_joint6" value="${pi/2}"/>
+      <joint name="${right_prefix}${arm_id}_joint7" value="${pi/4}"/>
+    </group_state>
+
+        <group_state name="reset_pose" group="dual_arm">
+      <joint name="${left_prefix}${arm_id}_joint1" value="-2.8634135909086167"/>
+      <joint name="${left_prefix}${arm_id}_joint2" value="1.5362182984153248"/>
+      <joint name="${left_prefix}${arm_id}_joint3" value="1.500735344246123"/>
+      <joint name="${left_prefix}${arm_id}_joint4" value="-2.6110392692555164"/>
+      <joint name="${left_prefix}${arm_id}_joint5" value=" -1.5798720183691384"/>
+      <joint name="${left_prefix}${arm_id}_joint6" value="1.7583143445617273"/>
+      <joint name="${left_prefix}${arm_id}_joint7" value="0.46257669972493826"/>
+      
+      <joint name="${right_prefix}${arm_id}_joint1" value=" -0.2681495518503965"/>
+      <joint name="${right_prefix}${arm_id}_joint2" value="-1.4724080620113584"/>
+      <joint name="${right_prefix}${arm_id}_joint3" value="1.766212361814723"/>
+      <joint name="${right_prefix}${arm_id}_joint4" value="-2.8069149014063397"/>
+      <joint name="${right_prefix}${arm_id}_joint5" value="1.735354886201744"/>
+      <joint name="${right_prefix}${arm_id}_joint6" value="1.8113548754328643"/>
+      <joint name="${right_prefix}${arm_id}_joint7" value=" 0.9395611472430638"/>
+    </group_state>
+
+
+
+
+
+<group_state name="test_pose" group="dual_arm">
+
+  <joint name="${left_prefix}${arm_id}_joint1" value="-1.9114397669251328"/>
+  <joint name="${left_prefix}${arm_id}_joint2" value="1.7533009019499601"/>
+  <joint name="${left_prefix}${arm_id}_joint3" value="1.5279164004045391"/>
+  <joint name="${left_prefix}${arm_id}_joint4" value="-1.8341184948840217"/>
+  <joint name="${left_prefix}${arm_id}_joint5" value="-0.3083247463003758"/>
+  <joint name="${left_prefix}${arm_id}_joint6" value="2.968235352675007"/>
+  <joint name="${left_prefix}${arm_id}_joint7" value="0.9959386125709385"/>
+
+  <joint name="${right_prefix}${arm_id}_joint1" value="-1.078707868110465"/>
+  <joint name="${right_prefix}${arm_id}_joint2" value="-1.8148034993456503"/>
+  <joint name="${right_prefix}${arm_id}_joint3" value="1.7627032367408164"/>
+  <joint name="${right_prefix}${arm_id}_joint4" value="-1.9748496921212078"/>
+  <joint name="${right_prefix}${arm_id}_joint5" value="-0.3452254613756842"/>
+  <joint name="${right_prefix}${arm_id}_joint6" value="2.9756220545758914"/>
+  <joint name="${right_prefix}${arm_id}_joint7" value="-1.9535132382156633"/>
+</group_state>
+
+  </xacro:macro>
+</robot>
