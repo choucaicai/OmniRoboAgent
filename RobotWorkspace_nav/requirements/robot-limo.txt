@@ -1,0 +1,6 @@
+numpy
+Pillow
+requests
+opencv-python
+pyserial
+pylimo

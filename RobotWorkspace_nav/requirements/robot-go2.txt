@@ -1,0 +1,7 @@
+# Install inside the Go2 ROS2 Foxy environment.
+numpy
+Pillow
+requests
+opencv-python
+# Unitree SDK2 Python bindings (usually cloned/built from unitree_sdk2_python)
+# ROS2 packages: rclpy, sensor_msgs, unitree_go

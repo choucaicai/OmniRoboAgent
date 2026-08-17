@@ -1,0 +1,18 @@
+# Install PyTorch/CUDA using environment-server.yml before this file.
+accelerate==0.28.0
+Flask==3.1.3
+numpy==1.26.1
+omegaconf==2.3.0
+pandas==2.3.0
+pillow==11.2.1
+requests==2.32.4
+tqdm==4.67.1
+transformers==4.45.1
+tokenizers==0.20.3
+sentencepiece==0.1.99
+safetensors==0.5.3
+opencv-python==4.11.0.86
+numpy-quaternion==2023.0.4
+# Install separately for your CUDA / PyTorch combination:
+# flash-attn --no-build-isolation
+# depth-camera-filtering @ git+https://github.com/naokiyokoyama/depth_camera_filtering.git

@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+.env
+server/streamvln/runs/
+checkpoints/
+*.safetensors
+*.bin
+*.pth

@@ -1,0 +1,13 @@
+name: latentpilot-realworld
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pytorch=2.1.2
+  - torchvision=0.16.2
+  - pytorch-cuda=12.1
+  - pip:
+      - -r requirements/server.txt
