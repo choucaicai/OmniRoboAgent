@@ -142,6 +142,10 @@
 - [x] `DONE` 补充 RoboCasa 官方 assets 安装、可选本地软链、server、本地运行、evaluation 配置和 troubleshooting 用户文档。
 - [ ] `TODO` 先确认正式 RoboCasa task-set scope，再与官方 evaluator 对齐随机 50-scenario manifest、reset identity、low-level horizon 和 aggregation；从 environment horizon 派生或校验 Runtime action-chunk budget，随后增加可控 worker/GPU 并行。
 
+## 9.5 Real-World Navigation Deployment
+
+- [x] `DONE` 在 `RobotWorkspace_nav` 中新增独立 AwareVLN 推理服务、严格动作解析、session state 和兼容现有 Go2 client 的 `/eval_vln` 协议（[计划](plans/0013-awarevln-realworld-server.md)）。
+
 ## 10. Later Extensions
 
 - [ ] `TODO` 评估 RoboNeuron action contract 与开放 action payload 的兼容方式。

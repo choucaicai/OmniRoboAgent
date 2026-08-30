@@ -14,6 +14,15 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、显式 graph-state `SkillExecutionPipeline`、独立 `SubtaskVerifier`、`SyncRuntime`、独立 episode observability artifacts、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。迁移后的 RoboCasa composite 固定真实 checkpoint smoke 已完成；真实 OpenPI checkpoint smoke、正式多 episode 质量评测、async runtime、ROS2 和真机 integration 尚未完成。
 
+### 1.1 Repository Boundary
+
+仓库还包含两个尚未接入上述框架 contract 的独立真机工作区：
+
+- `RobotWorkspace/` 是 ROS2 Humble 移动操作工作区，包含 Franka FR3、MR1000、相机、雷达、标定、遥操和数据采集代码。
+- `RobotWorkspace_nav/` 是独立真机导航工作区，包含从 LatentPilot 提取的 StreamVLN 服务、调用外部官方仓库的 AwareVLN 服务，以及 Go2/LIMO 导航客户端。
+
+两者目前不属于 `omniroboagent` Python package，不使用 AgentConfig、RunConfig、Pipeline、Runtime、Environment、observability 或 evaluator，也不能作为已实现的 framework real-robot integration。接入时必须通过 adapter 保持本文件定义的依赖方向，不允许 core 直接依赖 ROS2、Unitree SDK 或具体真机实现。当前仓库全景、验证结果和风险见 [项目全景梳理](../reference/project-overview-2026-08-30.md)。
+
 ## 2. Design Principles
 
 - 各领域 contract 归属对应 package，并与具体模型、ROS2、仿真器和 benchmark 解耦。

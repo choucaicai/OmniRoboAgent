@@ -54,14 +54,16 @@ impl_docs/
     ├── 2026-07-16-key-event-memory.md
     ├── 2026-07-16-user-doc-skill-generality.md
     ├── 2026-07-16-user-doc-information-architecture.md
-    └── 2026-07-16-episode-observability-artifacts.md
+    ├── 2026-07-16-episode-observability-artifacts.md
+    ├── 2026-08-30-project-overview.md
+    └── 2026-08-31-awarevln-realworld-server.md
 ```
 
 ## Responsibilities
 
 - `TODO.md`：项目总任务清单，只维护任务状态和对应文档链接。
 - `architecture/`：描述稳定的系统边界、接口、数据流和依赖方向。
-- `reference/`：记录第三方框架和外部系统的源码分析，作为设计参考，不代表本项目当前实现。
+- `reference/`：记录项目盘点、第三方框架和外部系统的持久技术分析；其中第三方分析不代表本项目当前实现。
 - `plans/`：记录尚未完成或正在执行的修改方案、任务拆分和验收条件。
 - `changes/`：记录已经完成的实际修改、验证结果和遗留问题。
 

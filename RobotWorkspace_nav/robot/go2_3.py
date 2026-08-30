@@ -55,6 +55,14 @@ rgb_rw_lock = ReadWriteLock()
 odom_rw_lock = ReadWriteLock()
 shutdown_event = threading.Event()
 
+DEFAULT_VLN_SERVER_URL = os.environ.get(
+    "VLN_SERVER_URL",
+    os.environ.get(
+        "LATENTPILOT_SERVER_URL",
+        "http://localhost:5801/eval_vln",
+    ),
+)
+
 
 # ─────────────────────────────────────────────
 # SDK2 子进程：与 ROS2 完全隔离
@@ -198,17 +206,31 @@ def sdk2_worker(cmd_queue, net_if, domain_id, shared_img, img_meta, img_lock):
 # ─────────────────────────────────────────────
 # VLN 推理
 # ─────────────────────────────────────────────
-def eval_vln(image, depth, camera_pose, instruction, url=os.environ.get("LATENTPILOT_SERVER_URL", "http://localhost:5801/eval_vln")):
+def eval_vln(
+    image,
+    depth,
+    camera_pose,
+    instruction,
+    url=DEFAULT_VLN_SERVER_URL,
+):
     global policy_init
 
-    image = PIL_Image.fromarray(image)
+    # Unitree SDK2 frames are decoded by OpenCV and therefore use BGR order.
+    rgb_image = np.ascontiguousarray(image[:, :, ::-1])
+    image = PIL_Image.fromarray(rgb_image)
     image_bytes = io.BytesIO()
     image.save(image_bytes, format='jpeg')
     image_bytes.seek(0)
 
-    data = {"reset": policy_init}
+    data = {
+        "reset": policy_init,
+        "session_id": os.environ.get("VLN_SESSION_ID", "go2"),
+    }
+    if policy_init:
+        active_instruction = instruction or os.environ.get("VLN_INSTRUCTION")
+        if active_instruction:
+            data["instruction"] = active_instruction
     json_data = json.dumps(data)
-    policy_init = False
 
     files = {'image': ('rgb_image', image_bytes, 'image/jpg')}
 
@@ -224,6 +246,14 @@ def eval_vln(image, depth, camera_pose, instruction, url=os.environ.get("LATENTP
     action = result['action']
     if not isinstance(action, list):
         raise ValueError(f"Invalid action format: {action}")
+    if not action:
+        action = [0]
+    if any(
+        type(value) is not int or value not in {0, 1, 2, 3}
+        for value in action
+    ):
+        raise ValueError(f"Unsupported action values: {action}")
+    policy_init = False
     return action
 
 
@@ -261,6 +291,10 @@ def control_thread():
         try:
             if manager is None or cmd_queue is None:
                 time.sleep(0.05)
+                continue
+            if manager.navigation_complete:
+                safe_queue_put_latest(cmd_queue, (0.0, 0.0, 0.0))
+                time.sleep(0.1)
                 continue
 
             homo_odom = manager.homo_odom.copy() if manager.homo_odom is not None else None
@@ -333,6 +367,18 @@ def planning_thread():
                 continue
 
             actions = eval_vln(rgb_image, None, None, None)
+            if 0 in actions:
+                odom_rw_lock.acquire_write()
+                try:
+                    manager.navigation_complete = True
+                    manager.should_plan = False
+                    if manager.homo_odom is not None:
+                        manager.homo_goal = manager.homo_odom.copy()
+                finally:
+                    odom_rw_lock.release_write()
+                safe_queue_put_latest(cmd_queue, (0.0, 0.0, 0.0))
+                print("[Planning] STOP received; navigation is complete")
+                continue
 
             odom_rw_lock.acquire_write()
             try:
@@ -384,6 +430,7 @@ def build_go2_manager_class():
 
             self.should_plan = False
             self.last_plan_time = 0.0
+            self.navigation_complete = False
 
             self._last_shared_warn = 0.0
 
@@ -468,6 +515,8 @@ def build_go2_manager_class():
                 odom_rw_lock.release_write()
 
         def trigger_replan(self):
+            if self.navigation_complete:
+                return
             if not self.should_plan:
                 print("[Replan] triggered")
             self.should_plan = True
