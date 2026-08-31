@@ -1,18 +1,18 @@
 # LatentPilot Real-World Navigation
 
-A standalone real-robot deployment package extracted from LatentPilot. It separates GPU policy inference from robot-side sensing and control, connected through a small HTTP API.
+A standalone real-robot navigation package with StreamVLN and AwareVLN GPU inference servers. It separates policy inference from robot-side sensing and control through a small HTTP API.
 
 > **Safety notice.** This software commands physical robots. Test first in an unobstructed area with a hardware e-stop, a spotter, and conservative velocity limits. Inspect camera, odometry, network, and stop behavior before allowing autonomous motion.
 
 ## What is included
 
-- GPU HTTP inference service: LatentPilot/StreamVLN policy and its required model code.
+- GPU HTTP inference services: bundled LatentPilot/StreamVLN code and an adapter for the external official AwareVLN repository.
 - Robot clients: Unitree Go2 ROS2 + SDK2 clients, an SDK2 open-loop Go2 client, and a LIMO client.
 - PID controller and thread-safe state utility used by the Go2 clients.
 - Reproducible environment specifications and launch scripts.
 - Six real-world demonstration assets in [`assets/`](assets/).
 
-Model weights are deliberately not bundled. Point `--model_path` at a local Hugging Face-format LatentPilot checkpoint.
+Model weights are deliberately not bundled. Point each server at its corresponding local checkpoint.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ camera + robot odometry ──> robot client ──HTTP POST /eval_vln──> GP
 
 Action semantics are fixed: `0=STOP`, `1=forward 0.25 m`, `2=left 15°`, `3=right 15°`.
 
-## Quick start
+## StreamVLN quick start
 
 ### 1. Create the GPU-server environment
 
@@ -49,13 +49,30 @@ bash ../scripts/start_server.sh /path/to/latentpilot-checkpoint cuda:0
 
 The service listens on `0.0.0.0:5801`, writes annotated received frames to `server/streamvln/runs/`, and asks for the next natural-language instruction after the policy emits STOP. See [`docs/deployment.md`](docs/deployment.md) for all options.
 
-### 3. Connect and run the robot client
+## AwareVLN quick start
+
+AwareVLN requires its separate official Python 3.10 environment and source repository:
+
+```bash
+cd /path/to/OmniRoboAgent/RobotWorkspace_nav
+bash scripts/start_awarevln_server.sh \
+  /opt/AwareVLN \
+  /models/AwareVLN-ck/awarevln \
+  cuda:0 \
+  --host 127.0.0.1 \
+  --port 5802
+```
+
+See [`docs/awarevln.md`](docs/awarevln.md) for installation, checkpoint layout, HTTP fields, reasoning behavior, and action conversion.
+
+## Connect and run the robot client
 
 For a robot not directly routable to the GPU host, make a tunnel on the robot:
 
 ```bash
 ssh -N -L 5801:localhost:5801 user@gpu-server
-export LATENTPILOT_SERVER_URL=http://127.0.0.1:5801/eval_vln
+export VLN_SERVER_URL=http://127.0.0.1:5801/eval_vln
+export VLN_INSTRUCTION='Exit the room and stop beside the red chair.'
 ```
 
 The recommended Go2 client combines ROS2 odometry with Unitree SDK2 video and motion:
@@ -71,7 +88,7 @@ Before running, complete the robot-specific checks in [`docs/go2.md`](docs/go2.m
 
 ```text
 assets/       Real-world videos and project icon
-server/       Policy HTTP service, StreamVLN inference code, and LLaVA modules
+server/       StreamVLN code plus the AwareVLN HTTP/model adapter
 robot/        Go2/LIMO clients plus PID control
 docs/         Deployment, hardware, client, and asset notes
 requirements/ Server and robot dependency lists
@@ -90,4 +107,4 @@ environment-server.yml  Conda environment definition
 
 ## Attribution
 
-This deployment extraction is derived from the local LatentPilot research project and preserves its inference and robot-control implementation. See the upstream LatentPilot project page and paper for method details.
+The StreamVLN deployment is derived from the local LatentPilot research project. The AwareVLN adapter follows the official [GWxuan/AwareVLN](https://github.com/GWxuan/AwareVLN) Apache-2.0 implementation without bundling its source or weights.

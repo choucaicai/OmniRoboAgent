@@ -1,4 +1,6 @@
-# Deployment guide
+# StreamVLN deployment guide
+
+This page covers the bundled StreamVLN service. 
 
 ## Server prerequisites
 
