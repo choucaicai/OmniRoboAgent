@@ -1,0 +1,208 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+task_decomposer:
+  class_path: omniroboagent.agent_core.TaskDecomposer
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: https://shuliuyun.com/v1
+        model: gpt-5.6-sol
+        timeout_seconds: 600
+        max_retries: 2
+    camera_keys:
+    - video.robot0_agentview_left
+    - video.robot0_agentview_right
+    - video.robot0_eye_in_hand
+    max_images: 3
+    max_nodes: 32
+    max_tokens: 3072
+    temperature: 0
+    response_format_mode: json_object
+    prompt_skill:
+      class_path: omniroboagent.agent_core.AdaptivePromptSkill
+      init_args:
+        history_limit: 10
+        default_task_shape: composite
+        audit_history_limit: 64
+    recovery_max_frames: 4
+    recovery_images_per_frame: 3
+planner:
+  class_path: omniroboagent.agent_core.StateGroundedSubtaskPlanner
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: https://shuliuyun.com/v1
+        model: gpt-5.6-sol
+        timeout_seconds: 600
+        max_retries: 2
+    camera_keys:
+    - video.robot0_agentview_left
+    - video.robot0_agentview_right
+    - video.robot0_eye_in_hand
+    history_limit: 12
+    max_tokens: 2048
+    temperature: 0
+    skill_ids:
+      CloseBlenderLid: 0
+      CloseFridge: 1
+      CloseToasterOvenDoor: 2
+      CoffeeSetupMug: 3
+      NavigateKitchen: 4
+      OpenCabinet: 5
+      OpenDrawer: 6
+      OpenStandMixerHead: 7
+      PickPlaceCounterToCabinet: 8
+      PickPlaceCounterToStove: 9
+      PickPlaceDrawerToCounter: 10
+      PickPlaceSinkToCounter: 11
+      PickPlaceToasterToCounter: 12
+      SlideDishwasherRack: 13
+      TurnOffStove: 14
+      TurnOnElectricKettle: 15
+      TurnOnMicrowave: 16
+      TurnOnSinkFaucet: 17
+      DeliverStraw: 18
+      GetToastedBread: 19
+      KettleBoiling: 20
+      LoadDishwasher: 21
+      PackIdenticalLunches: 22
+      PreSoakPan: 23
+      PrepareCoffee: 24
+      RinseSinkBasin: 25
+      ScrubCuttingBoard: 26
+      SearingMeat: 27
+      SetUpCuttingStation: 28
+      StackBowlsCabinet: 29
+      SteamInMicrowave: 30
+      StirVegetables: 31
+      StoreLeftoversInBowl: 32
+      WashLettuce: 33
+      ArrangeBreadBasket: 34
+      ArrangeTea: 35
+      BreadSelection: 36
+      CategorizeCondiments: 37
+      CuttingToolSelection: 38
+      GarnishPancake: 39
+      GatherTableware: 40
+      HeatKebabSandwich: 41
+      MakeIceLemonade: 42
+      PanTransfer: 43
+      PortionHotDogs: 44
+      RecycleBottlesByType: 45
+      SeparateFreezerRack: 46
+      WaffleReheat: 47
+      WashFruitColander: 48
+      WeighIngredients: 49
+    skill_definitions:
+      CloseBlenderLid: Execute RoboCasa365 task CloseBlenderLid.
+      CloseFridge: Execute RoboCasa365 task CloseFridge.
+      CloseToasterOvenDoor: Execute RoboCasa365 task CloseToasterOvenDoor.
+      CoffeeSetupMug: Execute RoboCasa365 task CoffeeSetupMug.
+      NavigateKitchen: Execute RoboCasa365 task NavigateKitchen.
+      OpenCabinet: Execute RoboCasa365 task OpenCabinet.
+      OpenDrawer: Execute RoboCasa365 task OpenDrawer.
+      OpenStandMixerHead: Execute RoboCasa365 task OpenStandMixerHead.
+      PickPlaceCounterToCabinet: Execute RoboCasa365 task PickPlaceCounterToCabinet.
+      PickPlaceCounterToStove: Execute RoboCasa365 task PickPlaceCounterToStove.
+      PickPlaceDrawerToCounter: Execute RoboCasa365 task PickPlaceDrawerToCounter.
+      PickPlaceSinkToCounter: Execute RoboCasa365 task PickPlaceSinkToCounter.
+      PickPlaceToasterToCounter: Execute RoboCasa365 task PickPlaceToasterToCounter.
+      SlideDishwasherRack: Execute RoboCasa365 task SlideDishwasherRack.
+      TurnOffStove: Execute RoboCasa365 task TurnOffStove.
+      TurnOnElectricKettle: Execute RoboCasa365 task TurnOnElectricKettle.
+      TurnOnMicrowave: Execute RoboCasa365 task TurnOnMicrowave.
+      TurnOnSinkFaucet: Execute RoboCasa365 task TurnOnSinkFaucet.
+      DeliverStraw: Execute RoboCasa365 task DeliverStraw.
+      GetToastedBread: Execute RoboCasa365 task GetToastedBread.
+      KettleBoiling: Execute RoboCasa365 task KettleBoiling.
+      LoadDishwasher: Execute RoboCasa365 task LoadDishwasher.
+      PackIdenticalLunches: Execute RoboCasa365 task PackIdenticalLunches.
+      PreSoakPan: Execute RoboCasa365 task PreSoakPan.
+      PrepareCoffee: Execute RoboCasa365 task PrepareCoffee.
+      RinseSinkBasin: Execute RoboCasa365 task RinseSinkBasin.
+      ScrubCuttingBoard: Execute RoboCasa365 task ScrubCuttingBoard.
+      SearingMeat: Execute RoboCasa365 task SearingMeat.
+      SetUpCuttingStation: Execute RoboCasa365 task SetUpCuttingStation.
+      StackBowlsCabinet: Execute RoboCasa365 task StackBowlsCabinet.
+      SteamInMicrowave: Execute RoboCasa365 task SteamInMicrowave.
+      StirVegetables: Execute RoboCasa365 task StirVegetables.
+      StoreLeftoversInBowl: Execute RoboCasa365 task StoreLeftoversInBowl.
+      WashLettuce: Execute RoboCasa365 task WashLettuce.
+      ArrangeBreadBasket: Execute RoboCasa365 task ArrangeBreadBasket.
+      ArrangeTea: Execute RoboCasa365 task ArrangeTea.
+      BreadSelection: Execute RoboCasa365 task BreadSelection.
+      CategorizeCondiments: Execute RoboCasa365 task CategorizeCondiments.
+      CuttingToolSelection: Execute RoboCasa365 task CuttingToolSelection.
+      GarnishPancake: Execute RoboCasa365 task GarnishPancake.
+      GatherTableware: Execute RoboCasa365 task GatherTableware.
+      HeatKebabSandwich: Execute RoboCasa365 task HeatKebabSandwich.
+      MakeIceLemonade: Execute RoboCasa365 task MakeIceLemonade.
+      PanTransfer: Execute RoboCasa365 task PanTransfer.
+      PortionHotDogs: Execute RoboCasa365 task PortionHotDogs.
+      RecycleBottlesByType: Execute RoboCasa365 task RecycleBottlesByType.
+      SeparateFreezerRack: Execute RoboCasa365 task SeparateFreezerRack.
+      WaffleReheat: Execute RoboCasa365 task WaffleReheat.
+      WashFruitColander: Execute RoboCasa365 task WashFruitColander.
+      WeighIngredients: Execute RoboCasa365 task WeighIngredients.
+    semantic_retry_limit: 2
+    response_format_mode: json_object
+    prompt_skill:
+      class_path: omniroboagent.agent_core.AdaptivePromptSkill
+      init_args:
+        history_limit: 12
+        default_task_shape: composite
+        audit_history_limit: 64
+skill_backend:
+  name: xiaomi_remote
+  init_args:
+    host: 127.0.0.1
+    ports:
+    - 19301
+    - 19302
+    - 19303
+    - 19304
+    - 19305
+    - 19306
+    - 19307
+    - 19308
+    - 19309
+    timeout_seconds: 900
+    worker_index_env: ROBOCASA_WORKER_INDEX
+    observation_history: 4
+    observation_interval: 2
+    instruction_mode: task_graph
+verifier:
+  class_path: omniroboagent.agent_core.SubtaskVerifier
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: https://shuliuyun.com/v1
+        model: gpt-5.6-sol
+        timeout_seconds: 600
+        max_retries: 2
+    camera_keys:
+    - video.robot0_agentview_left
+    - video.robot0_agentview_right
+    - video.robot0_eye_in_hand
+    check_interval_chunks: 64
+    max_tokens: 2048
+    temperature: 0
+    max_images: 6
+    response_format_mode: json_object
+    prompt_skill:
+      class_path: omniroboagent.agent_core.AdaptivePromptSkill
+      init_args:
+        history_limit: 16
+        default_task_shape: composite
+        audit_history_limit: 64
+memory:
+  class_path: omniroboagent.agent_core.LongMemory
+  init_args:
+    recent_event_limit: 16
+    failed_event_limit: 6
+    key_event_limit: 24
+    summary_max_chars: 4096
+    summary_async: false
