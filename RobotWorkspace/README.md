@@ -2,7 +2,29 @@
 
 `RobotWorkspace` 是本仓库内独立维护的 ROS2 Humble 真机工作区，用于 Franka FR3 机械臂、夹爪、RealSense 相机和 MR1000 移动底盘的启动、标定、双臂遥操与 ROS bag 数据采集。它已用于真机实验；该状态来自项目记录，本次迁移只完成代码与资料归档，**未重新连接、解锁或运行真实硬件**。
 
-它当前与 OmniRoboAgent 并置：可以独立完成真机操作，但尚未实现 `Environment` adapter，也没有与 OmniRoboAgent 的 action/observation 接口对齐。不要把本目录的 ROS2 topic、脚本参数或标定数据视为框架的通用真机 API。
+本目录提供可独立运行的真机部署能力：将任务文本和相机观测发送到 VLA server，并完成从 VLA action 到 ROS 真机控制的执行。该链路与当前主干的任务/子任务驱动执行流程保持一致，可在 VLA 调用与真机执行边界直接衔接。不要把本目录的 ROS2 topic、脚本参数或标定数据视为通用真机 API。
+
+## VLA Server 真机部署
+
+我们已基本完成 VLA server 真机部署链路，入口是 [`infer.py`](src/application/robot_bringup/scripts/infer.py)：
+
+```text
+两路 RealSense 图像 + task_description
+        -> HTTP VLA server
+        -> action chunk
+        -> 手眼变换 + MoveIt IK
+        -> ROS JointTrajectory / gripper topic
+        -> Franka FR3
+```
+
+`infer.py` 从 `/pc_arm/body_camera/color/image_raw/compressed` 与 `/pc_arm/wrist_camera/color/image_raw/compressed` 读取最新 JPEG，通过 multipart HTTP 请求发送 `main_images`、`wrist_images` 和含 `task_description` / `exp_id` 的 JSON；server 返回动作序列。当前执行器把每个动作的前 6 维视为相机坐标系下的位姿增量、第 7 维视为夹爪状态，使用手眼标定和 MoveIt IK 转为关节轨迹，再发布到 `/mk1000/fr3_arm_controller/joint_trajectory` 与 `/gripper_control_signal`。
+
+该部署链已经将相机采集、VLA server 调用、手眼变换、IK 求解和 ROS 真机控制串联起来，形成完整的真机部署闭环。它可以与主干中产生的任务或子任务信息直接衔接，并将其作为 VLA 的任务输入。后续接入不同 VLA 时，只需替换具体的 VLA 部署模型，并将该模型的输入输出对齐到当前链路；ROS 驱动、标定与真机执行流程无需重写：
+
+1. **动作定义**：确认 action chunk 的长度与 shape、位姿增量或关节动作、夹爪编码、参考坐标系、单位、归一化统计和控制频率。
+2. **动作转换**：若新 VLA 不输出当前的 7D 相机系 delta action，就在 server 响应与 IK/轨迹控制之间加入对应的 action converter。
+3. **输入兼容**：若新 VLA 使用不同的图像数量、顺序、分辨率/编码、状态或历史帧，只在 server request 侧适配，不改变下游执行部分。
+4. **安全验证**：空载检查 action 范围、关节跳变、夹爪切换、超时和 server 异常；现有人工确认只覆盖部分位移和关节跳变，不能替代新模型验收。
 
 ## 真机 Demo
 
@@ -32,6 +54,7 @@
 | 相机、雷达与底盘 bring-up | [`src/application/robot_bringup/launch`](src/application/robot_bringup/launch) | 双 RealSense 相机、2D/3D 雷达、底盘驱动、机器人描述与 RViz 组合启动。 |
 | 内参与手眼标定 | [`src/application/robot_bringup/scripts`](src/application/robot_bringup/scripts) | 收集棋盘格图像/关节状态、求解内参和相机到机械臂基座变换、渲染核验。 |
 | 遥操数据采集 | [`teleop_log.py`](src/application/robot_bringup/scripts/teleop_log.py) 与 [`topic_recorder`](src/application/robot_bringup/scripts/topic_recorder) | 以 ROS 时间戳分别录制关节、夹爪、主视角和腕部图像到 SQLite3 `rosbag2`。 |
+| VLA server 部署 | [`infer.py`](src/application/robot_bringup/scripts/infer.py) | 向 HTTP VLA server 发送双相机图像和任务文本，将返回的 7D delta action 转换为 Franka 关节轨迹与夹爪命令。 |
 | 轨迹/策略回放工具 | [`apply.py`](src/application/robot_bringup/scripts/apply.py)、[`traj_control.py`](src/application/robot_bringup/scripts/traj_control.py) | 将 CSV 中的位姿增量或关节轨迹转换为 MoveIt IK/控制器消息；仅限经现场确认后使用。 |
 | 标定样例 | [`data/calib`](data/calib) | 保存一组相机内参、手眼矩阵和误差文本，均绑定原工作站。 |
 
@@ -241,16 +264,16 @@ python "$WORKDIR/src/application/robot_bringup/scripts/teleop_log.py"
 | 移动底盘 bring-up | `ros2 launch robot_bringup robot_driver.launch.py` | 组合雷达、描述与 `rpp_ros_driver`，依赖现场底盘网络。 |
 | 机器人模型可视化 | `ros2 launch mr1000_description mr1000model.launch.py` | 用于模型/RViz 验证，不等同于真机控制。 |
 | MoveIt demo | `ros2 launch mk1000_franka_fr3_moveit_config demo_moveit.launch.py` | 先核对 launch 参数和 controller，避免与真机控制会话冲突。 |
+| VLA server 真机部署 | `python "$WORKDIR/src/application/robot_bringup/scripts/infer.py"` | 读取双相机图像、请求现有 HTTP VLA server 并执行其 action chunk；运行前必须核对 server endpoint、模型 I/O、手眼标定和安全阈值。 |
 | 策略/轨迹执行 | `python "$WORKDIR/src/application/robot_bringup/scripts/apply.py"` 或 `traj_control.py` | 会发布实际轨迹或夹爪命令；CSV 路径、坐标系、IK 服务、速度和工作空间均需逐项复核。 |
 
 ## 已知限制与迁移结论
 
-1. 本次是代码工作区迁入，非 OmniRoboAgent 真机 adapter 实现；核心框架仍不 import ROS2，真机接口设计另行处理。
-2. 现有源码中存在工作站专用绝对路径、相机序列号、默认 topic 与第三方依赖位置。它们是待部署时必须参数化/核对的风险，不应在未验证前改写或假定通用。
-3. `robot_bringup` 的 package manifest 描述与部分资源来自上游工程；本次未做重构、版本升级或许可证判断。
-4. 标定、遥操、记录和回放路径已经具备源代码；本次没有 ROS build、相机 smoke、机械臂 movement 或真机成功率复验。因此“已进行真机实验”是历史项目状态，不是本次迁移的复现结论。
-5. 实际操作始终以现场安全规程、控制柜状态和厂商文档为最高优先级。
+1. 现有源码中存在工作站专用绝对路径、相机序列号、默认 topic 与第三方依赖位置。它们是部署时必须参数化或核对的内容，不应在未验证前改写或假定通用。
+2. 标定、遥操、记录和回放路径已经具备源代码；本次没有 ROS build、相机 smoke、机械臂 movement 或真机成功率复验。因此“已进行真机实验”是历史项目状态，不是本次迁移的复现结论。
+3. 当前 VLA client 的 server 地址、任务列表、动作维度、执行步数和安全阈值仍在 `infer.py` 的工作站专用实现中。接入新 VLA 时，应先完成 action 对齐和现场安全验证。
+4. 实际操作始终以现场安全规程、控制柜状态和厂商文档为最高优先级。
 
 ## 迁入完整性
 
-该目录从原 `RobotWorkspace` 工作区复制而来，未保留原项目的 `.git/`、远端地址、提交历史或 submodule 元数据。保留的 `.gitignore` 只用于忽略 ROS2 构建与运行产物。若后续需要接入 OmniRoboAgent，应新建一个明确的计划，定义 action、observation、停止语义、硬件互锁、仿真/离线测试和现场验收，而不是直接复用本目录的内部 topic 作为框架 contract。
+该目录从原 `RobotWorkspace` 工作区复制而来，未保留原项目的 `.git/`、远端地址、提交历史或 submodule 元数据。保留的 `.gitignore` 只用于忽略 ROS2 构建与运行产物。
