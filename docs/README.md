@@ -42,6 +42,9 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 ## Benchmarks
 
 - [EB-ALFRED](eb_alfred.md)：EmbodiedBench/AI2-THOR 安装、运行和输出。
+- [RoboTwin 2.0](robotwin_omni_compat.md)：Qwen 调度、共享 pi0.5 backend 和评测协议。
+- [LIBERO](libero.md)：官方 task suites、固定初始状态、本地 pi0.5 和评测输出。
 - [RoboCasa365](robocasa365.md)：assets、atomic/composite Agent、VLA backends 和 evaluation。
+- [评测结果](results.md)：LIBERO/RoboTwin 汇总表和本地 checkpoint 身份。
 
 架构约束、实现计划和历史变更位于 GitHub 仓库的 [`impl_docs/`](https://github.com/choucaicai/OmniRoboAgent/tree/master/impl_docs)，不属于用户教程。

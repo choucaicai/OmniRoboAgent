@@ -1,0 +1,53 @@
+{
+  "description": "Final evaluation artifacts and the packaged LIBERO planner adapter. Large policy checkpoints remain external; the LIBERO Qwen LoRA is tracked with Git LFS.",
+  "base_models": {
+    "qwen35_9b": {
+      "path_env": "QWEN35_BASE_MODEL",
+      "used_by": ["robotwin_qwen_planner", "libero_qwen_planner"],
+      "tracked_in_git": false
+    },
+    "libero_pi05_base": {
+      "path_env": "LIBERO_PI05_BASE_CHECKPOINT",
+      "used_by": ["libero_pi05_subtask_lora_training"],
+      "tracked_in_git": false
+    }
+  },
+  "final_adapters": {
+    "robotwin_qwen_planner_lora": {
+      "path": "runs/sft/qwen35_9b_omni_full_plan_select_3gpu_20260913/checkpoints/checkpoint-3500",
+      "role": "Qwen3.5-9B full-plan/subtask selection/verifier scheduler",
+      "used_by": ["RoboTwin 2.0 held-out evaluation"],
+      "adapter_model_sha256": "9f19602784033bd79f07c3f653f40dc9093542a0db7c82292bafb3be329a0218",
+      "tracked_in_git": false
+    },
+    "robotwin_pi05_subtask": {
+      "path_env": "ROBOTWIN_PI05_CHECKPOINT",
+      "role": "Shared RoboTwin subtask pi0.5 action backend",
+      "used_by": ["RoboTwin 2.0 held-out evaluation"],
+      "tracked_in_git": false
+    },
+    "libero_pi05_subtask_lora": {
+      "path": "runs/train/pi05_libero_subtasks_lora_3gpu_20260915/checkpoints/005000/pretrained_model",
+      "role": "LIBERO subtask pi0.5 action backend",
+      "used_by": ["LIBERO four-suite evaluation"],
+      "adapter_model_sha256": "62d28798574c51633496d48a08e6ad3077f8be64f82a530c0e27ac67ff44ad81",
+      "tracked_in_git": false
+    },
+    "libero_qwen_planner_lora": {
+      "path": "checkpoints/libero_qwen35_plan_lora_step500",
+      "role": "Qwen3.5-9B initial-image LIBERO subtask planner",
+      "used_by": ["LIBERO integrated planner path"],
+      "training_step": 500,
+      "adapter_model_sha256": "5e49c9eefd40406752e71a1c5474f7c933da0009ebc7ca441b9666fb6f034213",
+      "tracked_in_git": true,
+      "storage": "git-lfs"
+    }
+  },
+  "notes": [
+    "Relative paths are relative to the OmniRoboAgent repository.",
+    "Environment-backed paths identify external model stores without embedding machine-specific paths.",
+    "The RoboTwin report uses the shared 20000_pytorch checkpoint, not a task-specialist checkpoint.",
+    "The LIBERO report is direct subtask VLA-only evaluation with the 005000 adapter; no Qwen planner was used in that run.",
+    "The packaged LIBERO Qwen planner LoRA is included for integrated planner experiments and is not the source of the reported 95.20% direct VLA score."
+  ]
+}

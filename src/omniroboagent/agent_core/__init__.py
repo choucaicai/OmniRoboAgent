@@ -8,6 +8,7 @@ from omniroboagent.agent_core.memories import (
 from omniroboagent.agent_core.planners import (
     LanguageSkillPlanner,
     Planner,
+    SubtaskPlanPlanner,
     SubtaskSkillPlanner,
 )
 from omniroboagent.agent_core.planners.task_skill import TaskSkillPlanner
@@ -26,6 +27,7 @@ __all__ = [
     "LanguageSkillPlanner",
     "Memory",
     "Planner",
+    "SubtaskPlanPlanner",
     "SubtaskSkillPlanner",
     "SubtaskVerifier",
     "TaskSkillPlanner",

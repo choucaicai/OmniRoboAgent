@@ -97,9 +97,7 @@ def test_subtask_verifier_calls_vlm_with_before_after_images() -> None:
                 "text_summary": "the cabinet is open",
             }
         ],
-        "working_frames": [
-            {"cameras": {"history": Image.new("RGB", (2, 2), "green")}}
-        ],
+        "working_frames": [{"cameras": {"history": Image.new("RGB", (2, 2), "green")}}],
     }
 
     output = SubtaskVerifier(backend).verify(inputs)
@@ -127,8 +125,7 @@ def test_subtask_verifier_defers_semantic_check_by_chunk_interval() -> None:
 
 def test_subtask_verifier_rejects_invalid_model_status() -> None:
     backend = FakeLLMBackend(
-        '{"execution_status":"done","reason":"done",'
-        '"confidence":1.0,"evidence":[]}'
+        '{"execution_status":"done","reason":"done","confidence":1.0,"evidence":[]}'
     )
 
     with pytest.raises(VerifierOutputError, match="execution_status"):

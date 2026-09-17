@@ -8,5 +8,12 @@ __pycache__/
 build/
 dist/
 /runs/
+/results/benchmarks/
 reference_repo/
+/checkpoints/**
+!/checkpoints/manifest.json
+!/checkpoints/libero_qwen35_plan_lora_step500/
+!/checkpoints/libero_qwen35_plan_lora_step500/README.md
+!/checkpoints/libero_qwen35_plan_lora_step500/adapter_config.json
+!/checkpoints/libero_qwen35_plan_lora_step500/adapter_model.safetensors
 .vscode

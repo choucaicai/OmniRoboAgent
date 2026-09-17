@@ -1,0 +1,21 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.TaskSkillPlanner
+
+skill_backend:
+  class_path: omniroboagent.backends.skills.LiberoPi05PolicyBackend
+  init_args:
+    config_path: "${CLAWVLA_LIBERO_CONFIG}"
+    pretrained_path: "${LIBERO_PI05_CHECKPOINT}"
+    horizon: 50
+    tokenizer_name: "${PALIGEMMA_TOKENIZER}"
+
+verifier:
+  class_path: omniroboagent.agent_core.SubtaskVerifier
+  init_args:
+    camera_keys: [agentview_rgb, wrist_rgb]
+
+memory:
+  class_path: omniroboagent.agent_core.InMemoryMemory

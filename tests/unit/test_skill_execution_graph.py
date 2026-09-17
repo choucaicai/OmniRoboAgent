@@ -31,17 +31,13 @@ class ScriptedAgent(BaseAgent):
 
     def verify(self, inputs: dict[str, Any]) -> dict[str, Any]:
         self.verify_inputs.append(inputs)
-        result = self.verifications[
-            min(self.verify_calls, len(self.verifications) - 1)
-        ]
+        result = self.verifications[min(self.verify_calls, len(self.verifications) - 1)]
         self.verify_calls += 1
         environment_result = inputs["environment_result"]
         return {
             "task_success": environment_result.get("task_success", False),
             "task_progress": environment_result.get("task_progress", 0.0),
-            "last_action_success": environment_result.get(
-                "last_action_success", True
-            ),
+            "last_action_success": environment_result.get("last_action_success", True),
             "environment_done": environment_result.get("done", False),
             "env_feedback": environment_result.get("env_feedback", ""),
             **result,
@@ -118,6 +114,44 @@ def initial_state() -> dict[str, Any]:
         "session_id": "session",
         "history": [],
     }
+
+
+def test_reobserve_uncertain_uses_new_images_without_another_chunk() -> None:
+    class ObservableEnvironment(CountingEnvironment):
+        def observe(self) -> dict[str, Any]:
+            return {"frame": "fresh", "available_skills": ["PickPlace"]}
+
+    agent = ScriptedAgent(
+        [proposal()], [verification("uncertain"), verification("completed")]
+    )
+    environment = ObservableEnvironment()
+    state = initial_state()
+    pipeline = SkillExecutionPipeline(reobserve_on_uncertain=True)
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    output = pipeline.step(agent, environment, state)
+    assert environment.calls == agent.action_calls == 1
+    assert output["environment_result"]["executed_steps"] == 0
+    after = agent.verify_inputs[-1]["environment_result"]["observation"]
+    assert after["frame"] == "fresh"
+    assert agent.verify_inputs[-1]["observation"]["frame"] == 0
+    assert state["completed_executions"][0]["chunk_count"] == 1
+
+
+def test_exhausted_plan_does_not_claim_task_success_or_repeat_action() -> None:
+    agent = ScriptedAgent(
+        [proposal(), {"plan_complete": True}], [verification("completed")]
+    )
+    environment = CountingEnvironment(task_success=False)
+    state = initial_state()
+    pipeline = SkillExecutionPipeline()
+    pipeline.step(agent, environment, state)
+    state["step"] += 1
+    output = pipeline.step(agent, environment, state)
+    assert output["success"] is False
+    assert output["termination_reason"] == "plan_exhausted"
+    assert pipeline.is_terminal(output, state)
+    assert agent.action_calls == environment.calls == 1
 
 
 def test_first_plan_creates_explicit_active_execution() -> None:
@@ -319,9 +353,7 @@ def test_no_progress_detection_replans_current_execution() -> None:
 
 
 def test_recovery_uses_configured_fallback_after_replan_budget() -> None:
-    fallback = proposal(
-        "place plate on table", object_name="plate", target="table"
-    )
+    fallback = proposal("place plate on table", object_name="plate", target="table")
     agent = ScriptedAgent(
         [proposal()],
         [verification("failed"), verification("in_progress")],

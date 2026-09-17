@@ -24,6 +24,7 @@ class SkillExecutionPipeline(DirectPipeline):
         max_no_progress_steps: int | None = None,
         max_replans: int | None = None,
         fallback_proposal: dict[str, Any] | None = None,
+        reobserve_on_uncertain: bool = False,
     ) -> None:
         super().__init__(action_execution_mode, execute_steps)
         if planner_check_interval_chunks <= 0:
@@ -47,6 +48,7 @@ class SkillExecutionPipeline(DirectPipeline):
         self.max_uncertain_verifications = max_uncertain_verifications
         self.max_no_progress_steps = max_no_progress_steps
         self.max_replans = max_replans
+        self.reobserve_on_uncertain = reobserve_on_uncertain
         self.fallback_proposal = (
             dict(fallback_proposal) if fallback_proposal is not None else None
         )
@@ -108,6 +110,27 @@ class SkillExecutionPipeline(DirectPipeline):
                         ),
                     }
                 )
+                if (
+                    isinstance(planner_output, dict)
+                    and planner_output.get("plan_complete") is True
+                ):
+                    # Exhausting a plan cannot establish physical task success.
+                    result = state.get("environment_result", {})
+                    success = result.get("task_success") is True
+                    event = {
+                        "event_type": "task_success" if success else "plan_exhausted",
+                        "planner_output": planner_output,
+                        "decision": "success" if success else "failure",
+                        "success": success,
+                        "termination_reason": (
+                            "task_success" if success else "plan_exhausted"
+                        ),
+                        "environment_result": result,
+                        "invalid_action": False,
+                    }
+                    state["planner_calls"] = int(state.get("planner_calls", 0)) + 1
+                    agent.update(state, event)
+                    return event
                 active_execution = self._start_execution(
                     state, planner_output, available_skills
                 )
@@ -144,6 +167,25 @@ class SkillExecutionPipeline(DirectPipeline):
                 verification_observation = state.get(
                     "verification_observation", observation
                 )
+                if self.reobserve_on_uncertain:
+                    observe = getattr(environment, "observe", None)
+                    if not callable(observe):
+                        raise TypeError(
+                            "reobserve_on_uncertain requires Environment.observe()"
+                        )
+                    environment_result = {
+                        **previous_environment_result,
+                        "observation": observe(),
+                        "executed_steps": 0,
+                    }
+                    # An old semantic label must not override the fresh images.
+                    for key in (
+                        "execution_status",
+                        "verification_reason",
+                        "verification_confidence",
+                        "verification_evidence",
+                    ):
+                        environment_result.pop(key, None)
             else:
                 action = agent.predict_action(
                     {
@@ -251,8 +293,7 @@ class SkillExecutionPipeline(DirectPipeline):
                 active_execution["no_progress_count"] = 0
             if (
                 self.max_no_progress_steps is not None
-                and active_execution["no_progress_count"]
-                >= self.max_no_progress_steps
+                and active_execution["no_progress_count"] >= self.max_no_progress_steps
             ):
                 execution_status = "failed"
                 transition_reason = "no progress detected"
@@ -379,10 +420,7 @@ class SkillExecutionPipeline(DirectPipeline):
                 )
             active_execution["status"] = "uncertain"
             active_execution["uncertain_count"] += 1
-            if (
-                active_execution["uncertain_count"]
-                >= self.max_uncertain_verifications
-            ):
+            if active_execution["uncertain_count"] >= self.max_uncertain_verifications:
                 transition_reason = "uncertain verification budget exhausted"
                 verification = {
                     **verification,
@@ -571,9 +609,7 @@ class SkillExecutionPipeline(DirectPipeline):
             )
         skill_id = planner_output.get("skill_id")
         if skill_id is not None and (
-            not isinstance(skill_id, int)
-            or isinstance(skill_id, bool)
-            or skill_id < 0
+            not isinstance(skill_id, int) or isinstance(skill_id, bool) or skill_id < 0
         ):
             raise PlannerOutputError("Planner proposal skill_id must be non-negative")
 

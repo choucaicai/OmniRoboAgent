@@ -13,6 +13,7 @@ uv pip install --python "$CONDA_PREFIX/bin/python" --editable . --group dev
 基础环境只包含 framework 和开发依赖，不安装 simulator 或 benchmark SDK。需要运行具体 benchmark 时，按对应页面创建独立环境：
 
 - [EB-ALFRED](eb_alfred.md)
+- [LIBERO](libero.md)
 - [RoboCasa365](robocasa365.md)
 
 ## 2. Choose An AgentConfig
@@ -67,6 +68,8 @@ bash scripts/run_eb_alfred_xvfb.sh configs/runs/eb_alfred_smoke.yaml
 ```
 
 RoboCasa 的 simulator/model 环境、assets 和 policy server 需要单独准备，不能在基础环境中直接运行。具体命令见 [RoboCasa365](robocasa365.md)。
+
+LIBERO 同样使用独立 simulator/model 环境，并复用已有 ClawVLA/LeRobot 本地实现。具体依赖、环境变量和 smoke 配置见 [LIBERO](libero.md)。
 
 ## 5. Inspect Outputs
 

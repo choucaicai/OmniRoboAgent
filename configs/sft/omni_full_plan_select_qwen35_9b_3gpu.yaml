@@ -1,0 +1,67 @@
+# Fresh Qwen3.5-9B SFT for full-plan generation, per-subtask planner
+# selection, and explicit-progress verification.
+model_name_or_path: Qwen/Qwen3.5-9B
+trust_remote_code: true
+flash_attn: fa2
+disable_gradient_checkpointing: false
+image_max_pixels: 589824
+
+stage: sft
+do_train: true
+do_eval: true
+finetuning_type: lora
+lora_rank: 64
+lora_alpha: 128
+lora_dropout: 0.05
+lora_target: q_proj,k_proj,v_proj,o_proj,in_proj_a,in_proj_b,in_proj_qkv,in_proj_z,out_proj,gate_proj,up_proj,down_proj,qkv,proj,linear_fc1,linear_fc2
+freeze_vision_tower: false
+freeze_multi_modal_projector: false
+freeze_language_model: false
+
+deepspeed: configs/deepspeed/ds_z3_config.json
+dataset_dir: runs/data/omni_full_plan_select_schedule_sft_2486_20260913
+dataset: omni_full_plan_schedule_train
+eval_dataset: omni_full_plan_schedule_val_10pct
+tokenized_path: runs/sft/qwen35_9b_omni_full_plan_select_3gpu_20260913/data/tokenized
+template: qwen3_5_nothink
+enable_thinking: false
+cutoff_len: 32768
+packing: false
+preprocessing_num_workers: 16
+preprocessing_batch_size: 1
+dataloader_num_workers: 4
+
+output_dir: runs/sft/qwen35_9b_omni_full_plan_select_3gpu_20260913/checkpoints
+run_name: omni_qwen35_9b_full_plan_select_3gpu_20260913
+logging_steps: 5
+save_strategy: steps
+save_steps: 500
+save_total_limit: 3
+save_only_model: false
+overwrite_output_dir: false
+plot_loss: false
+
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 1
+train_sampling_strategy: group_by_length
+learning_rate: 5.0e-5
+num_train_epochs: 3
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.01
+max_grad_norm: 1.0
+bf16: true
+fp16: false
+ddp_find_unused_parameters: false
+ddp_timeout: 7200
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 2000
+compute_accuracy: true
+prediction_loss_only: false
+eval_accumulation_steps: 1
+do_sample: true
+temperature: 0.2
+top_p: 0.9
+report_to: none
+seed: 42

@@ -1,4 +1,5 @@
 import importlib
+import os
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,17 @@ def load_yaml(path: str | Path) -> dict[str, Any]:
         raise ConfigError(f"Failed to load config {config_path}: {error}") from error
     if not isinstance(data, dict):
         raise ConfigError(f"Config root must be a mapping: {config_path}")
-    return data
+    return _expand_environment(data)
+
+
+def _expand_environment(value: Any) -> Any:
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    if isinstance(value, list):
+        return [_expand_environment(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _expand_environment(item) for key, item in value.items()}
+    return value
 
 
 def instantiate(spec: Any, **extra_init_args: Any) -> Any:

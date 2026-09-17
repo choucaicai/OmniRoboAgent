@@ -2,6 +2,21 @@
 
 本文档是项目工作的唯一总清单。详细方案放在 `impl_docs/plans/`，完成记录放在 `impl_docs/changes/`。
 
+## Benchmark release snapshot (2026-09-16)
+
+- [x] 汇总 LIBERO 四套官方任务：40 tasks、2,000 episodes、1,904 successes（95.20%）。
+- [x] 汇总 RoboTwin 2.0 demo_clean：50 tasks、1,500 held-out episodes、922 successes（61.47%）。
+- [x] 增加紧凑结果表、逐任务 CSV、checkpoint manifest 和发布说明；原始 runs/logs/datasets/weights 保持 ignored。
+
+## RoboTwin and LIBERO extensions (2026-09-16)
+
+- [x] 增加 RoboTwin Environment、常驻 pi0.5 worker client、完整子任务计划、逐项选择、显式 chunk 进度和 benchmark-native success。
+- [x] 使用 2,486 条轨迹生成 full-plan SFT 数据并完成 Qwen3.5-9B LoRA；正式 RoboTwin 评测使用 checkpoint-3500。
+- [x] 完成 RoboTwin 2.0 demo_clean 的 50 tasks × 30 held-out episodes：922/1,500（61.47%）。
+- [x] 增加 LIBERO Environment/Evaluator 与本地 pi0.5 backend，支持官方四套任务、固定初始状态、双相机、8D state 和 7D relative actions。
+- [x] 完成 LIBERO subtask pi0.5 LoRA 和四套正式评测：1,904/2,000（95.20%）。
+- [x] 增加可重复生成的逐任务结果表和最终 checkpoint manifest；原始 runs、logs、datasets 与 weights 不进入 Git。
+
 ## 0. Project Decisions
 
 - [x] `DONE` 使用 Python 3.11，Conda 环境名为 `omniagent`。

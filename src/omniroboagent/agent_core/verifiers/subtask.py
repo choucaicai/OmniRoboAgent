@@ -24,6 +24,15 @@ Return JSON with exactly these fields:
 }
 """
 
+PLANNED_CHUNK_SCHEDULE_VERIFIER_PROMPT = """Advance through a previously generated
+execution plan. The complete execution_plan and explicit progress are provided.
+Return in_progress while progress.current_chunk is below
+progress.current_chunk_budget. Return completed when it reaches the budget. Do not
+change the plan, select another subtask, or claim benchmark success. This status only
+controls deterministic plan advancement. Return JSON with execution_status, reason,
+confidence and evidence. State the current chunk and budget in reason and evidence.
+"""
+
 
 class SubtaskVerifier(Verifier):
     """Verify active execution state while preserving benchmark ground truth."""
@@ -37,6 +46,7 @@ class SubtaskVerifier(Verifier):
         max_tokens: int = 512,
         temperature: float = 0.0,
         extra_body: dict[str, Any] | None = None,
+        planned_chunk_schedule: bool = False,
     ) -> None:
         if check_interval_chunks <= 0:
             raise ConfigError("check_interval_chunks must be positive")
@@ -49,18 +59,26 @@ class SubtaskVerifier(Verifier):
             raise ConfigError("camera_keys must contain non-empty strings")
         if len(set(resolved_camera_keys)) != len(resolved_camera_keys):
             raise ConfigError("camera_keys must be unique")
+        if not isinstance(planned_chunk_schedule, bool):
+            raise ConfigError("planned_chunk_schedule must be a boolean")
         self.backend = backend
         self.camera_keys = list(resolved_camera_keys)
         self.check_interval_chunks = check_interval_chunks
-        self.system_prompt = system_prompt
+        self.planned_chunk_schedule = planned_chunk_schedule
+        if planned_chunk_schedule:
+            self.system_prompt = PLANNED_CHUNK_SCHEDULE_VERIFIER_PROMPT
+        else:
+            self.system_prompt = system_prompt
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.extra_body = extra_body or {}
 
     def healthcheck(self) -> dict[str, Any]:
-        return self.backend.healthcheck() if self.backend is not None else {
-            "healthy": True
-        }
+        return (
+            self.backend.healthcheck()
+            if self.backend is not None
+            else {"healthy": True}
+        )
 
     def close(self) -> None:
         if self.backend is not None:
@@ -133,9 +151,7 @@ class SubtaskVerifier(Verifier):
             )
         if not isinstance(active_execution, Mapping):
             active_execution = {}
-        chunk_count = (
-            active_execution.get("chunk_count", 1)
-        )
+        chunk_count = active_execution.get("chunk_count", 1)
         if not isinstance(chunk_count, int) or isinstance(chunk_count, bool):
             raise VerifierOutputError("active_execution.chunk_count must be an integer")
         if chunk_count % self.check_interval_chunks != 0:
@@ -163,6 +179,57 @@ class SubtaskVerifier(Verifier):
             "expected_outcome": active_execution.get("expected_outcome"),
             "environment_feedback": common["env_feedback"],
         }
+        if self.planned_chunk_schedule:
+            planner_output = active_execution.get("planner_output")
+            plan = (
+                planner_output.get("plan")
+                if isinstance(planner_output, Mapping)
+                else None
+            )
+            index = (
+                planner_output.get("plan_index")
+                if isinstance(planner_output, Mapping)
+                else None
+            )
+            if not isinstance(plan, list) or not plan:
+                raise VerifierOutputError("Planned schedule requires a complete plan")
+            if type(index) is not int or not 0 <= index < len(plan):
+                raise VerifierOutputError(
+                    "Planned schedule requires a valid plan_index"
+                )
+            current = plan[index]
+            if not isinstance(current, Mapping):
+                raise VerifierOutputError("Current planned subtask must be a mapping")
+            budget = current.get("chunk_budget")
+            if type(budget) is not int or budget <= 0:
+                raise VerifierOutputError(
+                    "Current planned subtask requires a positive chunk_budget"
+                )
+            state = inputs.get("state", {})
+            completed = (
+                state.get("completed_executions", [])
+                if isinstance(state, Mapping)
+                else []
+            )
+            if not isinstance(completed, list):
+                raise VerifierOutputError("completed_executions must be a list")
+            task = inputs.get("task")
+            if isinstance(task, Mapping):
+                hidden_runtime_fields = {"chunk_budgets", "episode_index", "seed"}
+                prompt["task"] = {
+                    key: value
+                    for key, value in task.items()
+                    if key not in hidden_runtime_fields
+                }
+            prompt["execution_plan"] = plan
+            prompt["progress"] = {
+                "completed_subtask_count": len(completed),
+                "completed_subtask_indices": list(range(len(completed))),
+                "current_subtask_index": index,
+                "current_chunk": chunk_count,
+                "current_chunk_budget": budget,
+                "total_subtasks": len(plan),
+            }
         memory_context = inputs.get("memory_context")
         if isinstance(memory_context, Mapping):
             recent_events = memory_context.get("recent_events", [])
@@ -201,9 +268,7 @@ class SubtaskVerifier(Verifier):
                 if not isinstance(images, list):
                     images = [images]
                 for image in images:
-                    content.append(
-                        {"type": "image_url", "image_url": {"url": image}}
-                    )
+                    content.append({"type": "image_url", "image_url": {"url": image}})
         if isinstance(memory_context, Mapping):
             working_frames = memory_context.get("working_frames", [])
             if isinstance(working_frames, list) and working_frames:
@@ -321,9 +386,7 @@ class SubtaskVerifier(Verifier):
             return content
         if isinstance(content, list):
             return "".join(
-                str(item.get("text", ""))
-                for item in content
-                if isinstance(item, dict)
+                str(item.get("text", "")) for item in content if isinstance(item, dict)
             )
         raise VerifierOutputError("LLM verifier response content is empty")
 

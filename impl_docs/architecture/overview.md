@@ -1,6 +1,6 @@
 # OmniRoboAgent Architecture
 
-Status: `v0.1` package architecture and skill execution state graph implemented; EB-ALFRED, RoboCasa atomic/composite matrices, and one migrated composite fixed smoke verified
+Status: `v0.1` package architecture and skill execution state graph implemented; EB-ALFRED, LIBERO local pi0.5, RoboTwin full-plan scheduling, and RoboCasa atomic/composite matrices verified
 
 ## 1. Objective
 
@@ -12,7 +12,7 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 框架需要支持不同 LLM/VLM、规则或学习型 skill、仿真 benchmark 和真实机器人，同时保持推理流程、决策逻辑和运行调度解耦。
 
-当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、显式 graph-state `SkillExecutionPipeline`、独立 `SubtaskVerifier`、`SyncRuntime`、独立 episode observability artifacts、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。迁移后的 RoboCasa composite 固定真实 checkpoint smoke 已完成；真实 OpenPI checkpoint smoke、正式多 episode 质量评测、async runtime、ROS2 和真机 integration 尚未完成。
+当前已实现同步单环境闭环、组合式 `DefaultAgent`、`DirectPipeline`、显式 graph-state `SkillExecutionPipeline`、独立 `SubtaskVerifier`、`SyncRuntime`、独立 episode observability artifacts、OpenAI-compatible LLM、SkillBackend registry、RoboTwin、LIBERO、EB-ALFRED，以及 RoboCasa365 Environment/Evaluator、atomic/composite Planner、GR00T remote/local 和 OpenPI remote schema adapter。LIBERO 已完成四套官方任务的 2,000-episode 评测；RoboTwin 已完成 50-task、1,500-episode held-out 评测。async runtime、ROS2 和真机 integration 尚未完成。
 
 ### 1.1 Repository Boundary
 
@@ -137,9 +137,11 @@ task_success -> terminate
 
 ### Planner
 
-`LanguageSkillPlanner` 从 Environment 提供的语言 skill 列表中选择一个动作。`TaskSkillPlanner` 将 concrete benchmark task name 直接作为 policy skill，用于 RoboCasa atomic task。
+`LanguageSkillPlanner` 从 Environment 提供的语言 skill 列表中选择一个动作。`TaskSkillPlanner` 将 concrete benchmark task name 直接作为 policy skill，用于 RoboCasa atomic task 和 LIBERO atomic execution。
 
 `SubtaskSkillPlanner` 用于 composite task。Environment 通过 observation 的 `available_skills` 暴露 atomic macro catalog；Planner 使用 OpenAI-compatible multimodal structured output 生成 `skill`、具体 `subtask`、`grounded_arguments` 和 `expected_outcome`，再通过 AgentConfig 中的可信映射补充 `skill_id`。模型不能直接提供或覆盖 skill ID，也不输出 execution completion status。
+
+`SubtaskPlanPlanner` 提供可选的 scheduled-chunk 模式。模型在 episode 开始时根据任务、初始三相机图像和 available skills 一次生成完整有序计划，每项包含 skill、subtask、可见完成条件和 chunk budget；Planner 在 episode 内缓存该输出。每个子任务开始前仍保留一次与 Omni 调用边界一致的多模态 Planner 调用：模型接收缓存计划、显式进度、近期历史和当前图像，并逐字段选择当前计划项，Runtime 不会静默按索引推进。该模式为显式实验配置，不改变默认逐子任务 Planner 行为。
 
 ### LLMBackend
 
@@ -149,7 +151,7 @@ Backend 只关闭客户端连接，不启动或关闭远程服务端进程。
 
 ### SkillBackend
 
-接收 Pipeline 构造的普通字典，生成任意 Python Action payload，但不执行动作。当前实现包括 language passthrough、GR00T ZeroMQ remote、OpenPI WebSocket remote 和 in-process local policy。
+接收 Pipeline 构造的普通字典，生成任意 Python Action payload，但不执行动作。当前实现包括 language passthrough、GR00T ZeroMQ remote、OpenPI WebSocket remote、通用 in-process local policy，以及复用 ClawVLA/LeRobot 的 LIBERO pi0.5 local policy。
 
 SkillBackend 不要求统一 Action 基类。字符串、字典、NumPy array、OpenPI action chunk 或自定义对象均可直接返回。
 
@@ -167,11 +169,15 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 `RoboCasaEnvironment` 默认将当前 concrete task name 暴露为唯一 `available_skills`，保持 atomic 行为。Composite RunConfig 可以显式提供非空、唯一的 macro skill catalog；Environment 只负责把 catalog 放入 observation，不负责 Planner 选择或 GR00T skill ID 映射。
 
+`LiberoEnvironment` 解析四套官方 task suites 和固定初始状态，把 agent-view、wrist image 与 8D robot state 转成普通 observation 字典，校验 source-observation-bound 的 7D relative action chunk，并以官方 `env.check_success()` 作为唯一 benchmark success。Spatial/Object/Goal 默认使用完整语言指令作为一个 active subtask；Long 的多段计划只替换 Planner，不改变 Environment 或 SkillBackend。
+
 `environments/base.py` 定义框架环境 contract。依赖 benchmark 或模拟器的 adapter 放在 `environments/benchmarks/<framework>/`，并实现 `Environment` contract；核心执行模块只依赖 `base.py`，不 import 具体 adapter 或可选 SDK。ROS2 与 human text I/O 不属于 benchmark environment ownership，统一归入 `integrations/`。
 
 ### Verifier
 
 输入和输出均使用普通字典。输出字段由具体 Verifier 自定义，Pipeline 负责解释；框架不提供全局固定的 Runtime decision 枚举。`EnvironmentVerifier` 为 `DirectPipeline` 透传 benchmark authoritative fields。`SubtaskVerifier` 输出 `in_progress`、`completed`、`failed`、`uncertain`、reason、confidence 和 evidence；它始终优先保留 benchmark `task_success`、environment done 和 action failure，并可选使用 OpenAI-compatible VLM 比较 action 前后 observation。RoboCasa composite 配置每 8 个 action chunks 执行一次视觉语义检查。
+
+在 full-plan scheduled-chunk 实验模式下，`SubtaskVerifier` 接收缓存的完整计划以及 completed-subtask count、current subtask index、current chunk 和该项预算。其 `completed` 仅表示计划预算耗尽；环境的 authoritative task success 仍具有最高优先级。
 
 ### Memory
 
@@ -387,6 +393,9 @@ omniroboagent.environments.benchmarks.embodiedbench.EBAlfredEnvironment
 omniroboagent.evals.benchmarks.embodiedbench.EBAlfredBenchmark
 omniroboagent.environments.benchmarks.robocasa.RoboCasaEnvironment
 omniroboagent.evals.benchmarks.robocasa.RoboCasa365Evaluator
+omniroboagent.environments.benchmarks.libero.LiberoEnvironment
+omniroboagent.evals.benchmarks.libero.LiberoEvaluator
+omniroboagent.backends.skills.LiberoPi05PolicyBackend
 ```
 
 ## 9. Remote Service Lifecycle
@@ -423,11 +432,11 @@ pipeline:
 
 ### Benchmark Environments
 
-`environments/benchmarks/` 保存具体 benchmark 或 simulator 的执行 adapter。每个 adapter 负责加载任务和 observation、校验并执行 action、整理环境反馈，以及关闭 simulator。当前实现 `EBAlfredEnvironment` 和 `RoboCasaEnvironment`；后者逐步执行连续 action chunk，支持默认 concrete task skill 或显式 macro skill catalog，并使用官方 wrapper 的 `_check_success()` 结果作为 ground truth。
+`environments/benchmarks/` 保存具体 benchmark 或 simulator 的执行 adapter。每个 adapter 负责加载任务和 observation、校验并执行 action、整理环境反馈，以及关闭 simulator。当前实现 `EBAlfredEnvironment`、`LiberoEnvironment` 和 `RoboCasaEnvironment`。LIBERO adapter 使用官方固定初始状态、双相机 observation、8D state、7D relative actions 和 `env.check_success()`；RoboCasa adapter 逐步执行连续 action chunk，支持默认 concrete task skill 或显式 macro skill catalog，并使用官方 wrapper 的 `_check_success()` 结果作为 ground truth。
 
 ### Benchmark Evaluation
 
-`evals/benchmarks/` 保存 evaluation runner 和指标聚合。runner 组合 Agent、Pipeline、Runtime 和具体 Environment，负责遍历任务、保存逐 episode 结果并生成 summary。当前实现 `EBAlfredBenchmark` 和具体的 `RoboCasa365Evaluator`；尚未抽象通用 Evaluator hierarchy。
+`evals/benchmarks/` 保存 evaluation runner 和指标聚合。runner 组合 Agent、Pipeline、Runtime 和具体 Environment，负责遍历任务、保存逐 episode 结果并生成 summary。当前实现 `EBAlfredBenchmark`、`LiberoEvaluator` 和 `RoboCasa365Evaluator`；尚未抽象通用 Evaluator hierarchy。
 
 Benchmark SDK 作为对应 environment 的独立 Conda 依赖安装。AgentConfig 不包含 benchmark 信息，同一个 Evaluator/Environment 通过替换 AgentConfig 在 GR00T remote、OpenPI remote 和 local policy 之间切换。BEHAVIOR support 在实际接入时再增加，不预先创建空目录。
 
@@ -486,12 +495,16 @@ OmniRoboAgent/
 │       │   └── benchmarks/
 │       │       ├── embodiedbench/
 │       │       │   └── eb_alfred.py
+│       │       ├── libero/
+│       │       │   └── environment.py
 │       │       └── robocasa/
 │       │           └── environment.py
 │       ├── evals/
 │       │   └── benchmarks/
 │       │       ├── embodiedbench/
 │       │       │   └── eb_alfred.py
+│       │       ├── libero/
+│       │       │   └── evaluator.py
 │       │       └── robocasa/
 │       │           └── evaluator.py
 │       ├── __init__.py
@@ -565,6 +578,7 @@ episode limit                -> Runtime termination
 | Language skill backend | Implemented |
 | OpenPI WebSocket client | Implemented with fake client tests; real server smoke pending |
 | EB-ALFRED adapter and `base[0]` smoke | Implemented and verified |
+| LIBERO Environment/Evaluator/local pi0.5 | Implemented; 40 tasks and 2,000 official fixed-init episodes evaluated |
 | Package architecture | Implemented and unit tested |
 | SkillBackend registry | Implemented with explicit names and `class_path` fallback |
 | RoboCasa365 Environment/Evaluator | Implemented; atomic and composite GR00T remote/local split matrices verified |
@@ -581,9 +595,19 @@ episode limit                -> Runtime termination
 2. 已完成 EB-ALFRED 单 episode 同步闭环；正式 episode 集合和原生 evaluator 对齐待完成。
 3. 已在不改变行为的前提下完成 Agent Core、Environment、Evaluation 和 Integration ownership 重组。
 4. 已接入 RoboCasa 与 GR00T/OpenPI/local VLA backend，并验证 atomic 与 composite Agent split matrix；OpenPI 真实 smoke 和原生 evaluator 对齐待完成。
-5. 已为 `SkillExecutionPipeline` 增加显式 graph state、独立 subtask verification、确定性转换和 recovery，并完成迁移后的 RoboCasa composite 固定 real smoke；下一步补 peak RSS、verifier usage trace、semantic loop tuning 和正式多 episode matrix。
-6. 根据真实需求加入 async runtime 和多环境调度。
-7. 加入 semantic/spatial memory 和 learned verifier。
-8. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。
+5. 已接入 LIBERO official suites 和本地 pi0.5，并完成四套共 2,000 episodes 的正式评测。
+6. 已为 `SkillExecutionPipeline` 增加显式 graph state、独立 subtask verification、确定性转换和 recovery，并完成迁移后的 RoboCasa composite 固定 real smoke；下一步补 peak RSS、verifier usage trace、semantic loop tuning 和正式多 episode matrix。
+7. 根据真实需求加入 async runtime 和多环境调度。
+8. 加入 semantic/spatial memory 和 learned verifier。
+9. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。
 
 每一阶段都必须保持上一阶段 benchmark 可运行，不能以未来扩展为由破坏已验证接口。
+
+## 15. Optional full-plan chunk schedule
+
+RoboTwin 配置可启用 `SubtaskPlanPlanner` 的 scheduled-chunk 模式。Planner 在
+episode 开始时根据任务和三相机图像生成一次完整计划，并在每个子任务边界接收缓存
+计划、当前图像、近期历史和显式进度，选择当前计划项。`SubtaskVerifier` 使用同一
+计划中的 chunk budget 决定继续或推进；预算耗尽只表示局部调度完成，不能替代
+RoboTwin `check_success()`。训练数据由相同 Planner/Verifier 请求构造代码通过
+Runtime/Pipeline 回放生成。细节见[数据文档](../../docs/fixed_schedule_sft.md)。

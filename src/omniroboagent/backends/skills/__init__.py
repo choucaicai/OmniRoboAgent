@@ -9,6 +9,7 @@ from omniroboagent.backends.skills.openpi import (
     OpenPIRoboCasaPolicyBackend,
     OpenPIWebSocketPolicyBackend,
 )
+from omniroboagent.backends.skills.pi05_libero import LiberoPi05PolicyBackend
 from omniroboagent.backends.skills.registry import (
     SkillBackendRegistry,
     create_skill_backend,
@@ -23,6 +24,7 @@ __all__ = [
     "LocalPolicyBackend",
     "OpenPIRoboCasaPolicyBackend",
     "OpenPIWebSocketPolicyBackend",
+    "LiberoPi05PolicyBackend",
     "SkillBackend",
     "SkillBackendRegistry",
     "create_skill_backend",

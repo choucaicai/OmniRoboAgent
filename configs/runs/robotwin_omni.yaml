@@ -1,0 +1,43 @@
+# Single-episode Omni-style RoboTwin smoke run. The scheduler must infer the
+# complete plan and chunk budgets from the task and observations.
+agent_config: ../agents/robotwin_omni.yaml
+
+pipeline:
+  class_path: omniroboagent.pipelines.SkillExecutionPipeline
+  init_args:
+    reobserve_on_uncertain: true
+    max_chunks_per_skill: 50
+    max_attempts_per_execution: 2
+    max_uncertain_verifications: 3
+    max_replans: 2
+
+runtime:
+  class_path: omniroboagent.runtimes.SyncRuntime
+  init_args:
+    max_steps: 300
+    timeout_seconds: 1800
+    output_dir: runs/robotwin_omni/traces
+
+environment:
+  class_path: omniroboagent.environments.benchmarks.robotwin.RoboTwinEnvironment
+  init_args:
+    config_path: "${ROBOTWIN_CONFIG}"
+    artifact_dir: runs/robotwin_omni/observations
+    available_skills:
+      - gripper control
+      - handover
+      - hang
+      - open
+      - pick and place
+      - pour
+      - press
+      - rotate
+      - scan
+      - shake
+      - tool use
+
+task:
+  task_name: place_container_plate
+  episode_index: 0
+  seed: 200001
+  instruction: Grab container with the rusty-looking grayish metallic cup, place it on the gray plate for dining.

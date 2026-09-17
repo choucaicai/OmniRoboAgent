@@ -6,7 +6,7 @@ OmniRoboAgent 是面向具身 Agent 的模块化构建、运行与评估框架�
 Observe -> Plan -> Act -> Verify -> Update or Stop
 ```
 
-当前实现包含同步 Runtime、独立 episode observability artifacts、组合式 BaseAgent、显式 skill-execution graph state、独立 SubtaskVerifier、K 帧与关键事件 TieredMemory、OpenAI-compatible LLM、SkillBackend registry、EB-ALFRED，以及 RoboCasa365 的 atomic/composite Agent、GR00T/OpenPI/local VLA evaluation 路径。
+当前实现包含同步 Runtime、独立 episode observability artifacts、组合式 BaseAgent、显式 skill-execution graph state、独立 SubtaskVerifier、K 帧与关键事件 TieredMemory、OpenAI-compatible LLM、SkillBackend registry，以及 EB-ALFRED、RoboTwin 2.0、LIBERO 和 RoboCasa365 的评测路径。
 
 ## Clone
 
@@ -120,6 +120,10 @@ DISPLAY_ID=2 CONDA_ENV=omniagent-eb \
 
 RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/composite Agent、GR00T/OpenPI server、本地模型和 smoke 配置见 [RoboCasa365 评测](docs/robocasa365.md)。
 
+LIBERO 使用独立 simulator/model 环境，通过 ClawVLA adapter 运行官方四套任务与本地 LeRobot pi0.5，见 [LIBERO 评测](docs/libero.md)。
+
+RoboTwin 2.0 使用 Qwen planner、共享 subtask pi0.5 backend 与环境原生成功判定，见 [RoboTwin 兼容层](docs/robotwin_omni_compat.md)。
+
 ## Documentation
 
 ### Guides
@@ -136,4 +140,7 @@ RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/
 ### Benchmarks
 
 - [EB-ALFRED 评测](docs/eb_alfred.md)
+- [RoboTwin 2.0 评测](docs/robotwin_omni_compat.md)
+- [LIBERO 评测](docs/libero.md)
 - [RoboCasa365 评测](docs/robocasa365.md)
+- [评测结果与 checkpoint 清单](docs/results.md)

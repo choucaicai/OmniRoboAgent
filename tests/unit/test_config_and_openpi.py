@@ -59,6 +59,18 @@ def test_load_yaml_rejects_non_mapping(tmp_path: Path) -> None:
         load_yaml(path)
 
 
+def test_load_yaml_expands_environment_variables(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OMNI_TEST_MODEL", "/models/test")
+    path = tmp_path / "config.yaml"
+    path.write_text('model: "${OMNI_TEST_MODEL}"\nitems: ["${OMNI_TEST_MODEL}"]\n')
+    assert load_yaml(path) == {
+        "model": "/models/test",
+        "items": ["/models/test"],
+    }
+
+
 def test_robocasa_composite_config_uses_independent_subtask_verifier() -> None:
     config = load_yaml("configs/agents/robocasa365_groot_composite_remote.yaml")
 

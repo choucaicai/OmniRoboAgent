@@ -1,0 +1,51 @@
+{
+  "name": "omniagent_robotwin_shared_pi05",
+  "robotwin": {
+    "repo_root": "/path/to/RoboTwin",
+    "task_name": "adjust_bottle",
+    "task_config": "demo_clean",
+    "seed": 300000,
+    "now_ep_num": 0,
+    "enable_depth": false,
+    "enable_pointcloud": false,
+    "camera_profile": "Large_D435_Wide",
+    "planner_image_mode": "current_rgb_4",
+    "static_camera_preset": "selected_global_4",
+    "artifact_dir": "runs/robotwin_omni/observations",
+    "is_test": true,
+    "eval_mode": true,
+    "render_freq": 0,
+    "need_plan": true
+  },
+  "metadata": {
+    "action_backend": {
+      "type": "pi05",
+      "enabled": true,
+      "policy_type": "pi05",
+      "pretrained_path": "/path/to/robotwin_pi05_checkpoint",
+      "device": "cuda",
+      "openpi_src": "/path/to/openpi/src",
+      "tokenizer_name": "/path/to/paligemma_tokenizer.model",
+      "policy_kwargs": {
+        "n_action_steps": 32,
+        "sample_num_steps": 10,
+        "action_horizon": 32,
+        "max_token_len": 256,
+        "train_config_name": "pi05_robotwin_omni_task_skill_subtask_2486_h32",
+        "asset_id": "robotwin_expert_subtasks_50x50"
+      },
+      "robotwin_adapter": {
+        "mode": "openpi_robotwin2",
+        "action_type": "qpos",
+        "uses_delta_joint_actions": true,
+        "image_mapping": {
+          "images.cam_high": "head_camera",
+          "images.cam_left_wrist": "left_camera",
+          "images.cam_right_wrist": "right_camera"
+        },
+        "state_mapping": "joint_action.vector",
+        "swap_red_blue_channels_for_policy": true
+      }
+    }
+  }
+}

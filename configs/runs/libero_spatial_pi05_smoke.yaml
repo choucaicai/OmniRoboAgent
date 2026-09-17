@@ -1,0 +1,32 @@
+agent_config: ../agents/libero_pi05_atomic.yaml
+
+pipeline:
+  class_path: omniroboagent.pipelines.SkillExecutionPipeline
+  init_args:
+    action_execution_mode: receding_horizon
+    execute_steps: 5
+
+runtime:
+  class_path: omniroboagent.runtimes.SyncRuntime
+  init_args:
+    max_steps: 50
+    max_invalid_actions: 2
+    max_retries: 2
+    timeout_seconds: 1800
+    output_dir: runs/libero_spatial_pi05_smoke/traces
+
+environment:
+  class_path: omniroboagent.environments.benchmarks.libero.LiberoEnvironment
+  init_args:
+    config_path: "${CLAWVLA_LIBERO_CONFIG}"
+    artifact_dir: runs/libero_spatial_pi05_smoke/observations
+
+benchmark:
+  class_path: omniroboagent.evals.benchmarks.libero.LiberoEvaluator
+  init_args:
+    suite: libero_spatial
+    output_dir: runs/libero_spatial_pi05_smoke
+    task_ids: [0]
+    episodes_per_task: 1
+    episode_indices: [0]
+    seed: 7

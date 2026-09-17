@@ -1,0 +1,51 @@
+# Omni-style RoboTwin agent surface.
+#
+# The eleven names are protocol labels. The planner generates the complete
+# subtask plan and chunk budgets once, then selects each cached item in order.
+# The VLA still receives the concrete subtask and the environment remains the
+# authority for benchmark task success.
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.SubtaskPlanPlanner
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:8001
+        model: qwen_schedule
+        timeout_seconds: 120
+    camera_keys: [head_rgb, left_rgb, right_rgb]
+    scheduled_chunks: true
+
+verifier:
+  class_path: omniroboagent.agent_core.SubtaskVerifier
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:8001
+        model: qwen_schedule
+        timeout_seconds: 120
+    camera_keys: [head_rgb, left_rgb, right_rgb]
+    check_interval_chunks: 1
+    planned_chunk_schedule: true
+
+memory:
+  class_path: omniroboagent.agent_core.TieredMemory
+  init_args:
+    visual_window_size: 4
+    recent_event_limit: 20
+    key_event_limit: 20
+    summary_max_chars: 4096
+    save_key_event_artifacts: false
+    camera_keys: [head_rgb, left_rgb, right_rgb]
+
+skill_backend:
+  class_path: omniroboagent.backends.skills.pi05_worker.Pi05WorkerBackend
+  init_args:
+    host: 127.0.0.1
+    port: 9665
+    horizon: 32
+    prompt_mode: task_skill_subtask

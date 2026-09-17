@@ -17,4 +17,7 @@
 - [自定义组件](/custom_components.md)
 - Benchmarks
   - [EB-ALFRED 评测](/eb_alfred.md)
+  - [RoboTwin 2.0 评测](/robotwin_omni_compat.md)
+  - [LIBERO 评测](/libero.md)
   - [RoboCasa365 评测](/robocasa365.md)
+  - [评测结果](/results.md)

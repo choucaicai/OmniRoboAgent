@@ -20,6 +20,7 @@ CLI 会构造 Environment，并将它作为 `environment=` 注入 benchmark。�
 | Evaluator | Responsibility |
 | --- | --- |
 | `EBAlfredBenchmark` | 遍历 selected episodes，保存 episode records 和 summary |
+| `LiberoEvaluator` | 遍历 official suite/fixed init states，保存 per-task 和 suite success rate |
 | `RoboCasa365Evaluator` | 解析 official task set/split、episode seed，保存 resolved config、per-task 和 aggregate metrics |
 
 ## Outputs
@@ -34,7 +35,7 @@ Benchmark output 通常包括：
 └── traces/
 ```
 
-`resolved_config.json` 的覆盖范围由 evaluator 定义。当前 RoboCasa evaluator 会记录 task/split/seed、component classes、关键 limits、package versions、repository state 和 policy health；EB-ALFRED 仍需用户同时保留 AgentConfig 与 RunConfig。
+`resolved_config.json` 的覆盖范围由 evaluator 定义。当前 LIBERO 和 RoboCasa evaluator 会记录 benchmark identity、episode selection、component classes、关键 limits、package versions 和 policy health；EB-ALFRED 仍需用户同时保留 AgentConfig 与 RunConfig。
 
 当 Runtime 配置 [Observability](observability.md) 时，每个 `traces/<session_id>/` 还包含精简 Agent trace、episode video 和 artifact manifest。RoboCasa `resolved_config.json` 会记录 recorder class、video 开关、camera keys 和 FPS。
 

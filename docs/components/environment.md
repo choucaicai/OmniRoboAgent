@@ -44,8 +44,9 @@ executed_steps
 | Environment | Location | Action |
 | --- | --- | --- |
 | `EBAlfredEnvironment` | `environments/benchmarks/embodiedbench/` | 单个 language skill |
+| `LiberoEnvironment` | `environments/benchmarks/libero/` | 7D relative VLA action chunk |
 | `RoboCasaEnvironment` | `environments/benchmarks/robocasa/` | VLA action chunk |
 
-Benchmark-specific 安装和字段见 [EB-ALFRED](../eb_alfred.md) 与 [RoboCasa365](../robocasa365.md)。
+Benchmark-specific 安装和字段见 [EB-ALFRED](../eb_alfred.md)、[LIBERO](../libero.md) 与 [RoboCasa365](../robocasa365.md)。
 
 下一节：[Evaluation](evaluation.md)。
