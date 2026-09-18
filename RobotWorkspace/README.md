@@ -28,7 +28,7 @@
 
 ## 真机 Demo
 
-[观看真机部署演示视频](real_world_deployment.mp4)
+[观看真机部署演示视频](../real_world_robot_deployment.mp4)
 
 该视频记录当前工作站的真机部署示例。复现实验时仍应单独记录任务、日期、控制模式、相机与实际使用的标定版本。
 
@@ -69,9 +69,10 @@ RobotWorkspace/
 │   │   └── mr1000_description/
 │   └── application/robot_bringup/       # launch、标定、采集和回放脚本
 ├── data/calib/                           # 工作站绑定的标定样例
-├── local/                                # 可选的本地音频/视频辅助脚本
-└── real_world_deployment.mp4             # 真机部署演示视频
+└── local/                                # 可选的本地音频/视频辅助脚本
 ```
+
+真机部署演示视频位于仓库根目录 [`real_world_robot_deployment.mp4`](../real_world_robot_deployment.mp4)。
 
 `build/`、`install/`、`log/`、`interfaces/`、Python 缓存和所有原工作区 Git 元数据均未迁入。运行产生的 ROS bag、标定采集图像和模型权重不应提交到本仓库；将其保存到受控数据存储，并记录数据版本和机器人配置。
 
