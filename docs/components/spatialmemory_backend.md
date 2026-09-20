@@ -55,6 +55,53 @@ sudo apt-get update
 sudo apt-get install -y build-essential git libgl1 libglib2.0-0 libgomp1
 ```
 
+## 同环境组合前先看：SpatialLM 与 Flask 的 Jinja2 版本冲突
+
+在同一个 Python 环境中同时运行 SpatialLM 和 EB-ALFRED 时，旧版 Jinja2 可能导致
+SpatialLM/Transformers 报错：
+
+```text
+AttributeError: module 'jinja2' has no attribute 'pass_eval_context'
+ImportError: apply_chat_template requires jinja2>=3.1.0 to be installed
+```
+
+但如果只升级 Jinja2，旧版 Flask 又可能继续从 Jinja2 导入已移除的 `escape`：
+
+```text
+ImportError: cannot import name 'escape' from 'jinja2'
+```
+
+不要在 Jinja2 2.x 和 3.x 之间单独切换。需要在当前环境中将 Flask 及其相关依赖
+一起调整为兼容组合：
+
+```bash
+python -m pip install --upgrade --force-reinstall \
+  "Flask==2.0.3" \
+  "Werkzeug==2.0.3" \
+  "itsdangerous==2.0.1" \
+  "Jinja2==3.1.6" \
+  "MarkupSafe==3.0.3"
+```
+
+如果该环境还安装了 `omniroboagent[eb-alfred]`，应先完成 EB-ALFRED 和 SpatialLM
+依赖安装，再最后执行上面的兼容版本命令。当前 `eb-alfred` optional dependency 仍
+声明旧版 Flask 依赖，因此 `pip check` 可能报告声明版本不一致，但运行时需要以上
+组合才能同时满足 Transformers 的 chat template 和 Flask 导入。可用下面的命令检查
+实际生效版本和两个关键导入：
+
+```bash
+python - <<'PY'
+from importlib.metadata import version
+
+from flask import Flask
+from jinja2 import pass_eval_context
+
+for package in ("Flask", "Werkzeug", "itsdangerous", "Jinja2", "MarkupSafe"):
+    print(f"{package}: {version(package)}")
+print("imports: ok", Flask, pass_eval_context)
+PY
+```
+
 ## 创建环境
 
 ```bash
@@ -329,53 +376,6 @@ nvcc --version
 cd SpatialLM
 MAX_JOBS=2 poetry run poe install-sonata
 cd ..
-```
-
-### SpatialLM 与 Flask 的 Jinja2 版本冲突
-
-在同一个 Python 环境中同时运行 SpatialLM 和 EB-ALFRED 时，旧版 Jinja2 可能导致
-SpatialLM/Transformers 报错：
-
-```text
-AttributeError: module 'jinja2' has no attribute 'pass_eval_context'
-ImportError: apply_chat_template requires jinja2>=3.1.0 to be installed
-```
-
-但如果只升级 Jinja2，旧版 Flask 又可能继续从 Jinja2 导入已移除的 `escape`：
-
-```text
-ImportError: cannot import name 'escape' from 'jinja2'
-```
-
-不要在 Jinja2 2.x 和 3.x 之间单独切换。需要在当前环境中将 Flask 及其相关依赖
-一起调整为兼容组合：
-
-```bash
-python -m pip install --upgrade --force-reinstall \
-  "Flask==2.0.3" \
-  "Werkzeug==2.0.3" \
-  "itsdangerous==2.0.1" \
-  "Jinja2==3.1.6" \
-  "MarkupSafe==3.0.3"
-```
-
-如果该环境还安装了 `omniroboagent[eb-alfred]`，应在安装 EB-ALFRED 和 SpatialLM
-依赖后最后执行上面的命令；当前 `eb-alfred` optional dependency 仍声明旧版 Flask
-依赖，因此 `pip check` 可能报告声明版本不一致，但运行时需要以上组合才能同时满足
-Transformers 的 chat template 和 Flask 导入。可用下面的命令检查实际生效版本和两个
-关键导入：
-
-```bash
-python - <<'PY'
-from importlib.metadata import version
-
-from flask import Flask
-from jinja2 import pass_eval_context
-
-for package in ("Flask", "Werkzeug", "itsdangerous", "Jinja2", "MarkupSafe"):
-    print(f"{package}: {version(package)}")
-print("imports: ok", Flask, pass_eval_context)
-PY
 ```
 
 ### `ModuleNotFoundError: spatiallm` 或 `omniroboagent`
