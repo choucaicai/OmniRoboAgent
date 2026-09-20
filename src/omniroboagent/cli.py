@@ -59,3 +59,4 @@ def run_config(path: str | Path) -> dict[str, Any]:
     if "task" not in config:
         raise ValueError("Single run requires task")
     return runtime.run(agent, pipeline, environment, config["task"])
+

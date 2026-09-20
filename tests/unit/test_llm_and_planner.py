@@ -112,6 +112,35 @@ def test_language_skill_planner_uses_explicit_memory_context() -> None:
     assert content[-1]["image_url"]["url"] is memory_image
 
 
+def test_language_skill_planner_includes_spatial_only_memory_context() -> None:
+    backend = FakeLLMBackend('{"reasoning":"memory","skill":"find a Mug"}')
+    planner = LanguageSkillPlanner(backend)
+
+    planner.plan(
+        {
+            "task": "find mug",
+            "observation": {},
+            "available_skills": ["find a Mug"],
+            "memory_context": {
+                "spatial": {
+                    "objects": [
+                        {
+                            "label": "mug",
+                            "position": [1.0, 2.0, 0.8],
+                        }
+                    ]
+                }
+            },
+        }
+    )
+
+    prompt = backend.inputs["messages"][1]["content"][0]["text"]
+    assert "Memory context:" in prompt
+    assert '"spatial"' in prompt
+    assert '"label": "mug"' in prompt
+    assert json.loads(planner._memory_prompt({"spatial": {}}))["spatial"] == {}
+
+
 def test_language_skill_planner_accepts_baseline_action_id() -> None:
     backend = FakeLLMBackend(
         '{"reasoning_and_reflection":"next", "executable_plan":'

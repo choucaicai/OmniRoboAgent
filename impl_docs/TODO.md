@@ -151,7 +151,8 @@
 - [ ] `TODO` 评估 RoboNeuron action contract 与开放 action payload 的兼容方式。
 - [ ] `TODO` 接入本地 LLM/VLM planner backend（不含 RoboCasa365 计划中的 local VLA policy）。
 - [ ] `TODO` 在同步闭环稳定后实现 async runtime。
-- [ ] `TODO` 在真实检索需求出现后实现 semantic/spatial memory。
+- [x] `DONE` 实现可组合的 spatial memory：支持 RGB-D 增量 voxel 建图与 SpatialLM 布局定位，支持完整全局 PLY 经 SpatialLM/Open3D 官方 helper 读取并单次定位后禁用实时建图，EB-ALFRED 空间记忆 smoke 配置通过 `CompositeMemory` 保留原有 `InMemoryMemory`，公开两种方式的 observation、frame、单位、坐标系、简化 metadata、backend 环境安装、同环境 Torch 与前置 Flask/Jinja2 兼容排障及配置契约，在根 README 和 `docs/components/spatialmemory_memory.md` 提供用户入口、SpatialLM 空间定位 demo 与全局场景 smoke 运行参考，并明确示例 PLY 仅为测试场景、并非对应 episode 的真实场景点云；同时将 `memory_context.spatial` 显式注入 LanguageSkillPlanner prompt。
+- [ ] `TODO` 在真实检索需求出现后实现 semantic memory。
 - [x] `DONE` 第二个 benchmark 接入后继续复用统一 CLI/RunConfig 入口，同时保留各 benchmark 的具体 runner，不引入无需求的 Evaluator hierarchy。
 - [ ] `TODO` 评估 BEHAVIOR-1K adapter。
 - [ ] `TODO` 设计 ROS2 和 human text I/O integrations，保持 core 不依赖外部通信实现。

@@ -1,0 +1,34 @@
+{
+  "path": "examples/spatiallm_demo/input/scene0000_00.ply",
+  "source": "https://huggingface.co/datasets/manycore-research/SpatialLM-Testset",
+  "license": "CC-BY-NC-4.0",
+  "size_bytes": 10968451,
+  "sha256": "12d8cf9c239791260166837d090334915f7056537a2e35c97959d9842a6c5f92",
+  "point_count": 685513,
+  "points_shape": [
+    685513,
+    3
+  ],
+  "colors_shape": [
+    685513,
+    3
+  ],
+  "bounds_meters": {
+    "min_xyz": [
+      1.9737932682037354,
+      -6.713315486907959,
+      -0.023860758170485497
+    ],
+    "max_xyz": [
+      5.482537746429443,
+      -1.648443579673767,
+      2.7371206283569336
+    ],
+    "extent_xyz": [
+      3.508744478225708,
+      5.064871907234192,
+      2.760981386527419
+    ]
+  },
+  "coordinate_system": "right-handed, Z-up"
+}
