@@ -1,0 +1,41 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.LanguageSkillPlanner
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: https://oneapi.qunhequnhe.com/v1
+        model: gpt-5
+        timeout_seconds: 120
+        max_retries: 2
+    max_tokens: 1024
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+skill_backend:
+  class_path: omniroboagent.backends.skills.LanguageSkillBackend
+
+verifier:
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
+
+memory:
+  class_path: omniroboagent.agent_core.memories.composite.CompositeMemory
+  init_args:
+    memories:
+      episodic:
+        class_path: omniroboagent.agent_core.InMemoryMemory
+      spatial:
+        class_path: omniroboagent.agent_core.memories.spatial.SpatialMemory
+        init_args:
+          global_scene_ply: SpatialLM/examples/spatiallm_demo/input/scene0000_00.ply
+          spatial_backend:
+            class_path: omniroboagent.backends.spatial.SpatialLMBackend
+            init_args:
+              model_path: SpatialLM/models/SpatialLM1.1-Qwen-0.5B
+          spatial_detect_type: all
+          spatial_seed: 42
