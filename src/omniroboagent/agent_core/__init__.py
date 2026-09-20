@@ -3,6 +3,7 @@ from omniroboagent.agent_core.memories import (
     InMemoryMemory,
     JsonlMemory,
     Memory,
+    ReflectiveMemory,
     TieredMemory,
 )
 from omniroboagent.agent_core.planners import (
@@ -26,6 +27,7 @@ __all__ = [
     "LanguageSkillPlanner",
     "Memory",
     "Planner",
+    "ReflectiveMemory",
     "SubtaskSkillPlanner",
     "SubtaskVerifier",
     "TaskSkillPlanner",

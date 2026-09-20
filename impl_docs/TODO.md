@@ -84,6 +84,8 @@
 - [x] `DONE` 实现 bounded visual working memory、长期 event memory 和 bounded text summary 的集中分层 Memory（[计划](plans/0009-tiered-agent-memory.md)）。
 - [x] `DONE` 为 Planner/Verifier 提供显式 memory recall 输入，不允许 Memory 隐式修改 decision 或 Pipeline transition。
 - [x] `DONE` 为 `TieredMemory` 增加关键事件记忆和视觉 artifacts，记录 subtask completion/failure、recovery 和 task terminal，并显式提供给 Planner/Verifier（[计划](plans/0010-key-event-memory.md)）。
+- [x] `DONE` 实现 `ReflectiveMemory`，把语义等价的重复失败蒸馏成证据门控的 lessons，按 recall phase 收紧注入，并保留退役与版本记录（[计划](plans/0014-reflective-memory.md)）。
+- [ ] `TODO` 在真实 RoboCasa 评测中对照 `TieredMemory` 与 `ReflectiveMemory`，测量 lesson 命中率、planner prompt token 和多 episode 成功率曲线。
 
 ## 6. Backend Support
 

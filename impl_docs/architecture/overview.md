@@ -175,7 +175,7 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 ### Memory
 
-当前提供 `InMemoryMemory`、`JsonlMemory` 和 `TieredMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working frames、recent events 和 summary，但不删除长期 key events；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
+当前提供 `InMemoryMemory`、`JsonlMemory`、`TieredMemory` 和 `ReflectiveMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working frames、recent events 和 summary，但不删除长期 key events；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
 
 `TieredMemory` 组合 bounded visual working memory、bounded recent transitions、长期 structured key events 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；普通 transition 只进入 bounded recent deque，可选 `event_path` 继续保存全 transition JSONL。
 
@@ -184,6 +184,8 @@ Pipeline 根据已经确定的 transition 生成 `subtask_completed`、`subtask_
 启用 key-event artifacts 后，Runtime 在 state 中提供 session-scoped `artifact_dir`；Memory 将关键事件发生后的配置 camera frame 保存为 PNG，并在同目录 append `events.jsonl`。raw frame 不进入 JSONL，长期 record 只保存 execution/attempt identity、文本 evidence 和 artifact references。
 
 Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events`、`key_events` 和 `summary`。LLM Planner/Verifier 将 summary、recent/key events 放入文本 prompt，并把 working frames 作为独立 image content；历史 key-event PNG 默认不自动加载。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md) 和 [0010 plan](../plans/0010-key-event-memory.md)。
+
+`ReflectiveMemory` 继承 `TieredMemory`，额外维护一个由 Verifier 结论驱动的 lesson 分区，并在 recall 结果中附加稳定的 `lessons` 键。它把 `subtask_failed` 和 `execution_aborted` 聚合成 attempt signature，signature 只包含 skill 和 `grounded_arguments` 中的字符串槽位，忽略坐标等易变数值，因此语义等价的重复失败可以对齐。lesson 的 failure class 由 `control_failure` 和 reason 关键词确定性推导，不调用 LLM。support 达到阈值前 lesson 只是 candidate，不进入 recall；同 signature 的 `subtask_completed` 增加 refutation 并最终 retire，记录保留 `revision` 版本而不原地覆盖。`phase == "verify"` 时 lesson 分区为空，Verifier 不受历史失败影响。`reset()` 保留 lesson，因此该分区跨 episode 演化。见 [0014 plan](../plans/0014-reflective-memory.md)。
 
 ## 5. Data Policy
 

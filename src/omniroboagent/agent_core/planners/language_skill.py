@@ -215,24 +215,30 @@ class LanguageSkillPlanner(Planner):
         summary = memory_context.get("summary", "")
         recent_events = memory_context.get("recent_events", [])
         key_events = memory_context.get("key_events", [])
-        if not summary and not recent_events and not key_events:
+        lessons = memory_context.get("lessons", [])
+        if not summary and not recent_events and not key_events and not lessons:
             return ""
-        return json.dumps(
-            to_jsonable(
-                {
-                    "summary": summary,
-                    "recent_events": (
-                        recent_events[-10:]
-                        if isinstance(recent_events, list)
-                        else recent_events
-                    ),
-                    "key_events": (
-                        key_events[-10:] if isinstance(key_events, list) else key_events
-                    ),
-                }
+        payload: dict[str, Any] = {
+            "summary": summary,
+            "recent_events": (
+                recent_events[-10:]
+                if isinstance(recent_events, list)
+                else recent_events
             ),
-            ensure_ascii=False,
-        )
+            "key_events": (
+                key_events[-10:] if isinstance(key_events, list) else key_events
+            ),
+        }
+        if isinstance(lessons, list) and lessons:
+            payload["lessons"] = [
+                {
+                    "lesson_id": lesson.get("lesson_id"),
+                    "text": lesson.get("text"),
+                }
+                for lesson in lessons
+                if isinstance(lesson, Mapping)
+            ]
+        return json.dumps(to_jsonable(payload), ensure_ascii=False)
 
     @staticmethod
     def _memory_images(memory_context: Any) -> list[Any]:

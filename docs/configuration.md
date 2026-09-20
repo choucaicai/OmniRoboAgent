@@ -155,6 +155,8 @@ memory:
 
 启用 key-event artifacts 后，Memory 将关键事件 frames 保存到 Runtime session 的 `artifacts/key_events/`。`camera_keys` 必须与 Environment observation 实际字段一致。
 
+把 `class_path` 换成 `omniroboagent.agent_core.ReflectiveMemory` 可以在上述参数之外额外积累失败 lessons，`lesson_recall_limit`、`lesson_min_support`、`lesson_limit` 和 `lesson_path` 都有默认值，不填即可使用。两个 class 的其余参数完全一致，因此可以直接对照运行。字段含义见 [Memory](agent_core/memory.md)。
+
 ## Episode Observability
 
 Agent trace 和视频属于 Runtime session artifacts，通过可选 recorder 配置：

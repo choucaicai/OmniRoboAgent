@@ -27,7 +27,8 @@ impl_docs/
 │   ├── 0009-tiered-agent-memory.md
 │   ├── 0010-key-event-memory.md
 │   ├── 0011-user-doc-information-architecture.md
-│   └── 0012-episode-observability-artifacts.md
+│   ├── 0012-episode-observability-artifacts.md
+│   └── 0014-reflective-memory.md
 └── changes/
     ├── README.md
     ├── 2026-07-11-conda-environment.md
@@ -56,7 +57,8 @@ impl_docs/
     ├── 2026-07-16-user-doc-information-architecture.md
     ├── 2026-07-16-episode-observability-artifacts.md
     ├── 2026-08-30-project-overview.md
-    └── 2026-08-31-awarevln-realworld-server.md
+    ├── 2026-08-31-awarevln-realworld-server.md
+    └── 2026-09-20-reflective-memory.md
 ```
 
 ## Responsibilities
