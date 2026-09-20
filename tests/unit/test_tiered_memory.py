@@ -64,6 +64,45 @@ def test_tiered_memory_bounds_visual_working_frames() -> None:
     assert recalled["key_events"] == []
 
 
+def test_tiered_memory_event_selection_keeps_boundary_frames() -> None:
+    memory = TieredMemory(
+        visual_window_size=3,
+        camera_keys=["camera"],
+        frame_selection="event",
+    )
+    memory.reset("session")
+
+    memory.update(state(0), event(0, "image-0", status="failed"))
+    for step in range(1, 6):
+        memory.update(state(step), event(step, f"image-{step}"))
+
+    recalled = memory.recall({})
+
+    assert [item["step"] for item in recalled["working_frames"]] == [0, 1, 5]
+    assert [item["pinned"] for item in recalled["working_frames"]] == [
+        True,
+        True,
+        False,
+    ]
+    assert recalled["working_frames"][0]["event_type"] == "subtask_failed"
+
+
+def test_tiered_memory_recent_selection_keeps_the_sliding_window() -> None:
+    memory = TieredMemory(visual_window_size=3, camera_keys=["camera"])
+    memory.reset("session")
+
+    memory.update(state(0), event(0, "image-0", status="failed"))
+    for step in range(1, 6):
+        memory.update(state(step), event(step, f"image-{step}"))
+
+    assert [item["step"] for item in memory.recall({})["working_frames"]] == [3, 4, 5]
+
+
+def test_tiered_memory_rejects_unknown_frame_selection() -> None:
+    with pytest.raises(ValueError, match="frame_selection"):
+        TieredMemory(frame_selection="salient")
+
+
 def test_tiered_memory_reset_keeps_long_term_events() -> None:
     memory = TieredMemory(camera_keys=["camera"])
     memory.reset("first")

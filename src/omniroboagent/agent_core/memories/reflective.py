@@ -42,10 +42,12 @@ class ReflectiveMemory(TieredMemory):
         camera_keys: list[str] | None = None,
         event_path: str | Path | None = None,
         save_key_event_artifacts: bool = False,
+        frame_selection: str = "recent",
         lesson_recall_limit: int = 3,
         lesson_min_support: int = 2,
         lesson_limit: int = 64,
         lesson_path: str | Path | None = None,
+        lesson_reload: bool = False,
     ) -> None:
         super().__init__(
             visual_window_size=visual_window_size,
@@ -55,6 +57,7 @@ class ReflectiveMemory(TieredMemory):
             camera_keys=camera_keys,
             event_path=event_path,
             save_key_event_artifacts=save_key_event_artifacts,
+            frame_selection=frame_selection,
         )
         if lesson_recall_limit <= 0:
             raise ValueError("lesson_recall_limit must be positive")
@@ -62,16 +65,21 @@ class ReflectiveMemory(TieredMemory):
             raise ValueError("lesson_min_support must be positive")
         if lesson_limit < lesson_recall_limit:
             raise ValueError("lesson_limit must be at least lesson_recall_limit")
+        if lesson_reload and lesson_path is None:
+            raise ValueError("lesson_reload requires lesson_path")
 
         self.lesson_recall_limit = lesson_recall_limit
         self.lesson_min_support = lesson_min_support
         self.lesson_limit = lesson_limit
         self.lesson_path = Path(lesson_path) if lesson_path is not None else None
+        self.lesson_reload = lesson_reload
         if self.lesson_path is not None:
             self.lesson_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.lessons: list[dict[str, Any]] = []
         self._lesson_sequence = 0
+        if self.lesson_reload:
+            self._load_lessons()
 
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
         key_event_count = len(self.key_events)
@@ -129,6 +137,7 @@ class ReflectiveMemory(TieredMemory):
                 "session_ids": [session_id] if session_id is not None else [],
                 "source_event_ids": [event_id] if event_id is not None else [],
                 "text": "",
+                "carried_over": False,
             }
             self.lessons.append(lesson)
             operation = "add"
@@ -302,6 +311,78 @@ class ReflectiveMemory(TieredMemory):
             "candidate": "demote",
         }[status]
         self._log_lesson(operation, lesson)
+
+    def _load_lessons(self) -> None:
+        """Rebuild the lesson store by replaying a previous run's audit log."""
+        if self.lesson_path is None or not self.lesson_path.is_file():
+            return
+        restored: dict[str, dict[str, Any]] = {}
+        with self.lesson_path.open(encoding="utf-8") as file:
+            for line in file:
+                if not line.strip():
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(record, Mapping):
+                    continue
+                lesson = self._restore_lesson(record)
+                if lesson is None:
+                    continue
+                if record.get("operation") == "evict":
+                    restored.pop(lesson["lesson_id"], None)
+                    continue
+                restored[lesson["lesson_id"]] = lesson
+        for lesson_id, lesson in restored.items():
+            self._lesson_sequence = max(
+                self._lesson_sequence, self._lesson_index(lesson_id)
+            )
+            self._resolve_status(lesson)
+            lesson["text"] = self._lesson_text(lesson)
+            self.lessons.append(lesson)
+        self._evict_lessons()
+
+    @staticmethod
+    def _restore_lesson(record: Mapping[str, Any]) -> dict[str, Any] | None:
+        """Rebuild one lesson from a log line, skipping malformed records."""
+        lesson_id = record.get("lesson_id")
+        signature = record.get("signature")
+        if not isinstance(lesson_id, str) or not isinstance(signature, str):
+            return None
+        try:
+            support_count = int(record["support_count"])
+            refutation_count = int(record["refutation_count"])
+            revision = int(record["revision"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        session_ids = record.get("session_ids")
+        source_event_ids = record.get("source_event_ids")
+        return {
+            "lesson_id": lesson_id,
+            "signature": signature,
+            "skill": record.get("skill"),
+            "subtask": record.get("subtask"),
+            "failure_class": str(record.get("failure_class", "unclassified")),
+            "status": "candidate",
+            "support_count": support_count,
+            "refutation_count": refutation_count,
+            "revision": revision,
+            "first_seen_step": record.get("first_seen_step"),
+            "last_seen_step": record.get("last_seen_step"),
+            "last_reason": record.get("last_reason"),
+            "session_ids": list(session_ids) if isinstance(session_ids, list) else [],
+            "source_event_ids": (
+                list(source_event_ids) if isinstance(source_event_ids, list) else []
+            ),
+            "text": "",
+            "carried_over": True,
+        }
+
+    @staticmethod
+    def _lesson_index(lesson_id: str) -> int:
+        suffix = lesson_id.rpartition(":")[2]
+        return int(suffix) if suffix.isdigit() else 0
 
     def _log_lesson(self, operation: str, lesson: Mapping[str, Any]) -> None:
         if self.lesson_path is None:

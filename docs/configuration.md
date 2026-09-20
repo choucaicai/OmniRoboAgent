@@ -155,7 +155,9 @@ memory:
 
 启用 key-event artifacts 后，Memory 将关键事件 frames 保存到 Runtime session 的 `artifacts/key_events/`。`camera_keys` 必须与 Environment observation 实际字段一致。
 
-把 `class_path` 换成 `omniroboagent.agent_core.ReflectiveMemory` 可以在上述参数之外额外积累失败 lessons，`lesson_recall_limit`、`lesson_min_support`、`lesson_limit` 和 `lesson_path` 都有默认值，不填即可使用。两个 class 的其余参数完全一致，因此可以直接对照运行。字段含义见 [Memory](agent_core/memory.md)。
+`frame_selection` 默认 `recent`，即最近 K 帧的滑动窗口。改成 `event` 后窗口容量不变，但只有 key event 和 verifier status 变化对应的 frame 独占槽位，chunk 执行期间的连续近似帧共用最后一个槽位。image token 开销不变。
+
+把 `class_path` 换成 `omniroboagent.agent_core.ReflectiveMemory` 可以在上述参数之外额外积累失败 lessons，`lesson_recall_limit`、`lesson_min_support`、`lesson_limit`、`lesson_path` 和 `lesson_reload` 都有默认值，不填即可使用。两个 class 的其余参数完全一致，因此可以直接对照运行。字段含义见 [Memory](agent_core/memory.md)。
 
 ## Episode Observability
 

@@ -21,6 +21,8 @@ KEY_EVENT_TYPES = {
     "task_failed",
 }
 
+FRAME_SELECTIONS = ("recent", "event")
+
 
 class TieredMemory(Memory):
     """Bounded working memory with persistent structured key events."""
@@ -34,6 +36,7 @@ class TieredMemory(Memory):
         camera_keys: list[str] | None = None,
         event_path: str | Path | None = None,
         save_key_event_artifacts: bool = False,
+        frame_selection: str = "recent",
     ) -> None:
         if visual_window_size <= 0:
             raise ValueError("visual_window_size must be positive")
@@ -52,12 +55,15 @@ class TieredMemory(Memory):
             raise ValueError("camera_keys must contain non-empty strings")
         if len(set(resolved_camera_keys)) != len(resolved_camera_keys):
             raise ValueError("camera_keys must be unique")
+        if frame_selection not in FRAME_SELECTIONS:
+            raise ValueError(f"frame_selection must be one of {FRAME_SELECTIONS}")
 
         self.visual_window_size = visual_window_size
         self.recent_event_limit = recent_event_limit
         self.key_event_limit = key_event_limit
         self.summary_max_chars = summary_max_chars
         self.camera_keys = list(resolved_camera_keys)
+        self.frame_selection = frame_selection
         self.event_path = Path(event_path) if event_path is not None else None
         self.save_key_event_artifacts = save_key_event_artifacts
         if self.event_path is not None:
@@ -78,6 +84,11 @@ class TieredMemory(Memory):
         self._summary_lines.clear()
 
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
+        event_type = event.get("event_type", "transition")
+        if not isinstance(event_type, str) or not event_type:
+            raise ValueError("event_type must be a non-empty string")
+        status = event.get("next_status", event.get("decision"))
+
         environment_result = event.get("environment_result")
         observation = (
             environment_result.get("observation")
@@ -91,12 +102,15 @@ class TieredMemory(Memory):
                 if observation.get(key) is not None
             }
             if cameras:
-                self.working_frames.append(
+                self._admit_frame(
                     {
                         "session_id": state.get("session_id", self.session_id),
                         "step": state.get("step"),
                         "execution_id": event.get("execution_id"),
                         "attempt_id": event.get("attempt_id"),
+                        "event_type": event_type,
+                        "status": status,
+                        "pinned": self._is_salient(event_type, status),
                         "cameras": cameras,
                     }
                 )
@@ -120,9 +134,6 @@ class TieredMemory(Memory):
         )
         if not isinstance(evidence, list):
             evidence = [str(evidence)]
-        event_type = event.get("event_type", "transition")
-        if not isinstance(event_type, str) or not event_type:
-            raise ValueError("event_type must be a non-empty string")
         artifact_refs: list[str] = []
         if isinstance(environment_result, Mapping):
             value = environment_result.get("artifact_refs", [])
@@ -136,7 +147,7 @@ class TieredMemory(Memory):
             "event_type": event_type,
             "skill": event.get("skill"),
             "subtask": event.get("subtask"),
-            "status": event.get("next_status", event.get("decision")),
+            "status": status,
             "reason": event.get("transition_reason")
             or (
                 verification.get("reason")
@@ -220,6 +231,22 @@ class TieredMemory(Memory):
             ],
             "summary": "\n".join(self._summary_lines),
         }
+
+    def _is_salient(self, event_type: str, status: Any) -> bool:
+        """Report whether this frame is a boundary worth holding a window slot."""
+        if self.frame_selection == "recent" or not self.working_frames:
+            return True
+        if event_type in KEY_EVENT_TYPES:
+            return True
+        return bool(status != self.working_frames[-1].get("status"))
+
+    def _admit_frame(self, frame: dict[str, Any]) -> None:
+        """Keep boundary frames; let consecutive steady-state frames share one slot."""
+        tail = self.working_frames[-1] if self.working_frames else None
+        if not frame["pinned"] and tail is not None and not tail["pinned"]:
+            self.working_frames[-1] = frame
+            return
+        self.working_frames.append(frame)
 
     @staticmethod
     def _key_event_text(record: Mapping[str, Any]) -> str:

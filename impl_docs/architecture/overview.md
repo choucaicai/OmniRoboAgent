@@ -179,13 +179,15 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 `TieredMemory` 组合 bounded visual working memory、bounded recent transitions、长期 structured key events 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；普通 transition 只进入 bounded recent deque，可选 `event_path` 继续保存全 transition JSONL。
 
+visual working memory 的准入策略由 `frame_selection` 决定，窗口容量恒为 `visual_window_size`，两种策略的 image token 开销相同。默认 `recent` 是纯滑动窗口。`event` 下只有 boundary frame 独占槽位，判据是该 transition 产生了 key event，或 verifier status 与窗口内上一帧不同；连续的 steady-state frame 共用最后一个槽位并被后来者覆盖，因此 chunk 执行期间的近似重复帧不再挤掉更早的失败帧。判据全部取自 Pipeline 已产出的结构化字段，Memory 不做视觉比较，也不调用模型。
+
 Pipeline 根据已经确定的 transition 生成 `subtask_completed`、`subtask_failed`、`recovery_started`、`fallback_used`、`execution_aborted`、`task_success` 或 `task_failed` event type。Memory 不重新判断状态，只保存 reason、confidence、evidence、expected outcome、task progress 和 recovery action。
 
 启用 key-event artifacts 后，Runtime 在 state 中提供 session-scoped `artifact_dir`；Memory 将关键事件发生后的配置 camera frame 保存为 PNG，并在同目录 append `events.jsonl`。raw frame 不进入 JSONL，长期 record 只保存 execution/attempt identity、文本 evidence 和 artifact references。
 
 Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events`、`key_events` 和 `summary`。LLM Planner/Verifier 将 summary、recent/key events 放入文本 prompt，并把 working frames 作为独立 image content；历史 key-event PNG 默认不自动加载。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md) 和 [0010 plan](../plans/0010-key-event-memory.md)。
 
-`ReflectiveMemory` 继承 `TieredMemory`，额外维护一个由 Verifier 结论驱动的 lesson 分区，并在 recall 结果中附加稳定的 `lessons` 键。它把 `subtask_failed` 和 `execution_aborted` 聚合成 attempt signature，signature 只包含 skill 和 `grounded_arguments` 中的字符串槽位，忽略坐标等易变数值，因此语义等价的重复失败可以对齐。lesson 的 failure class 由 `control_failure` 和 reason 关键词确定性推导，不调用 LLM。support 达到阈值前 lesson 只是 candidate，不进入 recall；同 signature 的 `subtask_completed` 增加 refutation 并最终 retire，记录保留 `revision` 版本而不原地覆盖。`phase == "verify"` 时 lesson 分区为空，Verifier 不受历史失败影响。`reset()` 保留 lesson，因此该分区跨 episode 演化。见 [0014 plan](../plans/0014-reflective-memory.md)。
+`ReflectiveMemory` 继承 `TieredMemory`，额外维护一个由 Verifier 结论驱动的 lesson 分区，并在 recall 结果中附加稳定的 `lessons` 键。它把 `subtask_failed` 和 `execution_aborted` 聚合成 attempt signature，signature 只包含 skill 和 `grounded_arguments` 中的字符串槽位，忽略坐标等易变数值，因此语义等价的重复失败可以对齐。lesson 的 failure class 由 `control_failure` 和 reason 关键词确定性推导，不调用 LLM。support 达到阈值前 lesson 只是 candidate，不进入 recall；同 signature 的 `subtask_completed` 增加 refutation 并最终 retire，记录保留 `revision` 版本而不原地覆盖。`phase == "verify"` 时 lesson 分区为空，Verifier 不受历史失败影响。`reset()` 保留 lesson，因此该分区跨 episode 演化。开启 `lesson_reload` 后，构造阶段重放 `lesson_path` 审计日志重建该分区，使积累跨进程保留，重建出的 lesson 带 `carried_over` 标记并按当前阈值重新判定 status。见 [0014 plan](../plans/0014-reflective-memory.md)。
 
 ## 5. Data Policy
 

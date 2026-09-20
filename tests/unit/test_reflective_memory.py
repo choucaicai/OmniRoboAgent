@@ -243,6 +243,86 @@ def test_reflective_memory_ignores_events_without_a_skill() -> None:
     assert memory.lessons == []
 
 
+def test_reflective_memory_reloads_lessons_from_a_previous_run(tmp_path: Path) -> None:
+    lesson_path = tmp_path / "lessons.jsonl"
+    first = ReflectiveMemory(
+        camera_keys=["camera"],
+        lesson_min_support=2,
+        lesson_path=lesson_path,
+    )
+    first.reset("first")
+    fail(first, 0, session_id="first")
+    fail(first, 1, session_id="first")
+
+    second = ReflectiveMemory(
+        camera_keys=["camera"],
+        lesson_min_support=2,
+        lesson_path=lesson_path,
+        lesson_reload=True,
+    )
+    second.reset("second")
+
+    carried = second.lessons[0]
+    assert carried["lesson_id"] == "lesson:1"
+    assert carried["carried_over"] is True
+    assert carried["support_count"] == 2
+    assert carried["status"] == "active"
+    assert carried["session_ids"] == ["first"]
+    assert second.recall({"phase": "plan"})["lessons"] != []
+
+    fail(second, 2, skill="OpenDoor", session_id="second")
+
+    assert [lesson["lesson_id"] for lesson in second.lessons] == [
+        "lesson:1",
+        "lesson:2",
+    ]
+    assert second.lessons[1]["carried_over"] is False
+
+
+def test_reflective_memory_drops_evicted_and_malformed_lesson_records(
+    tmp_path: Path,
+) -> None:
+    lesson_path = tmp_path / "lessons.jsonl"
+    lesson_path.write_text(
+        "\n".join(
+            [
+                "not json",
+                json.dumps({"operation": "add", "lesson_id": "lesson:7"}),
+                json.dumps(
+                    {
+                        "operation": "add",
+                        "lesson_id": "lesson:8",
+                        "signature": "OpenDoor|object=microwave",
+                        "support_count": 3,
+                        "refutation_count": 0,
+                        "revision": 3,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "operation": "evict",
+                        "lesson_id": "lesson:8",
+                        "signature": "OpenDoor|object=microwave",
+                        "support_count": 3,
+                        "refutation_count": 0,
+                        "revision": 3,
+                    }
+                ),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    memory = ReflectiveMemory(
+        camera_keys=["camera"],
+        lesson_path=lesson_path,
+        lesson_reload=True,
+    )
+
+    assert memory.lessons == []
+
+
 def test_reflective_memory_rejects_invalid_lesson_configuration() -> None:
     with pytest.raises(ValueError):
         ReflectiveMemory(lesson_recall_limit=0)
@@ -250,3 +330,5 @@ def test_reflective_memory_rejects_invalid_lesson_configuration() -> None:
         ReflectiveMemory(lesson_min_support=0)
     with pytest.raises(ValueError):
         ReflectiveMemory(lesson_recall_limit=4, lesson_limit=2)
+    with pytest.raises(ValueError, match="lesson_reload"):
+        ReflectiveMemory(lesson_reload=True)
