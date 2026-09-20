@@ -5,7 +5,7 @@ from PIL import Image
 
 from omniroboagent.agent_core import SubtaskVerifier
 from omniroboagent.backends.llm import LLMBackend
-from omniroboagent.exceptions import VerifierOutputError
+from omniroboagent.exceptions import ConfigError, VerifierOutputError
 
 
 class FakeLLMBackend(LLMBackend):
@@ -111,6 +111,29 @@ def test_subtask_verifier_calls_vlm_with_before_after_images() -> None:
     assert "expected_outcome" in content[0]["text"]
     assert "door was moving" in content[0]["text"]
     assert "cabinet is open" in content[0]["text"]
+
+
+def test_subtask_verifier_applies_the_memory_char_budget() -> None:
+    backend = FakeLLMBackend(
+        '{"execution_status":"completed","reason":"door is closed",'
+        '"confidence":0.9,"evidence":["door is flush with the frame"]}'
+    )
+    inputs = make_inputs()
+    inputs["memory_context"] = {
+        "summary": "a long narrative that cannot survive this budget",
+        "object_state": [{"text": "the cabinet is open"}],
+    }
+
+    SubtaskVerifier(backend, memory_char_budget=60).verify(inputs)
+
+    prompt = backend.inputs["messages"][1]["content"][0]["text"]
+    assert "the cabinet is open" in prompt
+    assert "a long narrative" not in prompt
+
+
+def test_subtask_verifier_rejects_a_non_positive_memory_budget() -> None:
+    with pytest.raises(ConfigError, match="memory_char_budget must be positive"):
+        SubtaskVerifier(FakeLLMBackend("{}"), memory_char_budget=0)
 
 
 def test_subtask_verifier_defers_semantic_check_by_chunk_interval() -> None:

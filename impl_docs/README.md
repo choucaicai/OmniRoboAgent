@@ -31,7 +31,8 @@ impl_docs/
 │   ├── 0014-reflective-memory.md
 │   ├── 0015-salient-working-memory-and-lesson-persistence.md
 │   ├── 0016-confirmed-object-state-ledger.md
-│   └── 0017-procedural-memory-and-labelled-frames.md
+│   ├── 0017-procedural-memory-and-labelled-frames.md
+│   └── 0018-budgeted-memory-prompt.md
 └── changes/
     ├── README.md
     ├── 2026-07-11-conda-environment.md
@@ -64,7 +65,8 @@ impl_docs/
     ├── 2026-09-20-reflective-memory.md
     ├── 2026-09-20-salient-working-memory.md
     ├── 2026-09-20-object-state-ledger.md
-    └── 2026-09-20-procedural-memory-and-labelled-frames.md
+    ├── 2026-09-20-procedural-memory-and-labelled-frames.md
+    └── 2026-09-20-budgeted-memory-prompt.md
 ```
 
 ## Responsibilities

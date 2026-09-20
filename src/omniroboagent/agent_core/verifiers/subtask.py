@@ -3,7 +3,11 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from omniroboagent.agent_core.prompting import working_frame_content
+from omniroboagent.agent_core.prompting import (
+    DEFAULT_MEMORY_CHAR_BUDGET,
+    memory_text_payload,
+    working_frame_content,
+)
 from omniroboagent.agent_core.verifiers.base import Verifier
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import ConfigError, VerifierOutputError
@@ -38,9 +42,12 @@ class SubtaskVerifier(Verifier):
         max_tokens: int = 512,
         temperature: float = 0.0,
         extra_body: dict[str, Any] | None = None,
+        memory_char_budget: int = DEFAULT_MEMORY_CHAR_BUDGET,
     ) -> None:
         if check_interval_chunks <= 0:
             raise ConfigError("check_interval_chunks must be positive")
+        if memory_char_budget <= 0:
+            raise ConfigError("memory_char_budget must be positive")
         resolved_camera_keys = (
             ["images", "head_rgb"] if camera_keys is None else camera_keys
         )
@@ -57,6 +64,7 @@ class SubtaskVerifier(Verifier):
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.extra_body = extra_body or {}
+        self.memory_char_budget = memory_char_budget
 
     def healthcheck(self) -> dict[str, Any]:
         return self.backend.healthcheck() if self.backend is not None else {
@@ -165,22 +173,9 @@ class SubtaskVerifier(Verifier):
             "environment_feedback": common["env_feedback"],
         }
         memory_context = inputs.get("memory_context")
-        if isinstance(memory_context, Mapping):
-            recent_events = memory_context.get("recent_events", [])
-            key_events = memory_context.get("key_events", [])
-            prompt["memory_context"] = to_jsonable(
-                {
-                    "summary": memory_context.get("summary", ""),
-                    "recent_events": (
-                        recent_events[-10:]
-                        if isinstance(recent_events, list)
-                        else recent_events
-                    ),
-                    "key_events": (
-                        key_events[-10:] if isinstance(key_events, list) else key_events
-                    ),
-                }
-            )
+        memory_payload = memory_text_payload(memory_context, self.memory_char_budget)
+        if memory_payload:
+            prompt["memory_context"] = memory_payload
         content: list[dict[str, Any]] = [
             {
                 "type": "text",

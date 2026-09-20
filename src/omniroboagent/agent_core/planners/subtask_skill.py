@@ -3,7 +3,10 @@ from collections.abc import Mapping
 from typing import Any
 
 from omniroboagent.agent_core.planners.language_skill import LanguageSkillPlanner
-from omniroboagent.agent_core.prompting import working_frame_content
+from omniroboagent.agent_core.prompting import (
+    DEFAULT_MEMORY_CHAR_BUDGET,
+    working_frame_content,
+)
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import ConfigError, PlannerOutputError
 
@@ -36,6 +39,7 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
         max_tokens: int = 1024,
         temperature: float = 0.0,
         extra_body: dict[str, Any] | None = None,
+        memory_char_budget: int = DEFAULT_MEMORY_CHAR_BUDGET,
     ) -> None:
         if not isinstance(skill_ids, dict) or not skill_ids:
             raise ConfigError("SubtaskSkillPlanner requires non-empty skill_ids")
@@ -82,6 +86,7 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
             max_tokens=max_tokens,
             temperature=temperature,
             extra_body=extra_body,
+            memory_char_budget=memory_char_budget,
         )
         self.skill_ids = dict(skill_ids)
         self.skill_definitions = dict(skill_definitions)

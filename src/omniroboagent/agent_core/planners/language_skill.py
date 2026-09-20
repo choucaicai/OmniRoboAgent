@@ -1,13 +1,15 @@
 import json
 import re
-from collections.abc import Mapping
 from typing import Any
 
 from omniroboagent.agent_core.planners.base import Planner
-from omniroboagent.agent_core.prompting import working_frame_content
+from omniroboagent.agent_core.prompting import (
+    DEFAULT_MEMORY_CHAR_BUDGET,
+    memory_text_payload,
+    working_frame_content,
+)
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import PlannerOutputError
-from omniroboagent.serialization import to_jsonable
 
 DEFAULT_LANGUAGE_SKILL_PROMPT = """You are an embodied agent operating in a home.
 Select exactly one action for the current observation. After the action, the environment
@@ -26,12 +28,16 @@ class LanguageSkillPlanner(Planner):
         max_tokens: int = 1024,
         temperature: float = 0.0,
         extra_body: dict[str, Any] | None = None,
+        memory_char_budget: int = DEFAULT_MEMORY_CHAR_BUDGET,
     ) -> None:
+        if memory_char_budget <= 0:
+            raise ValueError("memory_char_budget must be positive")
         self.backend = backend
         self.system_prompt = system_prompt
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.extra_body = extra_body or {}
+        self.memory_char_budget = memory_char_budget
 
     def healthcheck(self) -> dict[str, Any]:
         return self.backend.healthcheck()
@@ -203,55 +209,6 @@ class LanguageSkillPlanner(Planner):
             raise PlannerOutputError(f"Planner selected unavailable skill: {skill!r}")
         return skill
 
-    @staticmethod
-    def _memory_prompt(memory_context: Any) -> str:
-        if not isinstance(memory_context, Mapping):
-            return ""
-        summary = memory_context.get("summary", "")
-        recent_events = memory_context.get("recent_events", [])
-        key_events = memory_context.get("key_events", [])
-        lessons = memory_context.get("lessons", [])
-        object_state = memory_context.get("object_state", [])
-        procedures = memory_context.get("procedures", [])
-        if (
-            not summary
-            and not recent_events
-            and not key_events
-            and not lessons
-            and not object_state
-            and not procedures
-        ):
-            return ""
-        payload: dict[str, Any] = {
-            "summary": summary,
-            "recent_events": (
-                recent_events[-10:]
-                if isinstance(recent_events, list)
-                else recent_events
-            ),
-            "key_events": (
-                key_events[-10:] if isinstance(key_events, list) else key_events
-            ),
-        }
-        if isinstance(procedures, list) and procedures:
-            payload["procedures"] = [
-                procedure.get("text")
-                for procedure in procedures
-                if isinstance(procedure, Mapping)
-            ]
-        if isinstance(object_state, list) and object_state:
-            payload["object_state"] = [
-                entry.get("text")
-                for entry in object_state
-                if isinstance(entry, Mapping)
-            ]
-        if isinstance(lessons, list) and lessons:
-            payload["lessons"] = [
-                {
-                    "lesson_id": lesson.get("lesson_id"),
-                    "text": lesson.get("text"),
-                }
-                for lesson in lessons
-                if isinstance(lesson, Mapping)
-            ]
-        return json.dumps(to_jsonable(payload), ensure_ascii=False)
+    def _memory_prompt(self, memory_context: Any) -> str:
+        payload = memory_text_payload(memory_context, self.memory_char_budget)
+        return json.dumps(payload, ensure_ascii=False) if payload else ""

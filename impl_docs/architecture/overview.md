@@ -195,6 +195,8 @@ Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_
 
 Working frames 的渲染集中在 `agent_core/prompting.py::working_frame_content()`，`SubtaskSkillPlanner`、`LanguageSkillPlanner` 和 `SubtaskVerifier` 共用。它按帧插入一行 `step/event/status` 标注后再贴该帧图片，使 salience gating 的选择在下游可辨；图片数量和顺序不变。
 
+文本分区的渲染同样集中在该模块的 `memory_text_payload()`，三处注入点共用。Memory 决定记住什么，注入端决定这次发多少：预算是 Planner/Verifier 的 `memory_char_budget`（默认 4096 字符），不是 Memory 的参数。渲染先去掉 `key_events` 中 `summary` 已逐字包含的部分——`summary` 本就是同一批 `text_summary` 的拼接，实测该分区占到 memory prompt 的 42% 而新信息只有 `evidence_summary`——再把 `recent_events` 压成每条一行，然后按 `object_state` → `lessons` → `procedures` → `key_events` → `recent_events` → `summary` 的顺序填至预算。`summary` 排最后正因为它重复度最高，先出价会饿死后面的分区。超限内容写入 payload 的 `dropped` 键，不做静默截断。预算以字符计而非 token，以免为计数引入 tokenizer 依赖。`recall()` 的返回值不受影响。见 [0018 plan](../plans/0018-budgeted-memory-prompt.md)。
+
 ## 5. Data Policy
 
 第一版不为每个中间结果建立 class。只有输出稳定、需要跨模块校验或需要持久化时才增加明确数据类型。

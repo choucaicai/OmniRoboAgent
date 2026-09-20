@@ -163,6 +163,17 @@ memory:
 
 `ReflectiveMemory` 还有 `track_object_state`（默认 `false`）和 `object_state_limit`（默认 12）。开启后 recall 的 `object_state` 分区按对象维护已被 Verifier 确认的世界状态，同一对象只保留最新一条，后续失败给该对象打 `disturbed_step`。这份账本是场景相关的，`reset()` 会清空它，而 lessons 会保留。它与 `frame_selection`、lesson 机制相互独立，消融时应分别开关。
 
+Memory 分区进 prompt 的体积由**注入端**控制，不由 Memory 控制。`LanguageSkillPlanner`、`SubtaskSkillPlanner` 和 `SubtaskVerifier` 各有一个 `memory_char_budget`（默认 4096 字符，必须为正）：
+
+```yaml
+planner:
+  class_path: omniroboagent.agent_core.SubtaskSkillPlanner
+  init_args:
+    memory_char_budget: 4096
+```
+
+渲染会先去掉 `key_events` 中 `summary` 已逐字包含的部分、把 `recent_events` 压成每条一行，再按 `object_state` → `lessons` → `procedures` → `key_events` → `recent_events` → `summary` 的顺序填到预算为止；被预算挤掉的内容列在 payload 的 `dropped` 键里。调小该值会先牺牲 `summary`，蒸馏分区最后才被挤掉。细节见 [Memory](agent_core/memory.md)。
+
 ## Episode Observability
 
 Agent trace 和视频属于 Runtime session artifacts，通过可选 recorder 配置：

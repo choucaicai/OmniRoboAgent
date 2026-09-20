@@ -122,6 +122,33 @@ def test_language_skill_planner_uses_explicit_memory_context() -> None:
     assert content[-1]["image_url"]["url"] is memory_image
 
 
+def test_language_skill_planner_applies_the_memory_char_budget() -> None:
+    backend = FakeLLMBackend('{"reasoning":"memory","skill":"find a Mug"}')
+    planner = LanguageSkillPlanner(backend, memory_char_budget=60)
+
+    planner.plan(
+        {
+            "task": "find mug",
+            "observation": {},
+            "available_skills": ["find a Mug"],
+            "memory_context": {
+                "summary": "a long narrative that cannot survive this budget",
+                "object_state": [{"text": "the cabinet is open"}],
+            },
+        }
+    )
+
+    prompt = backend.inputs["messages"][1]["content"][0]["text"]
+    assert "the cabinet is open" in prompt
+    assert "a long narrative" not in prompt
+    assert '"dropped": ["summary"]' in prompt or '"dropped":["summary"]' in prompt
+
+
+def test_language_skill_planner_rejects_a_non_positive_memory_budget() -> None:
+    with pytest.raises(ValueError, match="memory_char_budget must be positive"):
+        LanguageSkillPlanner(FakeLLMBackend("{}"), memory_char_budget=0)
+
+
 def test_language_skill_planner_accepts_baseline_action_id() -> None:
     backend = FakeLLMBackend(
         '{"reasoning_and_reflection":"next", "executable_plan":'

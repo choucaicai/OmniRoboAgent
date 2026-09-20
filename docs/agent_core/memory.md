@@ -157,4 +157,27 @@ Procedure 的 signature 是归一化 task 文本加上有序步骤签名。完�
 
 注意 `task_success` 样本可能极少（既有 audit 中 composite 40 episodes 仅 1 次成功），单次成功的 procedure 可能来自特定场景布局；`support_count` 和 `session_ids` 就是用来暴露证据强度的。默认关闭。
 
+## Prompt Rendering And `memory_char_budget`
+
+`recall()` 返回什么是 Memory 的职责；这些分区**怎么进 prompt** 是注入端的职责，集中在 `agent_core/prompting.py`。Planner 和 Verifier 都通过 `memory_text_payload()` 渲染，并各自带一个 `memory_char_budget`（默认 4096 字符）：
+
+```yaml
+planner:
+  class_path: omniroboagent.agent_core.SubtaskSkillPlanner
+  init_args:
+    memory_char_budget: 4096
+```
+
+渲染做三件事。
+
+**一、去重。** `summary` 是各条 key event 的 `text_summary` 顺序拼接，因此原样再发一遍 `key_events` 记录是纯重复。实测一段 30 event 的记忆里，最近 10 条 key event 的 `text_summary` **全部 10 条**逐字出现在 `summary` 中，而 `key_events` 占掉 42% 的 memory prompt。现在 `summary` 已覆盖的 key event 只保留 `summary` 不含的那部分——verifier evidence；完全被覆盖且无 evidence 的直接不发。`recent_events` 压成每条一行的 `step/event/status/reason`，不再发整条记录。
+
+**二、按决策价值排序填充。** 顺序为 `object_state` → `lessons` → `procedures` → `key_events` → `recent_events` → `summary`。蒸馏分区最短也最具体，排在最前；`summary` 排最后正因为它是重复度最高的一块，让它先出价会饿死后面所有分区。
+
+**三、超限时报告。** 列表分区从最旧一端丢，`summary` 按行从最旧一端截断，丢掉的内容写进 `dropped` 键（`"summary[oldest 20]"` 或整块丢失时的 `"summary"`）。被截断的 prompt 不会看起来像一份完整的 prompt。
+
+同一段记忆下，渲染前 18473 字符，仅去重后 7490 字符（−59.5%），再套默认 4096 budget 后 4115 字符（−77.7%）。蒸馏三分区占比从 6.6% 升到 27%。
+
+预算以**字符**而非 token 计：core 依赖只有 `httpx`、`Pillow`、`PyYAML`，引入 tokenizer 会破坏这条边界，而字符数是 token 数的稳定上界。
+
 接下来：[Framework Components](../interfaces.md)。
