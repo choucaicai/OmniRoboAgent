@@ -14,7 +14,6 @@ from typing import Any
 
 from omniroboagent.agent_core.memories.base import Memory
 from omniroboagent.backends.spatial import SpatialLMBackend
-from omniroboagent.backends.spatial.ply import load_ply_points_colors
 
 _Z_UP_COORDINATE_CONVENTION = "x_right_y_forward_z_up"
 _SPATIAL_DETECT_TYPES = {"all", "arch", "object"}
@@ -60,11 +59,13 @@ class _Voxel:
 
 
 class SpatialMemory(Memory):
-    """Incrementally fuse meter-scale RGB-D frames into a voxel point map.
+    """Localize a global PLY once or incrementally fuse RGB-D frames.
 
-    RGB and depth must already be synchronized, registered and rectified. RGB pixels
-    are interpreted as 0-255 values, depth is expressed in meters, and each absolute
-    ``T_world_camera`` pose maps camera coordinates into the configured ``map_frame``.
+    When ``global_scene_ply`` is configured, the complete scene is localized during
+    construction and all subsequent mapping updates are ignored. Otherwise, RGB and
+    depth must already be synchronized, registered and rectified. RGB pixels are
+    interpreted as 0-255 values, depth is expressed in meters, and each absolute
+    ``T_world_camera`` pose maps camera coordinates into ``map_frame``.
     """
 
     def __init__(
@@ -84,6 +85,7 @@ class SpatialMemory(Memory):
         spatial_backend: SpatialLMBackend | None = None,
         spatial_detect_type: str = "all",
         spatial_seed: int = 42,
+        global_scene_ply: str | Path | None = None,
     ) -> None:
         if (
             not isinstance(frame_buffer_size, int)
@@ -159,6 +161,14 @@ class SpatialMemory(Memory):
             raise ValueError(f"spatial_detect_type must be one of: {choices}")
         if not isinstance(spatial_seed, Integral) or isinstance(spatial_seed, bool):
             raise ValueError("spatial_seed must be an integer")
+        if global_scene_ply is not None and not isinstance(
+            global_scene_ply, (str, Path)
+        ):
+            raise TypeError("global_scene_ply must be a path or None")
+        if global_scene_ply is not None and not str(global_scene_ply):
+            raise ValueError("global_scene_ply must be a non-empty path")
+        if global_scene_ply is not None and spatial_backend is None:
+            raise ValueError("global_scene_ply requires a configured spatial_backend")
 
         self.frame_buffer_size: int = frame_buffer_size
         self.frame_key: str = frame_key
@@ -179,6 +189,9 @@ class SpatialMemory(Memory):
         self.spatial_backend: SpatialLMBackend | None = spatial_backend
         self.spatial_detect_type: str = spatial_detect_type
         self.spatial_seed: int = int(spatial_seed)
+        self.global_scene_ply: Path | None = (
+            Path(global_scene_ply) if global_scene_ply is not None else None
+        )
 
         self.session_id: str | None = None
         self._frames: deque[dict[str, Any]] = deque(maxlen=frame_buffer_size)
@@ -201,6 +214,12 @@ class SpatialMemory(Memory):
         self._latest_manifest_ref: str | None = None
         self._latest_manifest_revision: int | None = None
         self._localization: dict[str, Any] = _empty_spatial_context()
+        self._global_scene_localization: dict[str, Any] | None = None
+        if self.global_scene_ply is not None:
+            self._global_scene_localization = self._localize_with_spatiallm(
+                self.global_scene_ply
+            )
+            self._localization = deepcopy(self._global_scene_localization)
 
     def reset(self, session_id: str) -> None:
         with self._lock:
@@ -223,10 +242,16 @@ class SpatialMemory(Memory):
             self._latest_ply_revision = None
             self._latest_manifest_ref = None
             self._latest_manifest_revision = None
-            self._localization = _empty_spatial_context()
+            self._localization = (
+                deepcopy(self._global_scene_localization)
+                if self._global_scene_localization is not None
+                else _empty_spatial_context()
+            )
 
     def ingest(self, frame: Mapping[str, Any]) -> None:
-        """Validate and incrementally fuse one synchronized RGB-D frame."""
+        """Fuse one RGB-D frame, or ignore it in global-scene mode."""
+        if self.global_scene_ply is not None:
+            return
         if not isinstance(frame, Mapping):
             raise TypeError("spatial frame must be a mapping")
         normalized = self._validate_frame(frame)
@@ -296,6 +321,8 @@ class SpatialMemory(Memory):
             self.export_session()
 
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
+        if self.global_scene_ply is not None:
+            return
         environment_result = event.get("environment_result")
         observation = (
             environment_result.get("observation")
@@ -460,7 +487,10 @@ class SpatialMemory(Memory):
         point_cloud: Any | None = None,
         colors: Any | None = None,
     ) -> dict[str, Any]:
-        """Infer a spatial context from a PLY, mapping, or point array."""
+        """Infer a layout, or return the cached global-scene localization."""
+        if self.global_scene_ply is not None:
+            with self._lock:
+                return deepcopy(self._localization)
         if point_cloud is None:
             if colors is not None:
                 raise ValueError("colors requires an explicit point-cloud array")
@@ -481,7 +511,17 @@ class SpatialMemory(Memory):
     def healthcheck(self) -> dict[str, Any]:
         with self._lock:
             status = {
-                "implementation": "voxel_point_map",
+                "implementation": (
+                    "global_scene_localization"
+                    if self.global_scene_ply is not None
+                    else "voxel_point_map"
+                ),
+                "mapping_enabled": self.global_scene_ply is None,
+                "global_scene_ply": (
+                    str(self.global_scene_ply)
+                    if self.global_scene_ply is not None
+                    else None
+                ),
                 "point_count": len(self._voxels),
                 "map_revision": self._map_revision,
                 "trajectory_frame_count": len(self._trajectory),
@@ -539,14 +579,22 @@ class SpatialMemory(Memory):
         colors: Any | None = None,
     ) -> dict[str, Any]:
         """Normalize point-cloud inputs and run configured SpatialLM inference."""
-        points, normalized_colors = self._prepare_spatiallm_input(
-            point_cloud,
-            colors,
-        )
         if self.spatial_backend is None:
             raise RuntimeError(
                 "SpatialLM inference requires a configured spatial_backend"
             )
+        if isinstance(point_cloud, (str, Path)):
+            if colors is not None:
+                raise ValueError("colors must not be provided with a PLY input")
+            return self.spatial_backend.infer_ply(
+                point_cloud,
+                detect_type=self.spatial_detect_type,
+                seed=self.spatial_seed,
+            )
+        points, normalized_colors = self._prepare_spatiallm_input(
+            point_cloud,
+            colors,
+        )
         return self.spatial_backend.infer_points(
             points,
             normalized_colors,
@@ -560,10 +608,6 @@ class SpatialMemory(Memory):
         point_cloud: Any,
         colors: Any | None = None,
     ) -> tuple[list[list[float]], list[list[float]] | None]:
-        if isinstance(point_cloud, (str, Path)):
-            if colors is not None:
-                raise ValueError("colors must not be provided with a PLY input")
-            return load_ply_points_colors(point_cloud)
         if isinstance(point_cloud, Mapping):
             if "points_xyz_m" not in point_cloud:
                 raise ValueError("point-cloud mapping is missing: points_xyz_m")

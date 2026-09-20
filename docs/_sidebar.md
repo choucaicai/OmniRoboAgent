@@ -12,6 +12,8 @@
   - [Pipeline](/components/pipeline.md)
   - [Runtime](/components/runtime.md)
   - [Observability](/components/observability.md)
+  - [SpatialMemory](/components/spatialmemory_memory.md)
+  - [SpatialMemory Backend](/components/spatialmemory_backend.md)
   - [Environment](/components/environment.md)
   - [Evaluation](/components/evaluation.md)
 - [自定义组件](/custom_components.md)

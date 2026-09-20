@@ -175,7 +175,9 @@ GR00T remote 和 local 复用同一个 request builder。Atomic 路径没有显�
 
 ### Memory
 
-当前提供 `InMemoryMemory`、`JsonlMemory` 和 `TieredMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working frames、recent events 和 summary，但不删除长期 key events；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
+当前提供 `InMemoryMemory`、`JsonlMemory`、`TieredMemory` 和 `SpatialMemory`。`SyncRuntime` 在每个 session 开始时调用 `Agent.reset(session_id)`，清理 episode working frames、recent events 和 summary，但不删除长期 key events；Runtime 无论使用哪种 Memory 都会写 `trace.jsonl` 和 `result.json`。
+
+`SpatialMemory` 有互斥的两种运行模式：默认模式从 RGB-D 关键帧增量融合 voxel point map，并在成功融合后更新空间布局；配置 `global_scene_ply` 时，在构造阶段通过长期复用的 `SpatialLMBackend` 对完整 PLY 只定位一次，后续 `reset()` 保留该定位，`update()`、`ingest()` 和 `update_layout()` 均复用缓存且不再实时建图、记录轨迹或导出 checkpoint。全局 PLY 模式要求同时配置 backend；PLY 读取由 backend 复用 SpatialLM 的 `load_o3d_pcd()` 和 `get_points_and_colors()`，Agent Core 不维护独立 parser，也不直接 import Open3D。
 
 `TieredMemory` 组合 bounded visual working memory、bounded recent transitions、长期 structured key events 和 bounded deterministic text summary。默认保留最近 `K=4` 个 observation timestep，每个 timestep 可包含多 camera raw frame；普通 transition 只进入 bounded recent deque，可选 `event_path` 继续保存全 transition JSONL。
 
@@ -183,7 +185,7 @@ Pipeline 根据已经确定的 transition 生成 `subtask_completed`、`subtask_
 
 启用 key-event artifacts 后，Runtime 在 state 中提供 session-scoped `artifact_dir`；Memory 将关键事件发生后的配置 camera frame 保存为 PNG，并在同目录 append `events.jsonl`。raw frame 不进入 JSONL，长期 record 只保存 execution/attempt identity、文本 evidence 和 artifact references。
 
-Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events`、`key_events` 和 `summary`。LLM Planner/Verifier 将 summary、recent/key events 放入文本 prompt，并把 working frames 作为独立 image content；历史 key-event PNG 默认不自动加载。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md) 和 [0010 plan](../plans/0010-key-event-memory.md)。
+Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_context` 传递 `working_frames`、`recent_events`、`key_events`、`summary` 以及可选的 `spatial`。LLM Planner/Verifier 将 summary、recent/key events 放入文本 prompt，并把 working frames 作为独立 image content；`LanguageSkillPlanner` 及其子类在 `spatial` 字段存在时也将完整空间定位结果加入文本 prompt，即使该字段值为空；历史 key-event PNG 默认不自动加载。Memory 不修改 proposal、verification 或 transition。见 [0009 plan](../plans/0009-tiered-agent-memory.md) 和 [0010 plan](../plans/0010-key-event-memory.md)。
 
 ## 5. Data Policy
 
@@ -570,6 +572,7 @@ episode limit                -> Runtime termination
 | RoboCasa365 Environment/Evaluator | Implemented; atomic and composite GR00T remote/local split matrices verified |
 | RoboCasa composite Agent contract | Implemented with `SubtaskSkillPlanner`, visual `SubtaskVerifier`, `TieredMemory`, macro catalog, trusted skill ID mapping, and shared local/remote request schema; fixed migrated smoke verified, formal matrix pending |
 | Explicit skill-execution graph state and deterministic transitions | Implemented and unit tested; fixed RoboCasa real checkpoint smoke verified with completed/failed execution ledgers and recovery transitions |
+| Spatial memory | Implemented with RGB-D voxel mapping and static global PLY single-pass localization; real SpatialLM checkpoint GPU smoke pending |
 | RoboCasa OpenPI real checkpoint | Server/client/schema implemented; real smoke pending |
 | Resolved config/framework version copied into results | Partial for RoboCasa365: task/component/version metadata implemented, full resolved AgentConfig/RunConfig pending; EB-ALFRED pending |
 | Native EmbodiedBench evaluator alignment | Pending |
@@ -583,7 +586,7 @@ episode limit                -> Runtime termination
 4. 已接入 RoboCasa 与 GR00T/OpenPI/local VLA backend，并验证 atomic 与 composite Agent split matrix；OpenPI 真实 smoke 和原生 evaluator 对齐待完成。
 5. 已为 `SkillExecutionPipeline` 增加显式 graph state、独立 subtask verification、确定性转换和 recovery，并完成迁移后的 RoboCasa composite 固定 real smoke；下一步补 peak RSS、verifier usage trace、semantic loop tuning 和正式多 episode matrix。
 6. 根据真实需求加入 async runtime 和多环境调度。
-7. 加入 semantic/spatial memory 和 learned verifier。
+7. 已加入 spatial memory；semantic memory 和 learned verifier 在真实需求出现后实现。
 8. 通过 RoboNeuron/ROS2 integration 接入真机，并按真实需求实现 human interface。
 
 每一阶段都必须保持上一阶段 benchmark 可运行，不能以未来扩展为由破坏已验证接口。

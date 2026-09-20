@@ -57,6 +57,40 @@ class SpatialLMBackend:
             raise BackendError(f"SpatialLM inference failed: {error}") from error
         return validate_spatial_context(result)
 
+    def infer_ply(
+        self,
+        path: str | Path,
+        **generation_options: Any,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Load a PLY with SpatialLM's Open3D helpers and run inference."""
+        if self._closed:
+            raise BackendError("SpatialLM backend is closed")
+        point_cloud_path = Path(path)
+        if point_cloud_path.suffix.lower() != ".ply":
+            raise ValueError("SpatialLM point-cloud path must end with .ply")
+        if not point_cloud_path.is_file():
+            raise FileNotFoundError(
+                f"SpatialLM point-cloud file does not exist: {point_cloud_path}"
+            )
+
+        try:
+            numpy = importlib.import_module("numpy")
+            pcd = importlib.import_module("spatiallm.pcd")
+        except Exception as error:
+            raise BackendError(
+                f"Failed to import SpatialLM point-cloud dependencies: {error}"
+            ) from error
+
+        point_cloud = pcd.load_o3d_pcd(str(point_cloud_path))
+        points, colors = pcd.get_points_and_colors(point_cloud)
+        points = numpy.asarray(points)
+        colors = numpy.asarray(colors)
+        if len(points) == 0:
+            raise ValueError(f"PLY contains no readable points: {point_cloud_path}")
+        if not numpy.isfinite(points).all():
+            raise ValueError(f"PLY contains non-finite XYZ values: {point_cloud_path}")
+        return self.infer_points(points, colors, **generation_options)
+
     def healthcheck(self) -> dict[str, Any]:
         if self._closed:
             return {"healthy": False, "error": "SpatialLM backend is closed"}

@@ -16,6 +16,8 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 | [Configuration](configuration.md) | `AgentConfig`、`RunConfig`、`class_path` 和 registry |
 | [Agent Core](agent_core/README.md) | Agent、Planner、Verifier 和 Memory 的组合关系 |
 | [Framework Components](interfaces.md) | Backend、Pipeline、Runtime、Environment 和 Evaluation |
+| [SpatialMemory](components/spatialmemory_memory.md) | 空间记忆用途、两种地图来源、输入契约、空间上下文和配置 |
+| [SpatialMemory Backend](components/spatialmemory_backend.md) | SpatialLM GPU 环境、模型下载和集成验证 |
 | [Custom Components](custom_components.md) | 实现并通过配置加载自定义组件 |
 
 ## Agent Core
@@ -36,6 +38,8 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 | [Pipeline](components/pipeline.md) | 定义调用顺序、输入构造和状态转换 |
 | [Runtime](components/runtime.md) | 管理 episode lifecycle、limits、trace 和资源释放 |
 | [Observability](components/observability.md) | 保存 Agent trace、episode video 和 artifact manifest |
+| [SpatialMemory](components/spatialmemory_memory.md) | 将全局 PLY 或实时 RGB-D 地图转换为空间上下文并提供给 Agent |
+| [SpatialMemory Backend](components/spatialmemory_backend.md) | 安装 SpatialLM GPU backend 并验证空间记忆链路 |
 | [Environment](components/environment.md) | 连接 benchmark、simulator 或 robot 并执行 action |
 | [Evaluation](components/evaluation.md) | 遍历任务、聚合指标并保存可复现输出 |
 

@@ -215,22 +215,24 @@ class LanguageSkillPlanner(Planner):
         summary = memory_context.get("summary", "")
         recent_events = memory_context.get("recent_events", [])
         key_events = memory_context.get("key_events", [])
-        if not summary and not recent_events and not key_events:
+        has_spatial = "spatial" in memory_context
+        if not summary and not recent_events and not key_events and not has_spatial:
             return ""
-        return json.dumps(
-            to_jsonable(
-                {
-                    "summary": summary,
-                    "recent_events": (
-                        recent_events[-10:]
-                        if isinstance(recent_events, list)
-                        else recent_events
-                    ),
-                    "key_events": (
-                        key_events[-10:] if isinstance(key_events, list) else key_events
-                    ),
-                }
+        prompt_context = {
+            "summary": summary,
+            "recent_events": (
+                recent_events[-10:]
+                if isinstance(recent_events, list)
+                else recent_events
             ),
+            "key_events": (
+                key_events[-10:] if isinstance(key_events, list) else key_events
+            ),
+        }
+        if has_spatial:
+            prompt_context["spatial"] = memory_context["spatial"]
+        return json.dumps(
+            to_jsonable(prompt_context),
             ensure_ascii=False,
         )
 

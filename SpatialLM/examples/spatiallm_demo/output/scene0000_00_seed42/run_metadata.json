@@ -1,0 +1,40 @@
+{
+  "status": "success",
+  "started_at": "2026-09-19T14:41:00.310170+00:00",
+  "finished_at": "2026-09-19T14:41:06.728527+00:00",
+  "input": "examples/spatiallm_demo/input/scene0000_00.ply",
+  "model_path": "models/SpatialLM1.1-Qwen-0.5B",
+  "output_dir": "examples/spatiallm_demo/output/scene0000_00_seed42",
+  "generation": {
+    "detect_type": "all",
+    "seed": 42,
+    "max_new_tokens": 4096
+  },
+  "engine": {
+    "device": "cuda",
+    "inference_dtype": "bfloat16",
+    "cleanup": true,
+    "default_wall_thickness": 0.12,
+    "output_precision": 6
+  },
+  "timing_seconds": {
+    "model_load": 2.893478184007108,
+    "inference": 3.3681237939745188,
+    "total": 6.418344011064619
+  },
+  "counts": {
+    "walls": 6,
+    "doors": 1,
+    "windows": 1,
+    "objects": 8
+  },
+  "software": {
+    "python": "3.11.13",
+    "torch": "2.4.1+cu124",
+    "torch_cuda": "12.4",
+    "spatiallm": "0.1.1",
+    "omniroboagent": null
+  },
+  "gpu": "NVIDIA GeForce RTX 4090 D",
+  "reproducibility_note": "A fixed seed is used, but sampled GPU generation is not guaranteed to be bitwise identical across machines."
+}
