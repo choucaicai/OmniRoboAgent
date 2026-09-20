@@ -87,8 +87,10 @@
 - [x] `DONE` 实现 `ReflectiveMemory`，把语义等价的重复失败蒸馏成证据门控的 lessons，按 recall phase 收紧注入，并保留退役与版本记录（[计划](plans/0014-reflective-memory.md)）。
 - [x] `DONE` 将 visual working memory 的准入策略由纯滑动窗口扩展为可选的 salience gating，并支持 lesson 分区跨 run 重建（[计划](plans/0015-salient-working-memory-and-lesson-persistence.md)）。
 - [x] `DONE` 为 `ReflectiveMemory` 增加按对象索引的已确认世界状态账本，支持 supersede、disturb 标记和 phase 门控，并在 `reset()` 时清空（[计划](plans/0016-confirmed-object-state-ledger.md)）。
+- [x] `DONE` 增加由 `task_success` 归纳的 procedure 分区补上成功侧记忆，并把 working frame 注入收敛到带逐帧标注的共享渲染函数（[计划](plans/0017-procedural-memory-and-labelled-frames.md)）。
 - [ ] `TODO` 在真实 RoboCasa 评测中对照 `TieredMemory` 与 `ReflectiveMemory`，测量 lesson 命中率、planner prompt token 和多 episode 成功率曲线。
 - [ ] `TODO` 在真实 RoboCasa rollout 上测量 `track_object_state` 是否减少了效果已达成的重复 subtask proposal，并统计字符串槽位中非对象参数带来的噪声条目占比，再决定是否需要槽位白名单。
+- [ ] `TODO` 统计 `task_success` 的实际样本量，确认 procedure 分区是否能积累到有意义的 `support_count`；若单次成功即被复用，需要评估 experience-following 导致的错误传播，并决定是否加入场景相似度门控或跨进程持久化。
 - [ ] `TODO` 在真实 RoboCasa rollout 上统计 `frame_selection: event` 的 boundary frame 占比，确认 verifier status 抖动不会使策略退化为滑动窗口，再决定是否需要帧级去重。
 
 ## 6. Backend Support

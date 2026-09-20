@@ -82,9 +82,11 @@ def test_reflective_memory_keeps_the_stable_recall_partitions() -> None:
         "summary",
         "lessons",
         "object_state",
+        "procedures",
     }
     assert recalled["lessons"] == []
     assert recalled["object_state"] == []
+    assert recalled["procedures"] == []
 
 
 def test_reflective_memory_aggregates_volatile_grounding_into_one_lesson() -> None:
@@ -465,6 +467,189 @@ def test_reflective_memory_ignores_object_state_without_an_outcome() -> None:
     assert memory.object_states == {}
 
 
+def execution(
+    skill: str,
+    subtask: str,
+    grounded_arguments: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "skill": skill,
+        "subtask": subtask,
+        "grounded_arguments": grounded_arguments,
+    }
+
+
+def finish(
+    memory: ReflectiveMemory,
+    step: int,
+    *,
+    task: Any = "put the mug on the tray",
+    completed: list[dict[str, Any]] | None = None,
+    session_id: str = "session",
+) -> None:
+    payload = state(step, session_id)
+    payload["task"] = task
+    payload["completed_executions"] = (
+        [
+            execution("OpenDoor", "open the cabinet", {"object": "cabinet"}),
+            execution(
+                "PickPlace",
+                "place the mug on the tray",
+                {"object": "mug", "target": "tray", "x": 0.3},
+            ),
+        ]
+        if completed is None
+        else completed
+    )
+    memory.update(payload, event(event_type="task_success"))
+
+
+def test_reflective_memory_induces_a_procedure_from_a_task_success() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("session")
+
+    finish(memory, 9)
+
+    procedures = memory.recall({"phase": "plan", "task": "put the mug on the tray"})[
+        "procedures"
+    ]
+
+    assert len(procedures) == 1
+    procedure = procedures[0]
+    assert procedure["procedure_id"] == "procedure:1"
+    assert [step["signature"] for step in procedure["steps"]] == [
+        "OpenDoor|object=cabinet",
+        "PickPlace|object=mug,target=tray",
+    ]
+    assert procedure["support_count"] == 1
+    assert procedure["task"] == "put the mug on the tray"
+    assert "1) OpenDoor|object=cabinet -> 2) PickPlace" in procedure["text"]
+
+
+def test_reflective_memory_is_not_tracking_procedures_by_default() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"])
+    memory.reset("session")
+
+    finish(memory, 0)
+
+    assert memory.procedures == []
+    recalled = memory.recall({"phase": "plan", "task": "put the mug on the tray"})
+    assert recalled["procedures"] == []
+
+
+def test_reflective_memory_counts_repeated_successes_of_the_same_procedure() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("first")
+    finish(memory, 3, session_id="first")
+
+    memory.reset("second")
+    finish(memory, 8, session_id="second")
+
+    assert len(memory.procedures) == 1
+    procedure = memory.procedures[0]
+    assert procedure["support_count"] == 2
+    assert procedure["session_ids"] == ["first", "second"]
+    assert procedure["first_seen_step"] == 3
+    assert procedure["last_seen_step"] == 8
+
+
+def test_reflective_memory_keeps_alternative_procedures_for_one_task() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("session")
+
+    finish(memory, 1)
+    finish(
+        memory,
+        5,
+        completed=[
+            execution("PickPlace", "place the mug on the tray", {"object": "mug"}),
+        ],
+    )
+
+    assert [procedure["support_count"] for procedure in memory.procedures] == [1, 1]
+    assert len(memory.procedures) == 2
+
+
+def test_reflective_memory_keeps_procedures_but_clears_object_state_on_reset() -> None:
+    memory = ReflectiveMemory(
+        camera_keys=["camera"],
+        track_procedures=True,
+        track_object_state=True,
+    )
+    memory.reset("first")
+    succeed(memory, 0, session_id="first")
+    finish(memory, 1, session_id="first")
+
+    memory.reset("second")
+
+    assert memory.object_states == {}
+    assert [procedure["procedure_id"] for procedure in memory.procedures] == [
+        "procedure:1"
+    ]
+
+
+def test_reflective_memory_suppresses_procedures_during_verification() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("session")
+
+    finish(memory, 0)
+
+    query = {"task": "put the mug on the tray"}
+    assert memory.recall({**query, "phase": "plan"})["procedures"] != []
+    assert memory.recall({**query, "phase": "verify"})["procedures"] == []
+
+
+def test_reflective_memory_skips_procedures_for_an_unrelated_task() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("session")
+
+    finish(memory, 0)
+
+    recalled = memory.recall({"phase": "plan", "task": "turn on the stove"})
+
+    assert recalled["procedures"] == []
+
+
+def test_reflective_memory_reads_the_task_instruction_field() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("session")
+
+    finish(memory, 0, task={"instruction": "Put The Mug  on the Tray"})
+
+    assert memory.procedures[0]["task"] == "put the mug on the tray"
+
+
+def test_reflective_memory_ignores_task_success_without_completed_executions() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_procedures=True)
+    memory.reset("session")
+
+    finish(memory, 0, completed=[])
+    finish(memory, 1, task="")
+
+    assert memory.procedures == []
+
+
+def test_reflective_memory_bounds_the_procedure_store() -> None:
+    memory = ReflectiveMemory(
+        camera_keys=["camera"],
+        track_procedures=True,
+        procedure_limit=2,
+    )
+    memory.reset("session")
+
+    finish(memory, 0)
+    finish(memory, 1)
+    for index, skill in enumerate(("MoveTo", "OpenDoor"), start=2):
+        finish(
+            memory,
+            index,
+            completed=[execution(skill, "do it", {"object": "mug"})],
+        )
+
+    assert [procedure["support_count"] for procedure in memory.procedures] == [2, 1]
+    assert len(memory.procedures) == 2
+
+
 def test_reflective_memory_rejects_invalid_lesson_configuration() -> None:
     with pytest.raises(ValueError):
         ReflectiveMemory(lesson_recall_limit=0)
@@ -476,3 +661,9 @@ def test_reflective_memory_rejects_invalid_lesson_configuration() -> None:
         ReflectiveMemory(lesson_reload=True)
     with pytest.raises(ValueError, match="object_state_limit"):
         ReflectiveMemory(object_state_limit=0)
+    with pytest.raises(ValueError, match="procedure_recall_limit"):
+        ReflectiveMemory(procedure_recall_limit=0)
+    with pytest.raises(ValueError, match="procedure_min_support"):
+        ReflectiveMemory(procedure_min_support=0)
+    with pytest.raises(ValueError, match="procedure_limit"):
+        ReflectiveMemory(procedure_recall_limit=4, procedure_limit=2)

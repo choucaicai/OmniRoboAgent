@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from omniroboagent.agent_core.planners.base import Planner
+from omniroboagent.agent_core.prompting import working_frame_content
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import PlannerOutputError
 from omniroboagent.serialization import to_jsonable
@@ -65,13 +66,7 @@ class LanguageSkillPlanner(Planner):
                 images = [images]
             for image in images or []:
                 content.append({"type": "image_url", "image_url": {"url": image}})
-        memory_images = self._memory_images(memory_context)
-        if memory_images:
-            content.append(
-                {"type": "text", "text": "Visual working memory, oldest to newest"}
-            )
-            for image in memory_images:
-                content.append({"type": "image_url", "image_url": {"url": image}})
+        content.extend(working_frame_content(memory_context))
 
         response = self.backend.complete(
             {
@@ -217,12 +212,14 @@ class LanguageSkillPlanner(Planner):
         key_events = memory_context.get("key_events", [])
         lessons = memory_context.get("lessons", [])
         object_state = memory_context.get("object_state", [])
+        procedures = memory_context.get("procedures", [])
         if (
             not summary
             and not recent_events
             and not key_events
             and not lessons
             and not object_state
+            and not procedures
         ):
             return ""
         payload: dict[str, Any] = {
@@ -236,6 +233,12 @@ class LanguageSkillPlanner(Planner):
                 key_events[-10:] if isinstance(key_events, list) else key_events
             ),
         }
+        if isinstance(procedures, list) and procedures:
+            payload["procedures"] = [
+                procedure.get("text")
+                for procedure in procedures
+                if isinstance(procedure, Mapping)
+            ]
         if isinstance(object_state, list) and object_state:
             payload["object_state"] = [
                 entry.get("text")
@@ -252,22 +255,3 @@ class LanguageSkillPlanner(Planner):
                 if isinstance(lesson, Mapping)
             ]
         return json.dumps(to_jsonable(payload), ensure_ascii=False)
-
-    @staticmethod
-    def _memory_images(memory_context: Any) -> list[Any]:
-        if not isinstance(memory_context, Mapping):
-            return []
-        frames = memory_context.get("working_frames", [])
-        if not isinstance(frames, list):
-            return []
-        images: list[Any] = []
-        for frame in frames:
-            cameras = frame.get("cameras") if isinstance(frame, Mapping) else None
-            if not isinstance(cameras, Mapping):
-                continue
-            for value in cameras.values():
-                if isinstance(value, list):
-                    images.extend(value)
-                else:
-                    images.append(value)
-        return images

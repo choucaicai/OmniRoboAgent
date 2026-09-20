@@ -20,7 +20,7 @@ key_events
 summary
 ```
 
-`ReflectiveMemory` 在此之上附加 `lessons` 和 `object_state` 两个键；上面四个键的语义和字段不变。
+`ReflectiveMemory` 在此之上附加 `lessons`、`object_state` 和 `procedures` 三个键；上面四个键的语义和字段不变。
 
 ## Current Implementations
 
@@ -29,7 +29,7 @@ summary
 | `InMemoryMemory` | 保存当前 session 的所有 events，reset 时清空 | tests、短任务和最小闭环 |
 | `JsonlMemory` | 将可序列化 event append 到指定 JSONL | 简单持久化和离线检查 |
 | `TieredMemory` | bounded visual frames、recent events、long-term key events 和 text summary | 长程、多模态 skill execution |
-| `ReflectiveMemory` | 在 `TieredMemory` 之上把重复失败蒸馏成带证据计数的 lessons，并可选维护按对象索引的已确认世界状态 | 需要跨 attempt 和跨 episode 积累失败经验、或场景部分可观测的长程任务 |
+| `ReflectiveMemory` | 在 `TieredMemory` 之上把重复失败蒸馏成带证据计数的 lessons，并可选维护按对象索引的已确认世界状态和由 task 成功归纳的 procedures | 需要跨 attempt 和跨 episode 积累经验、或场景部分可观测的长程任务 |
 
 ## `TieredMemory`
 
@@ -58,6 +58,8 @@ Boundary frame 指该 transition 产生了 key event，或 verifier status 与�
 
 每个 frame 额外带 `event_type`、`status` 和 `pinned` 三个字段，可用于核对窗口里实际留下了哪些帧。默认值 `recent` 与此前行为完全一致。
 
+Planner 和 Verifier 注入 working frames 时会**按帧插入一行标注**（`step=... event=... status=...`）再贴该帧图片，两种 `frame_selection` 下都生效。若干张画面高度相似时，模型靠这行标注才能分辨哪一张是失败发生的那一刻；没有标注的话 salience gating 选对了帧，下游却看不出来。渲染逻辑集中在 `agent_core/prompting.py` 的 `working_frame_content()`，三处注入点共用。
+
 启用 `save_key_event_artifacts` 后，Runtime 必须在 state 中提供 `artifact_dir`。Memory 会把关键事件对应的 camera frames 保存为 PNG，并在 `artifacts/key_events/events.jsonl` 写结构化 metadata；普通 `in_progress` event 不保存图片。
 
 不可序列化 action、tensor 或 image 不应直接写入 JSONL。应保存摘要、独立 artifact 或引用。
@@ -81,11 +83,15 @@ memory:
     lesson_reload: false
     track_object_state: false
     object_state_limit: 12
+    track_procedures: false
+    procedure_recall_limit: 1
+    procedure_min_support: 1
+    procedure_limit: 32
 ```
 
 `ReflectiveMemory` 继承 `TieredMemory` 的全部行为和参数，并额外维护一个 lesson 分区。把上面的 `class_path` 换回 `TieredMemory` 即可得到不含 lesson 的对照配置，其余参数不需要改动。
 
-`frame_selection`、lesson 机制和 object state 账本三者相互独立：分别影响视觉层准入、`lessons` 分区和 `object_state` 分区。做消融时可以分别开关，不要把它们绑在同一个开关上。
+`frame_selection`、lesson 机制、object state 账本和 procedure 归纳四者相互独立：分别影响视觉层准入、`lessons`、`object_state` 和 `procedures` 分区。做消融时可以分别开关，不要把它们绑在同一个开关上。
 
 每次 `subtask_failed` 或 `execution_aborted` 会生成一个 attempt signature。Signature 只包含 skill 和 `grounded_arguments` 中的字符串槽位，忽略坐标等易变数值，因此同一个 subtask 的多次重复尝试会聚合到同一条 lesson 上，而不是每次新建一条。
 
@@ -130,5 +136,25 @@ Lesson 内容是事实陈述（某 signature 以某 failure class 失败过几�
 | `object_state` | 清空 | 讲的是这一个场景，环境每个 episode 重新随机化，上一轮确认的事实对本轮不是证据 |
 
 `recall({"phase": "verify", ...})` 的 `object_state` 恒为空列表，理由与 lesson 相同：Verifier 必须从当前画面判断，「这里本来应该是什么样」的先验会诱导它盖章放行。条目数上限为 `object_state_limit`，超出时淘汰最久未被确认的对象。
+
+### Procedures
+
+`lessons` 记的是负例（什么反复失败过），`procedures` 记的是正例（整个 task 是怎么做成的）。开启 `track_procedures` 后，每次 `task_success` 会从 `state["completed_executions"]` 归纳出一条有序 procedure：每一步取 skill 和该步的字符串槽位，生成与 attempt signature 同构的步骤签名 `skill|slot=value,...`，坐标等数值不进签名。
+
+Procedure 的 signature 是归一化 task 文本加上有序步骤签名。完全相同的解法再次成功时 `support_count` 递增、`session_ids` 追加，仍然只有一条；步骤不同则各存一条——同一个 task 的多条可行路径都是事实，不互相覆盖。
+
+召回时按 task 与 procedure 的**内容词**重叠排序，内容词取自各步骤的 skill 名和对象槽位值，而不是 task 原文。原因是 `the`、`on` 这类虚词会让几乎任意两条指令都产生重叠，用对象名匹配才有区分度。query 带 task 时，重叠为零的 procedure 直接不召回。最多返回 `procedure_recall_limit` 条，超过 `procedure_limit` 时淘汰证据最弱的一条。
+
+`reset()` **保留** procedure，与 lesson 一致、与 `object_state` 相反：
+
+| 分区 | 讲什么 | reset |
+| --- | --- | --- |
+| `lessons` | agent 能力的负例 | 保留 |
+| `procedures` | 任务解法的正例 | 保留 |
+| `object_state` | 当前场景的世界状态 | 清空 |
+
+内容同样是事实陈述（「该 task 曾以这个顺序完成过 N 次」），不是「照这么做」的指令，是否复用由 Planner 决定。`phase == "verify"` 时该分区为空。
+
+注意 `task_success` 样本可能极少（既有 audit 中 composite 40 episodes 仅 1 次成功），单次成功的 procedure 可能来自特定场景布局；`support_count` 和 `session_ids` 就是用来暴露证据强度的。默认关闭。
 
 接下来：[Framework Components](../interfaces.md)。

@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from omniroboagent.agent_core.planners.language_skill import LanguageSkillPlanner
+from omniroboagent.agent_core.prompting import working_frame_content
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import ConfigError, PlannerOutputError
 
@@ -152,13 +153,7 @@ class SubtaskSkillPlanner(LanguageSkillPlanner):
                     images = [images]
                 for image in images:
                     content.append({"type": "image_url", "image_url": {"url": image}})
-        memory_images = self._memory_images(memory_context)
-        if memory_images:
-            content.append(
-                {"type": "text", "text": "Visual working memory, oldest to newest"}
-            )
-            for image in memory_images:
-                content.append({"type": "image_url", "image_url": {"url": image}})
+        content.extend(working_frame_content(memory_context))
 
         response = self.backend.complete(
             {

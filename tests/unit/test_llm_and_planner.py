@@ -101,7 +101,15 @@ def test_language_skill_planner_uses_explicit_memory_context() -> None:
                         "text_summary": "opened the cabinet",
                     }
                 ],
-                "working_frames": [{"cameras": {"head": memory_image}}],
+                "working_frames": [
+                    {
+                        "step": 7,
+                        "event_type": "subtask_failed",
+                        "status": "failed",
+                        "cameras": {"head": memory_image},
+                    }
+                ],
+                "procedures": [{"text": "task=find mug successes=1 steps=1) MoveTo|"}],
             },
         }
     )
@@ -109,6 +117,8 @@ def test_language_skill_planner_uses_explicit_memory_context() -> None:
     content = backend.inputs["messages"][1]["content"]
     assert "mug was last seen" in content[0]["text"]
     assert "opened the cabinet" in content[0]["text"]
+    assert "successes=1" in content[0]["text"]
+    assert content[-2]["text"] == "step=7 event=subtask_failed status=failed"
     assert content[-1]["image_url"]["url"] is memory_image
 
 

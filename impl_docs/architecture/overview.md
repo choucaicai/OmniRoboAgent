@@ -191,6 +191,10 @@ Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_
 
 开启 `track_object_state` 后，`ReflectiveMemory` 再附加一个按对象索引的 `object_state` 分区。它与 `summary`、`key_events` 的区别是前者是状态后者是叙事：叙事按时间排列且超限时从头丢弃，最早确认的事实最先消失，而账本按对象去重，每个对象只保留最新一条。条目 key 取 `grounded_arguments` 中字符串槽位的值，与 lesson signature 共用同一套提取逻辑，因此不需要实体抽取或 LLM。`subtask_completed` 以 `expected_outcome`（缺失时退化为 `subtask`）确认事实，两者都没有时不记录；后续同对象的确认递增 `revision` 并记 `superseded_step`；失败不确认任何事实，只给它触碰的对象打 `disturbed_step`。`phase == "verify"` 时该分区为空。`reset()` **清空**账本而保留 lesson：lesson 讲的是 agent 自身的能力，跨 episode 成立；世界状态讲的是这一个场景，环境每 episode 重新随机化。见 [0016 plan](../plans/0016-confirmed-object-state-ledger.md)。
 
+开启 `track_procedures` 后再附加 `procedures` 分区，补上成功侧：`lessons` 是负例，`procedures` 是正例。每次 `task_success` 从 `state["completed_executions"]` 归纳出有序步骤签名，每步取 skill 加字符串槽位，与 attempt signature 同构。procedure signature 由归一化 task 文本和有序步骤签名构成，相同解法累加 `support_count`，不同解法各存一条。召回按 skill 名和对象槽位值构成的内容词与 task 的重叠排序，不用 task 原文，以免 `the`、`on` 这类虚词让任意两条指令都命中。`phase == "verify"` 时为空。`reset()` 保留 procedure，与 lesson 一致、与 `object_state` 相反。见 [0017 plan](../plans/0017-procedural-memory-and-labelled-frames.md)。
+
+Working frames 的渲染集中在 `agent_core/prompting.py::working_frame_content()`，`SubtaskSkillPlanner`、`LanguageSkillPlanner` 和 `SubtaskVerifier` 共用。它按帧插入一行 `step/event/status` 标注后再贴该帧图片，使 salience gating 的选择在下游可辨；图片数量和顺序不变。
+
 ## 5. Data Policy
 
 第一版不为每个中间结果建立 class。只有输出稳定、需要跨模块校验或需要持久化时才增加明确数据类型。

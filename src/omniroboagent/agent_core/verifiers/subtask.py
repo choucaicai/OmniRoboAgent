@@ -3,6 +3,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from omniroboagent.agent_core.prompting import working_frame_content
 from omniroboagent.agent_core.verifiers.base import Verifier
 from omniroboagent.backends.llm.base import LLMBackend
 from omniroboagent.exceptions import ConfigError, VerifierOutputError
@@ -204,30 +205,7 @@ class SubtaskVerifier(Verifier):
                     content.append(
                         {"type": "image_url", "image_url": {"url": image}}
                     )
-        if isinstance(memory_context, Mapping):
-            working_frames = memory_context.get("working_frames", [])
-            if isinstance(working_frames, list) and working_frames:
-                content.append(
-                    {
-                        "type": "text",
-                        "text": "Visual working memory, oldest to newest",
-                    }
-                )
-                for frame in working_frames:
-                    cameras = (
-                        frame.get("cameras") if isinstance(frame, Mapping) else None
-                    )
-                    if not isinstance(cameras, Mapping):
-                        continue
-                    for value in cameras.values():
-                        images = value if isinstance(value, list) else [value]
-                        for image in images:
-                            content.append(
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": image},
-                                }
-                            )
+        content.extend(working_frame_content(memory_context))
 
         response = self.backend.complete(
             {

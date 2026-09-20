@@ -10,6 +10,7 @@ from omniroboagent.serialization import to_jsonable
 
 FAILURE_EVENT_TYPES = {"subtask_failed", "execution_aborted"}
 SUCCESS_EVENT_TYPES = {"subtask_completed"}
+PROCEDURE_EVENT_TYPE = "task_success"
 
 CONTROL_FAILURE_CLASSES = {
     "loop": "control_loop",
@@ -50,6 +51,10 @@ class ReflectiveMemory(TieredMemory):
         lesson_reload: bool = False,
         track_object_state: bool = False,
         object_state_limit: int = 12,
+        track_procedures: bool = False,
+        procedure_recall_limit: int = 1,
+        procedure_min_support: int = 1,
+        procedure_limit: int = 32,
     ) -> None:
         super().__init__(
             visual_window_size=visual_window_size,
@@ -71,6 +76,12 @@ class ReflectiveMemory(TieredMemory):
             raise ValueError("lesson_reload requires lesson_path")
         if object_state_limit <= 0:
             raise ValueError("object_state_limit must be positive")
+        if procedure_recall_limit <= 0:
+            raise ValueError("procedure_recall_limit must be positive")
+        if procedure_min_support <= 0:
+            raise ValueError("procedure_min_support must be positive")
+        if procedure_limit < procedure_recall_limit:
+            raise ValueError("procedure_limit must be at least procedure_recall_limit")
 
         self.lesson_recall_limit = lesson_recall_limit
         self.lesson_min_support = lesson_min_support
@@ -83,9 +94,16 @@ class ReflectiveMemory(TieredMemory):
         self.track_object_state = track_object_state
         self.object_state_limit = object_state_limit
 
+        self.track_procedures = track_procedures
+        self.procedure_recall_limit = procedure_recall_limit
+        self.procedure_min_support = procedure_min_support
+        self.procedure_limit = procedure_limit
+
         self.lessons: list[dict[str, Any]] = []
         self._lesson_sequence = 0
         self.object_states: dict[str, dict[str, Any]] = {}
+        self.procedures: list[dict[str, Any]] = []
+        self._procedure_sequence = 0
         if self.lesson_reload:
             self._load_lessons()
 
@@ -93,7 +111,8 @@ class ReflectiveMemory(TieredMemory):
         super().reset(session_id)
         # World state is scene-scoped: the environment is re-randomised per episode,
         # so a fact confirmed in the previous episode is not evidence about this one.
-        # Lessons are about the agent's own competence and are deliberately kept.
+        # Lessons and procedures describe the agent's own competence and the task's
+        # solution, which hold across episodes, so they are deliberately kept.
         self.object_states.clear()
 
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
@@ -104,6 +123,8 @@ class ReflectiveMemory(TieredMemory):
 
         key_record = self.key_events[-1]
         event_type = key_record.get("event_type")
+        if self.track_procedures and event_type == PROCEDURE_EVENT_TYPE:
+            self._record_procedure(state, key_record)
         if event_type not in FAILURE_EVENT_TYPES | SUCCESS_EVENT_TYPES:
             return
 
@@ -122,6 +143,7 @@ class ReflectiveMemory(TieredMemory):
         recalled = super().recall(query)
         recalled["lessons"] = self._recall_lessons(query)
         recalled["object_state"] = self._recall_object_state(query)
+        recalled["procedures"] = self._recall_procedures(query)
         return recalled
 
     def _reinforce(
@@ -414,6 +436,161 @@ class ReflectiveMemory(TieredMemory):
         if entry.get("disturbed_step") is not None:
             text = f"{text} disturbed_step={entry.get('disturbed_step')}"
         return text
+
+    def _record_procedure(
+        self, state: Mapping[str, Any], key_record: Mapping[str, Any]
+    ) -> None:
+        """Induce the ordered skill sequence that just completed the task."""
+        task = self._task_text(state.get("task"))
+        if not task:
+            return
+        steps = self._procedure_steps(state.get("completed_executions"))
+        if not steps:
+            return
+        signature = f"{task}||" + ">".join(str(step["signature"]) for step in steps)
+        step = key_record.get("step")
+        session_id = key_record.get("session_id")
+        event_id = key_record.get("event_id")
+        procedure = self._find_procedure(signature)
+        if procedure is None:
+            self._procedure_sequence += 1
+            procedure = {
+                "procedure_id": f"procedure:{self._procedure_sequence}",
+                "signature": signature,
+                "task": task,
+                "steps": steps,
+                "keywords": self._procedure_keywords(steps),
+                "support_count": 1,
+                "revision": 1,
+                "first_seen_step": step,
+                "last_seen_step": step,
+                "session_ids": [session_id] if session_id is not None else [],
+                "source_event_ids": [event_id] if event_id is not None else [],
+                "text": "",
+            }
+            self.procedures.append(procedure)
+        else:
+            procedure["support_count"] = int(procedure["support_count"]) + 1
+            procedure["revision"] = int(procedure["revision"]) + 1
+            procedure["last_seen_step"] = step
+            if session_id is not None and session_id not in procedure["session_ids"]:
+                procedure["session_ids"].append(session_id)
+            if event_id is not None:
+                procedure["source_event_ids"].append(event_id)
+        procedure["text"] = self._procedure_text(procedure)
+        self._evict_procedures()
+
+    def _procedure_steps(self, completed: Any) -> list[dict[str, Any]]:
+        """Turn the completed execution ledger into ordered step signatures."""
+        if not isinstance(completed, list):
+            return []
+        steps: list[dict[str, Any]] = []
+        for execution in completed:
+            if not isinstance(execution, Mapping):
+                continue
+            skill = execution.get("skill")
+            if not isinstance(skill, str) or not skill:
+                continue
+            slots = self._grounded_slots({"active_execution": execution}, {})
+            joined = ",".join(f"{name}={value}" for name, value in slots.items())
+            steps.append(
+                {
+                    "skill": skill,
+                    "subtask": execution.get("subtask"),
+                    "objects": sorted(set(slots.values())),
+                    "signature": f"{skill}|{joined}",
+                }
+            )
+        return steps
+
+    @classmethod
+    def _procedure_keywords(cls, steps: list[dict[str, Any]]) -> list[str]:
+        """Collect the content words of a procedure from its skills and objects.
+
+        Task instructions are matched against these rather than against the raw
+        instruction text, because function words like "the" and "on" make almost
+        any two instructions overlap.
+        """
+        keywords: set[str] = set()
+        for step in steps:
+            keywords |= cls._words(str(step["skill"]))
+            for name in step["objects"]:
+                keywords |= cls._words(str(name))
+        return sorted(keywords)
+
+    def _find_procedure(self, signature: str) -> dict[str, Any] | None:
+        for procedure in self.procedures:
+            if procedure["signature"] == signature:
+                return procedure
+        return None
+
+    def _evict_procedures(self) -> None:
+        while len(self.procedures) > self.procedure_limit:
+            weakest = min(self.procedures, key=self._procedure_eviction_rank)
+            self.procedures.remove(weakest)
+
+    @staticmethod
+    def _procedure_eviction_rank(procedure: Mapping[str, Any]) -> tuple[int, int]:
+        last_seen = procedure.get("last_seen_step")
+        return (
+            int(procedure["support_count"]),
+            int(last_seen) if isinstance(last_seen, int) else 0,
+        )
+
+    def _recall_procedures(self, query: Mapping[str, Any]) -> list[dict[str, Any]]:
+        if not self.track_procedures or query.get("phase") == "verify":
+            return []
+        query_words = self._words(self._task_text(query.get("task")))
+        ranked: list[tuple[tuple[float, int, int], dict[str, Any]]] = []
+        for procedure in self.procedures:
+            if int(procedure["support_count"]) < self.procedure_min_support:
+                continue
+            keywords = set(procedure["keywords"])
+            overlap = len(keywords & query_words) / len(keywords) if keywords else 0.0
+            # A procedure for an unrelated task is noise, not weak evidence.
+            if query_words and not overlap:
+                continue
+            last_seen = procedure.get("last_seen_step")
+            ranked.append(
+                (
+                    (
+                        overlap,
+                        int(procedure["support_count"]),
+                        int(last_seen) if isinstance(last_seen, int) else 0,
+                    ),
+                    procedure,
+                )
+            )
+        ranked.sort(key=lambda item: item[0], reverse=True)
+        limited = ranked[: self.procedure_recall_limit]
+        return [dict(procedure) for _, procedure in limited]
+
+    @staticmethod
+    def _procedure_text(procedure: Mapping[str, Any]) -> str:
+        steps = procedure.get("steps")
+        rendered = " -> ".join(
+            f"{index}) {step.get('signature')}"
+            for index, step in enumerate(steps if isinstance(steps, list) else [], 1)
+            if isinstance(step, Mapping)
+        )
+        return (
+            f"task={procedure.get('task')} "
+            f"successes={procedure.get('support_count')} "
+            f"steps={rendered}"
+        )[:512]
+
+    @staticmethod
+    def _task_text(task: Any) -> str:
+        """Normalise the task instruction so the same task keys the same procedure."""
+        if isinstance(task, Mapping):
+            for key in ("instruction", "task", "description"):
+                value = task.get(key)
+                if isinstance(value, str) and value.strip():
+                    return " ".join(value.lower().split())
+            return ""
+        if isinstance(task, str):
+            return " ".join(task.lower().split())
+        return ""
 
     def _load_lessons(self) -> None:
         """Rebuild the lesson store by replaying a previous run's audit log."""

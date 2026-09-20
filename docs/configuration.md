@@ -155,9 +155,11 @@ memory:
 
 启用 key-event artifacts 后，Memory 将关键事件 frames 保存到 Runtime session 的 `artifacts/key_events/`。`camera_keys` 必须与 Environment observation 实际字段一致。
 
-`frame_selection` 默认 `recent`，即最近 K 帧的滑动窗口。改成 `event` 后窗口容量不变，但只有 key event 和 verifier status 变化对应的 frame 独占槽位，chunk 执行期间的连续近似帧共用最后一个槽位。image token 开销不变。
+`frame_selection` 默认 `recent`，即最近 K 帧的滑动窗口。改成 `event` 后窗口容量不变，但只有 key event 和 verifier status 变化对应的 frame 独占槽位，chunk 执行期间的连续近似帧共用最后一个槽位。image token 开销不变。两种取值下 Planner 和 Verifier 都会按帧插入一行 `step/event/status` 标注再贴图，无需额外配置。
 
 把 `class_path` 换成 `omniroboagent.agent_core.ReflectiveMemory` 可以在上述参数之外额外积累失败 lessons，`lesson_recall_limit`、`lesson_min_support`、`lesson_limit`、`lesson_path` 和 `lesson_reload` 都有默认值，不填即可使用。两个 class 的其余参数完全一致，因此可以直接对照运行。字段含义见 [Memory](agent_core/memory.md)。
+
+`ReflectiveMemory` 另有 `track_procedures`（默认 `false`）、`procedure_recall_limit`、`procedure_min_support` 和 `procedure_limit`。开启后每次 `task_success` 会从 `completed_executions` 归纳一条有序 procedure，相同解法重复成功则累加计数。该分区与 lessons 一样跨 episode 保留。
 
 `ReflectiveMemory` 还有 `track_object_state`（默认 `false`）和 `object_state_limit`（默认 12）。开启后 recall 的 `object_state` 分区按对象维护已被 Verifier 确认的世界状态，同一对象只保留最新一条，后续失败给该对象打 `disturbed_step`。这份账本是场景相关的，`reset()` 会清空它，而 lessons 会保留。它与 `frame_selection`、lesson 机制相互独立，消融时应分别开关。
 
