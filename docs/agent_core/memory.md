@@ -20,7 +20,7 @@ key_events
 summary
 ```
 
-`ReflectiveMemory` 在此之上附加一个 `lessons` 键；上面四个键的语义和字段不变。
+`ReflectiveMemory` 在此之上附加 `lessons` 和 `object_state` 两个键；上面四个键的语义和字段不变。
 
 ## Current Implementations
 
@@ -29,7 +29,7 @@ summary
 | `InMemoryMemory` | 保存当前 session 的所有 events，reset 时清空 | tests、短任务和最小闭环 |
 | `JsonlMemory` | 将可序列化 event append 到指定 JSONL | 简单持久化和离线检查 |
 | `TieredMemory` | bounded visual frames、recent events、long-term key events 和 text summary | 长程、多模态 skill execution |
-| `ReflectiveMemory` | 在 `TieredMemory` 之上把重复失败蒸馏成带证据计数的 lessons | 需要跨 attempt 和跨 episode 积累失败经验的长程任务 |
+| `ReflectiveMemory` | 在 `TieredMemory` 之上把重复失败蒸馏成带证据计数的 lessons，并可选维护按对象索引的已确认世界状态 | 需要跨 attempt 和跨 episode 积累失败经验、或场景部分可观测的长程任务 |
 
 ## `TieredMemory`
 
@@ -79,11 +79,13 @@ memory:
     lesson_limit: 64
     lesson_path: outputs/lessons.jsonl
     lesson_reload: false
+    track_object_state: false
+    object_state_limit: 12
 ```
 
 `ReflectiveMemory` 继承 `TieredMemory` 的全部行为和参数，并额外维护一个 lesson 分区。把上面的 `class_path` 换回 `TieredMemory` 即可得到不含 lesson 的对照配置，其余参数不需要改动。
 
-`frame_selection` 与 lesson 机制相互独立：前者只影响视觉层的准入，后者只影响新增的 `lessons` 分区。做消融时可以分别开关，不要把两者绑在同一个开关上。
+`frame_selection`、lesson 机制和 object state 账本三者相互独立：分别影响视觉层准入、`lessons` 分区和 `object_state` 分区。做消融时可以分别开关，不要把它们绑在同一个开关上。
 
 每次 `subtask_failed` 或 `execution_aborted` 会生成一个 attempt signature。Signature 只包含 skill 和 `grounded_arguments` 中的字符串槽位，忽略坐标等易变数值，因此同一个 subtask 的多次重复尝试会聚合到同一条 lesson 上，而不是每次新建一条。
 
@@ -106,5 +108,27 @@ Lesson 只被退役，不被删除或原地覆盖；每次变更递增 `revision
 `lesson_reload: true` 时，构造阶段会重放 `lesson_path` 的审计日志重建 lesson 分区，使积累跨进程保留；该选项要求同时设置 `lesson_path`。重建时按 `lesson_id` 取每条 lesson 的最后一次记录，`evict` 记录表示丢弃，无法解析或缺少证据计数的行被跳过。重建出的 lesson 带 `carried_over: true`，status 按**当前**的 `lesson_min_support` 重新判定，因此调小阈值不会让旧 lesson 保持在过期的状态上。默认 `false`：跨 run 累积会把上一轮的结论带进本轮，多轮评测时应显式开启并注意 `session_ids` 的来源。
 
 Lesson 内容是事实陈述（某 signature 以某 failure class 失败过几次、最近原因是什么），不包含祈使式建议。Planner 通过 `memory_context["lessons"]` 显式读取并自行决定如何使用；Memory 不修改 proposal、verification 或 Pipeline transition。
+
+### Object State Ledger
+
+开启 `track_object_state` 后，`recall()` 的 `object_state` 分区维护一份按对象索引的、已被 Verifier 确认的世界状态。它解决的是 `summary` 和 `key_events` 的共同缺陷：两者都是**叙事**，按时间排列且超限时从头丢弃，最早确认的事实（「第 3 步已经把柜门打开了」）最先消失；同一对象被多次操作时两条陈述都留着，Planner 必须自己判断哪条还成立。账本是**状态**，按对象去重，只保留最新一条。
+
+条目的 key 取 `grounded_arguments` 中字符串槽位的值，与 lesson signature 用的是同一套提取逻辑，因此不需要实体抽取或 LLM。一次 `subtask_completed` 会为它涉及的每个对象各记一条：`object=mug, target=tray` 时 `mug` 和 `tray` 下都记录「杯子在托盘上」，因为这对两个对象都是事实。陈述内容取 `expected_outcome`，缺失时退化为 `subtask`，两者都没有时不记录。
+
+| 后续事件 | 对已有条目的影响 |
+| --- | --- |
+| 同对象的 `subtask_completed` | supersede：`revision` 递增，`superseded_step` 记下前一次的 `confirmed_step`，`state` 换成新陈述 |
+| 涉及同对象的失败 | 设置 `disturbed_step`，但 `state` 和 `confirmed_step` 不变 |
+
+失败**不确认任何事实**，所以不 supersede；但它可能物理扰动了触碰到的对象，因此打上 `disturbed_step`，Planner 看到的是「杯子在第 10 步被确认放在托盘上，但第 22 步有一次涉及杯子的尝试失败了」这样的事实，而不是「别再碰杯子」这样的建议。
+
+`reset(session_id)` **清空**账本，这与 lesson 的处理相反：
+
+| 分区 | reset 行为 | 原因 |
+| --- | --- | --- |
+| `lessons` | 保留 | 讲的是 agent 自身的能力，跨 episode 成立 |
+| `object_state` | 清空 | 讲的是这一个场景，环境每个 episode 重新随机化，上一轮确认的事实对本轮不是证据 |
+
+`recall({"phase": "verify", ...})` 的 `object_state` 恒为空列表，理由与 lesson 相同：Verifier 必须从当前画面判断，「这里本来应该是什么样」的先验会诱导它盖章放行。条目数上限为 `object_state_limit`，超出时淘汰最久未被确认的对象。
 
 接下来：[Framework Components](../interfaces.md)。

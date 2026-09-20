@@ -15,6 +15,7 @@ def event(
     grounded_arguments: dict[str, Any] | None = None,
     reason: str = "gripper slipped off the mug",
     control_failure: str | None = None,
+    expected_outcome: str = "the mug is on the tray",
 ) -> dict[str, Any]:
     environment_result: dict[str, Any] = {"observation": {"camera": "image"}}
     if control_failure is not None:
@@ -26,7 +27,7 @@ def event(
         "skill": skill,
         "subtask": subtask,
         "planner_output": {
-            "expected_outcome": "the mug is on the tray",
+            "expected_outcome": expected_outcome,
             "grounded_arguments": (
                 {"object": "mug", "target": "tray"}
                 if grounded_arguments is None
@@ -56,6 +57,18 @@ def fail(
     memory.update(state(step, session_id), event(event_type="subtask_failed", **kwargs))
 
 
+def succeed(
+    memory: ReflectiveMemory,
+    step: int,
+    *,
+    session_id: str = "session",
+    **kwargs: Any,
+) -> None:
+    memory.update(
+        state(step, session_id), event(event_type="subtask_completed", **kwargs)
+    )
+
+
 def test_reflective_memory_keeps_the_stable_recall_partitions() -> None:
     memory = ReflectiveMemory(camera_keys=["camera"])
     memory.reset("session")
@@ -68,8 +81,10 @@ def test_reflective_memory_keeps_the_stable_recall_partitions() -> None:
         "key_events",
         "summary",
         "lessons",
+        "object_state",
     }
     assert recalled["lessons"] == []
+    assert recalled["object_state"] == []
 
 
 def test_reflective_memory_aggregates_volatile_grounding_into_one_lesson() -> None:
@@ -323,6 +338,133 @@ def test_reflective_memory_drops_evicted_and_malformed_lesson_records(
     assert memory.lessons == []
 
 
+def test_reflective_memory_records_confirmed_object_state() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_object_state=True)
+    memory.reset("session")
+
+    succeed(memory, 4)
+
+    entries = memory.recall({"phase": "plan"})["object_state"]
+
+    assert [entry["object"] for entry in entries] == ["mug", "tray"]
+    assert entries[0]["state"] == "the mug is on the tray"
+    assert entries[0]["confirmed_step"] == 4
+    assert entries[0]["slot"] == "object"
+    assert entries[1]["slot"] == "target"
+    assert entries[0]["revision"] == 1
+    assert entries[0]["superseded_step"] is None
+    assert "confirmed_step=4" in entries[0]["text"]
+
+
+def test_reflective_memory_is_not_tracking_object_state_by_default() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"])
+    memory.reset("session")
+
+    succeed(memory, 0)
+
+    assert memory.object_states == {}
+    assert memory.recall({"phase": "plan"})["object_state"] == []
+
+
+def test_reflective_memory_supersedes_stale_object_state() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_object_state=True)
+    memory.reset("session")
+
+    succeed(memory, 2)
+    succeed(
+        memory,
+        7,
+        grounded_arguments={"object": "mug"},
+        expected_outcome="the mug is in the sink",
+    )
+
+    entry = memory.object_states["mug"]
+
+    assert entry["state"] == "the mug is in the sink"
+    assert entry["confirmed_step"] == 7
+    assert entry["superseded_step"] == 2
+    assert entry["revision"] == 2
+    assert len(memory.object_states) == 2
+
+
+def test_reflective_memory_marks_objects_disturbed_by_a_later_failure() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_object_state=True)
+    memory.reset("session")
+
+    succeed(memory, 1)
+    fail(memory, 6, grounded_arguments={"object": "mug"})
+
+    entry = memory.object_states["mug"]
+
+    assert entry["confirmed_step"] == 1
+    assert entry["state"] == "the mug is on the tray"
+    assert entry["disturbed_step"] == 6
+    assert "disturbed_step=6" in entry["text"]
+    assert memory.object_states["tray"]["disturbed_step"] is None
+
+
+def test_reflective_memory_clears_object_state_on_reset_but_keeps_lessons() -> None:
+    memory = ReflectiveMemory(
+        camera_keys=["camera"],
+        track_object_state=True,
+        lesson_min_support=1,
+    )
+    memory.reset("first")
+    succeed(memory, 0, session_id="first")
+    fail(memory, 1, session_id="first")
+
+    assert memory.object_states != {}
+
+    memory.reset("second")
+
+    assert memory.object_states == {}
+    assert [lesson["lesson_id"] for lesson in memory.lessons] == ["lesson:1"]
+
+
+def test_reflective_memory_suppresses_object_state_during_verification() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_object_state=True)
+    memory.reset("session")
+
+    succeed(memory, 0)
+
+    assert memory.recall({"phase": "plan"})["object_state"] != []
+    assert memory.recall({"phase": "verify"})["object_state"] == []
+
+
+def test_reflective_memory_bounds_the_object_state_ledger() -> None:
+    memory = ReflectiveMemory(
+        camera_keys=["camera"],
+        track_object_state=True,
+        object_state_limit=2,
+    )
+    memory.reset("session")
+
+    for step, name in enumerate(("kettle", "bowl", "pan")):
+        succeed(
+            memory,
+            step,
+            grounded_arguments={"object": name},
+            expected_outcome=f"the {name} is on the counter",
+        )
+
+    assert list(memory.object_states) == ["bowl", "pan"]
+
+
+def test_reflective_memory_ignores_object_state_without_an_outcome() -> None:
+    memory = ReflectiveMemory(camera_keys=["camera"], track_object_state=True)
+    memory.reset("session")
+
+    memory.update(
+        state(0),
+        {
+            **event(event_type="subtask_completed", expected_outcome=""),
+            "subtask": "",
+        },
+    )
+
+    assert memory.object_states == {}
+
+
 def test_reflective_memory_rejects_invalid_lesson_configuration() -> None:
     with pytest.raises(ValueError):
         ReflectiveMemory(lesson_recall_limit=0)
@@ -332,3 +474,5 @@ def test_reflective_memory_rejects_invalid_lesson_configuration() -> None:
         ReflectiveMemory(lesson_recall_limit=4, lesson_limit=2)
     with pytest.raises(ValueError, match="lesson_reload"):
         ReflectiveMemory(lesson_reload=True)
+    with pytest.raises(ValueError, match="object_state_limit"):
+        ReflectiveMemory(object_state_limit=0)

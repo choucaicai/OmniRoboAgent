@@ -189,6 +189,8 @@ Pipeline 在 plan/verify node 显式调用 `Agent.recall()`，并通过 `memory_
 
 `ReflectiveMemory` 继承 `TieredMemory`，额外维护一个由 Verifier 结论驱动的 lesson 分区，并在 recall 结果中附加稳定的 `lessons` 键。它把 `subtask_failed` 和 `execution_aborted` 聚合成 attempt signature，signature 只包含 skill 和 `grounded_arguments` 中的字符串槽位，忽略坐标等易变数值，因此语义等价的重复失败可以对齐。lesson 的 failure class 由 `control_failure` 和 reason 关键词确定性推导，不调用 LLM。support 达到阈值前 lesson 只是 candidate，不进入 recall；同 signature 的 `subtask_completed` 增加 refutation 并最终 retire，记录保留 `revision` 版本而不原地覆盖。`phase == "verify"` 时 lesson 分区为空，Verifier 不受历史失败影响。`reset()` 保留 lesson，因此该分区跨 episode 演化。开启 `lesson_reload` 后，构造阶段重放 `lesson_path` 审计日志重建该分区，使积累跨进程保留，重建出的 lesson 带 `carried_over` 标记并按当前阈值重新判定 status。见 [0014 plan](../plans/0014-reflective-memory.md)。
 
+开启 `track_object_state` 后，`ReflectiveMemory` 再附加一个按对象索引的 `object_state` 分区。它与 `summary`、`key_events` 的区别是前者是状态后者是叙事：叙事按时间排列且超限时从头丢弃，最早确认的事实最先消失，而账本按对象去重，每个对象只保留最新一条。条目 key 取 `grounded_arguments` 中字符串槽位的值，与 lesson signature 共用同一套提取逻辑，因此不需要实体抽取或 LLM。`subtask_completed` 以 `expected_outcome`（缺失时退化为 `subtask`）确认事实，两者都没有时不记录；后续同对象的确认递增 `revision` 并记 `superseded_step`；失败不确认任何事实，只给它触碰的对象打 `disturbed_step`。`phase == "verify"` 时该分区为空。`reset()` **清空**账本而保留 lesson：lesson 讲的是 agent 自身的能力，跨 episode 成立；世界状态讲的是这一个场景，环境每 episode 重新随机化。见 [0016 plan](../plans/0016-confirmed-object-state-ledger.md)。
+
 ## 5. Data Policy
 
 第一版不为每个中间结果建立 class。只有输出稳定、需要跨模块校验或需要持久化时才增加明确数据类型。

@@ -48,6 +48,8 @@ class ReflectiveMemory(TieredMemory):
         lesson_limit: int = 64,
         lesson_path: str | Path | None = None,
         lesson_reload: bool = False,
+        track_object_state: bool = False,
+        object_state_limit: int = 12,
     ) -> None:
         super().__init__(
             visual_window_size=visual_window_size,
@@ -67,6 +69,8 @@ class ReflectiveMemory(TieredMemory):
             raise ValueError("lesson_limit must be at least lesson_recall_limit")
         if lesson_reload and lesson_path is None:
             raise ValueError("lesson_reload requires lesson_path")
+        if object_state_limit <= 0:
+            raise ValueError("object_state_limit must be positive")
 
         self.lesson_recall_limit = lesson_recall_limit
         self.lesson_min_support = lesson_min_support
@@ -76,10 +80,21 @@ class ReflectiveMemory(TieredMemory):
         if self.lesson_path is not None:
             self.lesson_path.parent.mkdir(parents=True, exist_ok=True)
 
+        self.track_object_state = track_object_state
+        self.object_state_limit = object_state_limit
+
         self.lessons: list[dict[str, Any]] = []
         self._lesson_sequence = 0
+        self.object_states: dict[str, dict[str, Any]] = {}
         if self.lesson_reload:
             self._load_lessons()
+
+    def reset(self, session_id: str) -> None:
+        super().reset(session_id)
+        # World state is scene-scoped: the environment is re-randomised per episode,
+        # so a fact confirmed in the previous episode is not evidence about this one.
+        # Lessons are about the agent's own competence and are deliberately kept.
+        self.object_states.clear()
 
     def update(self, state: dict[str, Any], event: dict[str, Any]) -> None:
         key_event_count = len(self.key_events)
@@ -95,6 +110,8 @@ class ReflectiveMemory(TieredMemory):
         signature = self._attempt_signature(state, event, key_record)
         if signature is None:
             return
+        if self.track_object_state:
+            self._update_object_state(state, event, key_record, str(event_type))
         if event_type in SUCCESS_EVENT_TYPES:
             self._refute(signature, key_record)
             return
@@ -104,6 +121,7 @@ class ReflectiveMemory(TieredMemory):
     def recall(self, query: dict[str, Any]) -> dict[str, Any]:
         recalled = super().recall(query)
         recalled["lessons"] = self._recall_lessons(query)
+        recalled["object_state"] = self._recall_object_state(query)
         return recalled
 
     def _reinforce(
@@ -243,15 +261,10 @@ class ReflectiveMemory(TieredMemory):
         return set(_WORD_PATTERN.findall(text.lower()))
 
     @staticmethod
-    def _attempt_signature(
-        state: Mapping[str, Any],
-        event: Mapping[str, Any],
-        key_record: Mapping[str, Any],
-    ) -> str | None:
-        """Build a signature that ignores volatile numeric grounding arguments."""
-        skill = key_record.get("skill")
-        if not isinstance(skill, str) or not skill:
-            return None
+    def _grounded_slots(
+        state: Mapping[str, Any], event: Mapping[str, Any]
+    ) -> dict[str, str]:
+        """Extract the string grounding slots, dropping volatile numeric values."""
         grounded_arguments: Mapping[str, Any] | None = None
         planner_output = event.get("planner_output")
         if isinstance(planner_output, Mapping):
@@ -264,7 +277,7 @@ class ReflectiveMemory(TieredMemory):
                 candidate = active_execution.get("grounded_arguments")
                 if isinstance(candidate, Mapping):
                     grounded_arguments = candidate
-        slots = []
+        slots: dict[str, str] = {}
         if grounded_arguments is not None:
             for name in sorted(grounded_arguments):
                 value = grounded_arguments[name]
@@ -272,8 +285,23 @@ class ReflectiveMemory(TieredMemory):
                     continue
                 normalized = " ".join(value.lower().split())
                 if normalized:
-                    slots.append(f"{name}={normalized}")
-        return f"{skill}|{','.join(slots)}"
+                    slots[name] = normalized
+        return slots
+
+    @classmethod
+    def _attempt_signature(
+        cls,
+        state: Mapping[str, Any],
+        event: Mapping[str, Any],
+        key_record: Mapping[str, Any],
+    ) -> str | None:
+        """Build a signature that ignores volatile numeric grounding arguments."""
+        skill = key_record.get("skill")
+        if not isinstance(skill, str) or not skill:
+            return None
+        slots = cls._grounded_slots(state, event)
+        joined = ",".join(f"{name}={value}" for name, value in slots.items())
+        return f"{skill}|{joined}"
 
     @staticmethod
     def _failure_class(event: Mapping[str, Any], key_record: Mapping[str, Any]) -> str:
@@ -311,6 +339,81 @@ class ReflectiveMemory(TieredMemory):
             "candidate": "demote",
         }[status]
         self._log_lesson(operation, lesson)
+
+    def _update_object_state(
+        self,
+        state: Mapping[str, Any],
+        event: Mapping[str, Any],
+        key_record: Mapping[str, Any],
+        event_type: str,
+    ) -> None:
+        """Maintain the per-object ledger of verifier-confirmed world facts."""
+        slots = self._grounded_slots(state, event)
+        if not slots:
+            return
+        step = key_record.get("step")
+        if event_type in FAILURE_EVENT_TYPES:
+            # A failed attempt confirms nothing, but it may have physically
+            # disturbed whatever was confirmed about the objects it touched.
+            for object_name in slots.values():
+                entry = self.object_states.get(object_name)
+                if entry is not None:
+                    entry["disturbed_step"] = step
+                    entry["text"] = self._object_state_text(entry)
+            return
+
+        outcome = key_record.get("expected_outcome") or key_record.get("subtask")
+        if not isinstance(outcome, str) or not outcome.strip():
+            return
+        for slot_name, object_name in slots.items():
+            self._confirm_object_state(
+                object_name, slot_name, outcome, key_record, step
+            )
+        while len(self.object_states) > self.object_state_limit:
+            self.object_states.pop(next(iter(self.object_states)))
+
+    def _confirm_object_state(
+        self,
+        object_name: str,
+        slot_name: str,
+        outcome: str,
+        key_record: Mapping[str, Any],
+        step: Any,
+    ) -> None:
+        previous = self.object_states.pop(object_name, None)
+        entry = {
+            "object": object_name,
+            "slot": slot_name,
+            "skill": key_record.get("skill"),
+            "subtask": key_record.get("subtask"),
+            "state": " ".join(outcome.split())[:256],
+            "confirmed_step": step,
+            "session_id": key_record.get("session_id"),
+            "source_event_id": key_record.get("event_id"),
+            "revision": 1 if previous is None else int(previous["revision"]) + 1,
+            "superseded_step": None
+            if previous is None
+            else previous.get("confirmed_step"),
+            "disturbed_step": None,
+            "text": "",
+        }
+        entry["text"] = self._object_state_text(entry)
+        self.object_states[object_name] = entry
+
+    def _recall_object_state(self, query: Mapping[str, Any]) -> list[dict[str, Any]]:
+        if not self.track_object_state or query.get("phase") == "verify":
+            return []
+        return [dict(entry) for entry in self.object_states.values()]
+
+    @staticmethod
+    def _object_state_text(entry: Mapping[str, Any]) -> str:
+        text = (
+            f"object={entry.get('object')} state={entry.get('state')} "
+            f"confirmed_step={entry.get('confirmed_step')}"
+        )
+        if entry.get("disturbed_step") is not None:
+            text = f"{text} disturbed_step={entry.get('disturbed_step')}"
+        return text
 
     def _load_lessons(self) -> None:
         """Rebuild the lesson store by replaying a previous run's audit log."""

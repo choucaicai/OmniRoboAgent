@@ -216,7 +216,14 @@ class LanguageSkillPlanner(Planner):
         recent_events = memory_context.get("recent_events", [])
         key_events = memory_context.get("key_events", [])
         lessons = memory_context.get("lessons", [])
-        if not summary and not recent_events and not key_events and not lessons:
+        object_state = memory_context.get("object_state", [])
+        if (
+            not summary
+            and not recent_events
+            and not key_events
+            and not lessons
+            and not object_state
+        ):
             return ""
         payload: dict[str, Any] = {
             "summary": summary,
@@ -229,6 +236,12 @@ class LanguageSkillPlanner(Planner):
                 key_events[-10:] if isinstance(key_events, list) else key_events
             ),
         }
+        if isinstance(object_state, list) and object_state:
+            payload["object_state"] = [
+                entry.get("text")
+                for entry in object_state
+                if isinstance(entry, Mapping)
+            ]
         if isinstance(lessons, list) and lessons:
             payload["lessons"] = [
                 {

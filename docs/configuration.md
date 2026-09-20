@@ -159,6 +159,8 @@ memory:
 
 把 `class_path` 换成 `omniroboagent.agent_core.ReflectiveMemory` 可以在上述参数之外额外积累失败 lessons，`lesson_recall_limit`、`lesson_min_support`、`lesson_limit`、`lesson_path` 和 `lesson_reload` 都有默认值，不填即可使用。两个 class 的其余参数完全一致，因此可以直接对照运行。字段含义见 [Memory](agent_core/memory.md)。
 
+`ReflectiveMemory` 还有 `track_object_state`（默认 `false`）和 `object_state_limit`（默认 12）。开启后 recall 的 `object_state` 分区按对象维护已被 Verifier 确认的世界状态，同一对象只保留最新一条，后续失败给该对象打 `disturbed_step`。这份账本是场景相关的，`reset()` 会清空它，而 lessons 会保留。它与 `frame_selection`、lesson 机制相互独立，消融时应分别开关。
+
 ## Episode Observability
 
 Agent trace 和视频属于 Runtime session artifacts，通过可选 recorder 配置：
