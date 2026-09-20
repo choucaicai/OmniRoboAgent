@@ -7,8 +7,8 @@ planner:
     backend:
       class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
       init_args:
-        base_url: https://oneapi.qunhequnhe.com/v1
-        model: gpt-5
+        base_url: http://127.0.0.1:8000
+        model: Qwen3.5-9B
         timeout_seconds: 120
         max_retries: 2
     max_tokens: 1024
