@@ -60,6 +60,3 @@ def run_config(path: str | Path) -> dict[str, Any]:
         raise ValueError("Single run requires task")
     return runtime.run(agent, pipeline, environment, config["task"])
 
-
-if __name__ == '__main__':
-    main()
