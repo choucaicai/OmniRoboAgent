@@ -1,0 +1,17 @@
+dof: 7
+end_effector: parallel_gripper
+action_spaces: [primitive, gripper]
+control_hz: 60
+capabilities: [grasp, pour, observe]
+joint_limits:
+  - [-2.8973, 2.8973]
+  - [-1.7628, 1.7628]
+  - [-2.8973, 2.8973]
+  - [-3.0718, -0.0698]
+  - [-2.8973, 2.8973]
+  - [-0.0175, 3.7525]
+  - [-2.8973, 2.8973]
+cameras:
+  - {name: main, width: 1280, height: 720, hz: 20}
+
+physics_hz: 60

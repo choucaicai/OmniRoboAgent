@@ -558,6 +558,11 @@ episode limit                -> Runtime termination
 
 ## 13. Implementation Boundary
 
+Chemistry Bench now has an optional independent chemistry environment adapter using an
+external Isaac Sim worker. CPU contracts and loopback gRPC tests are verified;
+real Isaac Sim fixed-task smoke passed with two scripted resets and a 13-step Qwen
+episode. This is not a general success-rate evaluation. See [usage](../../docs/chemistry_bench.md).
+
 | Capability | Status |
 | --- | --- |
 | Sync single-environment runtime | Implemented and unit tested |

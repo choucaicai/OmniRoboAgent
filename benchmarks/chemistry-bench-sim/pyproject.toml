@@ -1,0 +1,20 @@
+[project]
+name = "chemistry-bench-sim"
+version = "0.1.0"
+description = "Standalone Isaac Sim chemistry bench worker"
+requires-python = ">=3.10"
+dependencies = [
+    "chemistry-bench-proto==0.1.0",
+    "grpcio==1.83.0",
+    "protobuf==7.35.1",
+    "PyYAML>=6,<7",
+    "numpy>=1.26,<2",
+    "Pillow>=10,<13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chemistry_bench_sim", "src/chemistry_bench_chemistry"]

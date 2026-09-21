@@ -18,3 +18,4 @@
 - Benchmarks
   - [EB-ALFRED 评测](/eb_alfred.md)
   - [RoboCasa365 评测](/robocasa365.md)
+  - [Chemistry Bench 化学台](/chemistry_bench.md)
