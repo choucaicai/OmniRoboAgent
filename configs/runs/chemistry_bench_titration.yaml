@@ -1,0 +1,31 @@
+agent_config: ../agents/chemistry_bench_titration.yaml
+pipeline:
+  class_path: omniroboagent.pipelines.DirectPipeline
+  init_args:
+    action_execution_mode: full
+runtime:
+  class_path: omniroboagent.runtimes.SyncRuntime
+  init_args:
+    max_steps: 30
+    max_invalid_actions: 5
+    max_retries: 5
+    timeout_seconds: 1800
+    output_dir: runs/chemistry_bench_titration
+    observability:
+      class_path: omniroboagent.observability.LocalEpisodeRecorder
+      init_args:
+        record_video: true
+        video_camera_keys: [head_rgb]
+        video_fps: 2
+environment:
+  class_path: omniroboagent.environments.benchmarks.chemistry_bench.ChemistryBenchEnvironment
+  init_args:
+    address: 127.0.0.1:50051
+    timeout_seconds: 600
+    max_steps: 30
+task:
+  task_id: toy_titration_v1
+  instruction: >-
+    Add NaOH from naoh_bottle to the beaker containing HCl and phenolphthalein.
+    Observe the liquid after each pour; stop adding when it turns pink and record
+    that finding. Reactions are instantaneous in this simulation.

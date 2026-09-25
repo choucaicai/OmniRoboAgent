@@ -1,0 +1,54 @@
+// SimBackend service: shared contract for sim_worker (M2) and real_worker (Phase 2).
+// Field names mirror the worker Pydantic schemas; dict-typed fields travel as JSON.
+syntax = "proto3";
+package chemistry_bench;
+
+service SimBackend {
+  rpc Health(Empty) returns (HealthReply);
+  rpc LoadScene(LoadSceneRequest) returns (Ack);
+  rpc Observe(Empty) returns (ObservationMsg);
+  rpc Act(ActionCommandMsg) returns (ActionResultMsg);
+  rpc Reset(SceneStateMsg) returns (Ack);
+  rpc Step(StepRequest) returns (Ack);      // sim-only; real_worker returns unsupported
+  rpc GetClock(Empty) returns (ClockReply);
+  // 实时画面：主相机帧推流（运动执行期间也持续产帧, 供控制台直播）。
+  rpc StreamFrames(StreamFramesRequest) returns (stream CameraFrameMsg);
+}
+
+message Empty {}
+message HealthReply { bool ok = 1; string version = 2; string scene = 3; }
+message LoadSceneRequest {
+  string scene_yaml = 1;            // semantics.yaml + meta 内容
+  string embodiment_spec_yaml = 2;  // spec.yaml 内容
+  bool enable_webrtc = 3;
+}
+message Ack { bool ok = 1; string error = 2; }
+message CameraFrameMsg { string name = 1; bytes png = 2; uint32 width = 3; uint32 height = 4; }
+message ProprioMsg {
+  repeated double joint_positions = 1;
+  repeated double joint_velocities = 2;
+  repeated double ee_pose = 3;      // 空 = None
+  double gripper_width = 4;
+  bool has_gripper = 5;
+}
+message ObservationMsg {
+  double timestamp = 1;
+  repeated CameraFrameMsg cameras = 2;
+  ProprioMsg proprio = 3;
+  string privileged_json = 4;       // 空串 = None（真机恒空）
+}
+message ActionCommandMsg {
+  string kind = 1;                  // joint_position | ee_pose | gripper | primitive
+  repeated double joint_target = 2;
+  repeated double ee_target = 3;
+  double gripper_target = 4;
+  bool has_gripper_target = 5;
+  string primitive = 6;
+  string params_json = 7;
+  double timeout_s = 8;
+}
+message ActionResultMsg { bool ok = 1; string error = 2; string detail_json = 3; }
+message SceneStateMsg { string payload_json = 1; }
+message StepRequest { uint32 n = 1; }
+message StreamFramesRequest { double fps = 1; }  // 0 = 服务端默认(≈5)
+message ClockReply { double now = 1; }

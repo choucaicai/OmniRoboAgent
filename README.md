@@ -180,3 +180,4 @@ RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/
 
 - [EB-ALFRED 评测](docs/eb_alfred.md)
 - [RoboCasa365 评测](docs/robocasa365.md)
+- [Chemistry Bench Isaac Sim 化学台（固定任务真实闭环已验证）](docs/chemistry_bench.md)

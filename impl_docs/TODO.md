@@ -4,6 +4,8 @@
 
 ## 0. Project Decisions
 
+- [x] `DONE` Chemistry bench 完整画面和连续脚本动作演示，五步成功，20.8 秒/416 帧录像，见 [0016](plans/0016-chemistry-bench-visual-demo.md)。
+
 - [x] `DONE` 使用 Python 3.11，Conda 环境名为 `omniagent`。
 - [x] `DONE` 使用 `uv + pyproject.toml + uv.lock` 管理 Python package 和依赖。
 - [x] `DONE` 第一版允许连接用户预先启动的远程模型和 policy 服务，但不管理服务端进程。
@@ -147,6 +149,10 @@
 - [x] `DONE` 在 `RobotWorkspace_nav` 中新增独立 AwareVLN 推理服务、严格动作解析、session state 和兼容现有 Go2 client 的 `/eval_vln` 协议（[计划](plans/0013-awarevln-realworld-server.md)）。
 
 ## 10. Later Extensions
+
+- [x] `DONE` 将化学仿真实现统一为 `chemistry_bench`，纳入独立 worker 并更新协议、配置和文档（[计划](plans/0015-chemistry-bench-naming.md)）。
+
+- [x] `DONE` 接入 Chemistry Bench Isaac Sim 化学台滴定环境，保留独立 worker，隔离真值并验证固定动作及 Qwen 真实闭环（[计划](plans/0014-chemistry_bench-titration.md)）。
 
 - [ ] `TODO` 评估 RoboNeuron action contract 与开放 action payload 的兼容方式。
 - [ ] `TODO` 接入本地 LLM/VLM planner backend（不含 RoboCasa365 计划中的 local VLA policy）。

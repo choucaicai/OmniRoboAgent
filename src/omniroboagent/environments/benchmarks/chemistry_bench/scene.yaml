@@ -1,0 +1,22 @@
+objects:
+  - name: naoh_bottle
+    category: bottle
+    affordances: [graspable, pourable]
+    init:
+      position: [0.5, -0.2, 0.1]
+      volume_ml: 100
+      capacity_ml: 150
+      solute: NaOH
+      concentration: 0.1
+  - name: beaker
+    category: beaker
+    affordances: [pourable]
+    init:
+      position: [0.5, 0.2, 0.1]
+      volume_ml: 50
+      capacity_ml: 150
+      solute: HCl
+      concentration: 0.1
+      indicator: phenolphthalein
+workspace_aabb: [0.2, -0.4, 0.0, 0.8, 0.4, 0.6]
+danger_zones: []

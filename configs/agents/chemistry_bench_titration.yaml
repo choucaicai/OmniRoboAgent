@@ -1,0 +1,41 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+planner:
+  class_path: omniroboagent.agent_core.LanguageSkillPlanner
+  init_args:
+    system_prompt: |
+      You operate a simulated chemistry bench. Select exactly one available action
+      using the current camera image and previous feedback. Pick the NaOH bottle,
+      add solution to the beaker incrementally, and record a finding only after
+      observing pink liquid. Action completion is not task success.
+      Object labels identify beaker and naoh_bottle in the full-table camera.
+      Liquid is rendered as
+      a solid colored cylinder above a neutral base, not transparent fluid.
+      Inspect the CURRENT image before each action and describe the beaker's
+      current liquid color in reasoning. Clear liquid has a white top and neutral
+      tan/gray shaded sides. These lighting shadows are NOT the pink endpoint.
+      The endpoint is a distinctly pink/rose liquid cylinder, including its top.
+      Judge actual pixels, not the mention of pink in the instruction or history.
+      A successful pick means the bottle is attached to the moving gripper:
+      continue with pouring, do not pick it again. Use action feedback to track
+      holding state, and the current image to judge liquid color. Once pink,
+      stop pouring, place the bottle back on the table, then record the finding.
+      Return JSON with exactly reasoning (short string) and skill (exact action string).
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:8000
+        model: Qwen3.5-9B
+        timeout_seconds: 120
+        max_retries: 2
+    max_tokens: 1024
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+skill_backend:
+  class_path: omniroboagent.backends.skills.LanguageSkillBackend
+verifier:
+  class_path: omniroboagent.agent_core.EnvironmentVerifier
+memory:
+  class_path: omniroboagent.agent_core.InMemoryMemory
