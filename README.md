@@ -10,11 +10,8 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 ## Clone
 
-`benchmarks/` 下的第三方项目使用 Git submodule 管理。主仓库只保存 submodule 的 URL 和固定 commit，不会把第三方源码重复上传到主仓库。
-
-RoboSynChallenge 及其仿真依赖分别链接在 `benchmarks/RoboSynChallenge` 和
-`benchmarks/EmbodiChain`；`benchmarks/robosyn-runtime` 保留本项目自有依赖锁。
-安装和评测命令见 [RoboSynChallenge 文档](docs/robosynchallenge.md)。
+`benchmarks/` 保存 benchmark，`third_party/` 保存通用第三方依赖；外部项目使用
+Git submodule 管理。主仓库只保存上游 URL 和固定 commit，不重复上传第三方源码。
 
 首次 clone 时同时拉取 submodule：
 
@@ -140,6 +137,152 @@ git clone https://huggingface.co/datasets/EmbodiedBench/EB-ALFRED \
 可查看 [SpatialLM 空间定位 Demo](SpatialLM/examples/spatiallm_demo/README.md)。
 该示例展示从场景 PLY 读取点云、运行 SpatialLM 空间定位、生成结构化墙体/门窗/物体
 结果展示。
+
+## RoboSynChallenge：为智能体提供标准化机器人仿真评测
+
+RoboSynChallenge 接入模块把官方机器人任务的 RGB、关节状态和原生动作转换为
+OmniRoboAgent 的 Environment contract，使已有 Planner、SkillBackend、Verifier、
+Memory 和 Pipeline 能在同一闭环中运行，并按固定 seeds 统计成功率。
+它提供一个 benchmark 的十项任务；EmbodiChain 是仿真依赖，不是第二个 benchmark。
+
+```text
+RoboSynChallenge RGB / robot qpos
+                ↓
+    RoboSynChallengeEnvironment
+                ↓
+      Qwen Planner → ACT SkillBackend
+                ↓
+    EmbodiChain / DexSim 执行原生动作
+                ↓
+    原生成功信号 + Qwen Verifier
+                ↓
+     Memory / Pipeline → 继续或终止
+```
+
+### 模块组成与目录
+
+- `RoboSynChallengeEnvironment`：读取 RGB/proprioception，不向策略提供 privileged
+  task state；校验 `{"actions": [T, D]}`，当前模型使用 CobotMagic 14 维原生动作。
+- `RoboSynPolicyBackend`：本地加载公开 ACT/DP 权重，只生成动作，不执行动作。
+- `RoboSynChallengeEvaluator`：保存逐 seed 结果、配置/权重/源码身份、trace 和录像。
+  矩阵 runner 支持独立任务子进程、多 GPU 队列、动态调度和严格断点续跑。
+- `configs/agents/robosynchallenge_act_visual.yaml`：复用 `SubtaskSkillPlanner`、
+  `SubtaskVerifier`、`TieredMemory` 和 `SkillExecutionPipeline`，不新增核心推理流程。
+- `configs/runs/robosynchallenge_act_random_manifest.json`：固定十项 ACT checkpoint
+  revision、`random` 设置和每任务 seeds 0–99，共 1000 回合。
+
+官方任务源码在 `benchmarks/RoboSynChallenge`，通用仿真 SDK 在
+`third_party/EmbodiChain`，两者均是固定版本的 submodule；
+`benchmarks/robosyn-runtime` 是本项目自有的隔离依赖配置和 `uv.lock`。
+模型下载到 `../models/robosyn/`，运行输出位于 `runs/robosynchallenge/`，不提交 Git。
+
+### 安装、权重与服务
+
+从项目根目录初始化两个上游依赖，使用 Python 3.11 安装独立运行环境：
+
+```bash
+git submodule update --init --recursive benchmarks/RoboSynChallenge third_party/EmbodiChain
+
+GIT_LFS_SKIP_SMUDGE=1 UV_PROJECT_ENVIRONMENT="$PWD/.venv-robosyn" \
+  uv sync --locked --project benchmarks/robosyn-runtime --python 3.11 \
+  --allow-insecure-host pyp.open3dv.site:2345
+
+export EMBODICHAIN_DATA_ROOT="$(mktemp -d /tmp/rsc.XXXXXX)"
+```
+
+运行需要 NVIDIA GPU 和兼容驱动。DexSim 0.4.3 使用上游指定的 HTTP 包源，锁文件
+保留包哈希；`GIT_LFS_SKIP_SMUDGE` 只用于跳过 LeRobot 安装时的测试图片，不跳过
+模型下载。短资产缓存避免引擎的 255 字节材质标识限制，后续运行和续跑复用该目录。
+
+单任务可先下载 bell checkpoint：
+
+```bash
+.venv-robosyn/bin/hf download RoboSynChallenge/ACT_sim_click_bell \
+  --revision 677e65fbb15974024ff840893496197ef7db26d4 \
+  --local-dir ../models/robosyn/ACT_sim_click_bell
+```
+
+完整矩阵按清单下载十项模型，每项约 197 MiB：
+
+```bash
+.venv-robosyn/bin/python - <<'PY'
+import json
+from pathlib import Path
+from huggingface_hub import snapshot_download
+
+manifest = json.loads(
+    Path("configs/runs/robosynchallenge_act_random_manifest.json").read_text()
+)
+for task in manifest["tasks"]:
+    snapshot_download(
+        repo_id=f"RoboSynChallenge/ACT_sim_{task['name']}",
+        revision=task["checkpoint_revision"],
+        local_dir=task["checkpoint_path"],
+    )
+PY
+```
+
+预先启动支持图像输入和 JSON schema 输出的 OpenAI-compatible 服务。AgentConfig
+中 Planner、Verifier 两处 `base_url` / `model` 分别配置实际地址和模型 ID；示例为
+`http://127.0.0.1:28000` / `Qwen3.5-9B`。框架不启动或关闭服务端。
+每个原生动作后读取环境反馈并验证；配置每 64 个 action chunks 做一次视觉语义检查。
+最终成功依据 `is_task_success() and not truncated`，不由模型自行宣告。
+
+### 单任务与完整评测
+
+先验证 `click_bell` seed 0 的真实模型闭环和录像：
+
+```bash
+env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
+  EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
+  .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
+  --robosyn-root benchmarks/RoboSynChallenge \
+  --embodichain-root third_party/EmbodiChain \
+  --task click_bell --setting random --policy act --seeds 0 \
+  --checkpoint ../models/robosyn/ACT_sim_click_bell \
+  --checkpoint-revision 677e65fbb15974024ff840893496197ef7db26d4 \
+  --agent-config configs/agents/robosynchallenge_act_visual.yaml \
+  --output runs/robosynchallenge/smoke --gpu 0 --device cuda:0 --record-video
+```
+
+完整矩阵使用相同模型服务和资产缓存：
+
+```bash
+env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
+  EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
+  .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
+  --robosyn-root benchmarks/RoboSynChallenge \
+  --embodichain-root third_party/EmbodiChain \
+  --matrix-manifest configs/runs/robosynchallenge_act_random_manifest.json \
+  --output runs/robosynchallenge/act-visual-random \
+  --gpu 0 --device cuda:0 --record-video
+```
+
+追加 `--matrix-gpus 0 1 --matrix-scheduling dynamic` 可使用两条同步队列，由空闲
+GPU 领取后续任务；仍是每任务单环境，不拆分 seeds。首次运行使用新输出目录；
+续跑保持配置、缓存、GPU 分配及输出不变，追加 `--resume` 跳过有效回合，仅重试
+缺失或异常项。元数据改变或旧 reset 协议会被拒绝续跑。
+
+DexSim 的 Vulkan GPU index 不随 `CUDA_VISIBLE_DEVICES` 重映射，需保持 CUDA
+完整可见，让 `--gpu N` 与 `--device cuda:N` 一致。根 `summary.json` 汇总成绩、
+覆盖率和错误；每回合保存 `episode.json`、trace、`agent_trace.jsonl`、录像和
+`artifact_manifest.json`。在单任务命令中省略 `--agent-config` 可运行相同策略的直接 baseline；
+该模式不调用视觉 Planner/Verifier，也不使用专家控制器。
+
+### 验证结果与边界
+
+历史 Qwen3.5-9B + ACT 评测完成十任务 × 100 回合：412/1000 成功（41.2%），
+588 次正常失败，所有有效结果和录像/日志已核对。采用显式未过滤 seeds，未按
+主办方专家可行性筛选，因此不是论文成绩的精确复现。目录布局调整只重新验证
+CPU 测试和依赖锁，未在新布局重跑 GPU 矩阵；历史源码身份见结果文档。
+
+ACT 本身不接收语言条件；DP backend 已做单元验证，但没有完整真实矩阵成绩；
+SmolVLA 未接入。曾有一次 native GC 退出崩溃发生在该任务的 100 回合保存后，原始证据
+保留，缓存续跑退出正常不代表该清理问题已修复。无策略训练，也不改变官方物理参数。
+
+完整接口、固定上游版本、安装故障排查和运行限制见
+[RoboSynChallenge 接入文档](docs/robosynchallenge.md)；逐任务成绩、历史源码身份
+和审计说明见 [完整评测结果](docs/robosynchallenge-results.md)。
 
 ## Start
 

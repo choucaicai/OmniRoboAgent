@@ -532,13 +532,18 @@ OmniRoboAgent/
 │   ├── EmbodiedBench/             # submodule
 │   ├── RoboCasa/                  # submodule
 │   ├── RoboSynChallenge/          # upstream submodule
-│   ├── EmbodiChain/               # upstream submodule
 │   └── robosyn-runtime/           # project-owned dependency lock
+├── third_party/
+│   └── EmbodiChain/               # upstream shared simulation SDK submodule
 ├── docs/
 └── pyproject.toml
 ```
 
 `ros2/` 和 `human_interface/` 在树中表达 planned ownership，但实际目录只在出现首个实现时创建，避免预先生成空模块。
+
+`benchmarks/` 保存第三方评测项目及本项目的 benchmark 专用依赖锁；
+`third_party/` 保存通用第三方 SDK。上游源码使用固定 commit 的 submodule 链接，
+本项目 adapter 和核心 contract 不放入这些第三方目录。
 
 ## 12. First Vertical Slice: EB-ALFRED
 
@@ -569,7 +574,7 @@ RoboSynChallenge has an optional native environment in
 `evals/benchmarks/robosynchallenge`. Simulator/policy dependencies stay in a
 separate locked runtime; core contracts and service lifecycle are unchanged.
 Upstream sources are pinned submodules at `benchmarks/RoboSynChallenge` and
-`benchmarks/EmbodiChain`; `benchmarks/robosyn-runtime` remains project-owned.
+`third_party/EmbodiChain`; `benchmarks/robosyn-runtime` remains project-owned.
 A visual Qwen3.5-9B + ACT evaluation completed ten tasks / 1000 unfiltered seeded
 episodes, with 412 successes (41.2%). The known native teardown SIGSEGV remains
 documented; cached resume validates completed results rather than repairing GC.

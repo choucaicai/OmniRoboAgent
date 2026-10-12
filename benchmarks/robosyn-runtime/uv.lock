@@ -752,7 +752,7 @@ wheels = [
 
 [[package]]
 name = "embodichain"
-source = { editable = "../EmbodiChain" }
+source = { editable = "../../third_party/EmbodiChain" }
 dependencies = [
     { name = "black" },
     { name = "casadi" },
@@ -2251,7 +2251,7 @@ dependencies = [
 requires-dist = [
     { name = "av", specifier = ">=14.2" },
     { name = "dexsim-engine", specifier = "==0.4.3", index = "http://pyp.open3dv.site:2345/simple/" },
-    { name = "embodichain", editable = "../EmbodiChain" },
+    { name = "embodichain", editable = "../../third_party/EmbodiChain" },
     { name = "lerobot", git = "https://github.com/huggingface/lerobot?rev=b883328e6c95681ca90a18b102e4ae5e1f91e2bf" },
     { name = "numpy", specifier = ">=1.22.4,<2" },
     { name = "pandas", specifier = ">=2.2,<3" },

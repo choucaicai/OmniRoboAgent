@@ -1,6 +1,6 @@
 # RoboSynChallenge integration and evaluation
 
-Status: DONE — upstream checkouts aligned with the repository submodule layout.
+Status: DONE — simulator SDK separated and module README chapter completed.
 
 ## Scope
 
@@ -34,6 +34,17 @@ weights, generated runs or model services into this PR.
 
 The user's integration commit is preserved. Stage a follow-up rather than
 rewriting history; do not push automatically or copy upstream source into parent Git.
+
+## SDK separation and README chapter
+
+- [x] Move the pinned EmbodiChain submodule to `third_party/EmbodiChain`; keep
+  the benchmark and its own locked runtime under `benchmarks/`.
+- [x] Update SDK inference, editable dependency paths/lock, regression test and
+  documentation without changing checkpoint, physics or evaluation semantics.
+- [x] Consolidate RoboSynChallenge module explanation in its own README chapter,
+  following the SpatialMemory section's purpose/flow/usage/documentation structure.
+- [x] Verify 38 focused / 183 full-suite tests (1 optional skip), Ruff/mypy,
+  Git submodule/index consistency and offline lock check (281 packages).
 
 ## Boundaries
 

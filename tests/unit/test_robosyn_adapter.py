@@ -361,10 +361,10 @@ def test_framework_runs_one_native_action_and_verification_per_step(
     assert all("verification" in event for event in steps)
 
 
-def test_default_sdk_root_matches_sibling_submodule(tmp_path):
+def test_default_sdk_root_matches_third_party_layout(tmp_path):
     robosyn_root = tmp_path / "benchmarks" / "RoboSynChallenge"
     environment = RoboSynChallengeEnvironment(robosyn_root)
-    assert environment.embodichain_root == tmp_path / "benchmarks" / "EmbodiChain"
+    assert environment.embodichain_root == tmp_path / "third_party" / "EmbodiChain"
 
 
 def test_invalid_task_cannot_escape_config_root(tmp_path):

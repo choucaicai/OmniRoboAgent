@@ -13,12 +13,12 @@ smoke，以及带断点续跑的多任务评测；仿真依赖不进入 core。
 以下命令均从本项目根目录运行。上游源码由仓库内 submodule 固定：
 
 ```bash
-git submodule update --init --recursive benchmarks/RoboSynChallenge benchmarks/EmbodiChain
+git submodule update --init --recursive benchmarks/RoboSynChallenge third_party/EmbodiChain
 ```
 
 `benchmarks/RoboSynChallenge` 链接
 [EDEM-AI/RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge)，固定
-`8818c82df5fa2522809b8105e7018950dcc9a9a8`；`benchmarks/EmbodiChain` 链接
+`8818c82df5fa2522809b8105e7018950dcc9a9a8`；通用仿真 SDK `third_party/EmbodiChain` 链接
 [DexForce/EmbodiChain](https://github.com/DexForce/EmbodiChain)，固定
 `89c14da8d0221dc4ee2a4a3e0ba1078b16d447bd`。不再需要仓库外同级 checkout。
 `benchmarks/robosyn-runtime` 仍是本项目自有的隔离依赖锁目录。
@@ -108,7 +108,7 @@ SkillBackend 输出 `{"actions": [T, D]}`；adapter 校验并执行原生关节�
 env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
   .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
-  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root benchmarks/EmbodiChain \
+  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root third_party/EmbodiChain \
   --task click_bell --setting random --policy act --seeds 0 \
   --checkpoint ../models/robosyn/ACT_sim_click_bell \
   --checkpoint-revision 677e65fbb15974024ff840893496197ef7db26d4 \
@@ -116,7 +116,7 @@ env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   --output runs/robosynchallenge/smoke --gpu 0 --device cuda:0 --record-video
 ```
 
-省略 `--agent-config` 会运行 `TaskSkillPlanner`、`EnvironmentVerifier` 和相同学习型
+在单任务命令中省略 `--agent-config` 会运行 `TaskSkillPlanner`、`EnvironmentVerifier` 和相同学习型
 策略的 baseline；它不调用视觉 Planner/Verifier，也不使用专家控制器。
 
 ## 完整矩阵与续跑
@@ -127,7 +127,7 @@ env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
 env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
   .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
-  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root benchmarks/EmbodiChain \
+  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root third_party/EmbodiChain \
   --matrix-manifest configs/runs/robosynchallenge_act_random_manifest.json \
   --output runs/robosynchallenge/act-visual-random \
   --gpu 0 --device cuda:0 --record-video

@@ -20,7 +20,7 @@ dependencies = [
 override-dependencies = ["lerobot", "dexsim-engine==0.4.3"]
 
 [tool.uv.sources]
-embodichain = { path = "../EmbodiChain", editable = true }
+embodichain = { path = "../../third_party/EmbodiChain", editable = true }
 robosynchallenge = { path = "../RoboSynChallenge", editable = true }
 lerobot = { git = "https://github.com/huggingface/lerobot", rev = "b883328e6c95681ca90a18b102e4ae5e1f91e2bf" }
 dexsim-engine = { index = "open3dv" }

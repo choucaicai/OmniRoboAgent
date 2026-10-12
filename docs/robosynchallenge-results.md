@@ -31,7 +31,7 @@ reset 协议的结果不计入这 1000 回合。
 
 上游固定为 RoboSynChallenge `8818c82df5fa2522809b8105e7018950dcc9a9a8`、
 EmbodiChain `89c14da8d0221dc4ee2a4a3e0ba1078b16d447bd`，当前通过仓库内
-`benchmarks/RoboSynChallenge` / `benchmarks/EmbodiChain` submodule 获取。
+`benchmarks/RoboSynChallenge` / `third_party/EmbodiChain` submodule 获取。
 各 ACT 权重 revision
 见 `configs/runs/robosynchallenge_act_random_manifest.json`，运行时记录文件 SHA256。
 
@@ -44,7 +44,8 @@ GPU 测试结果。安装和运行方式见 [接入文档](robosynchallenge.md)�
 
 submodule 布局调整后的 CPU 验证：RoboSyn 38 项测试通过，完整测试集 183 passed / 1 skipped，
 Ruff 和相关 mypy 检查通过。随后仅将上游源码获取和运行路径更新为仓库内
-submodule 布局，并调整自有 runtime 锁的路径；未重新执行 GPU 矩阵，历史成绩不变。
+submodule 布局，并调整自有 runtime 锁的路径。通用仿真 SDK 位于
+`third_party/EmbodiChain`；本次路径分类调整同样未重新执行 GPU 矩阵，历史成绩不变。
 
 ## 审计和产物
 
