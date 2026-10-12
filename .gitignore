@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 .venv-chemistry_bench/
+.venv-robosyn/
 build/
 dist/
 /runs/
