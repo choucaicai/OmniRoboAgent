@@ -752,7 +752,7 @@ wheels = [
 
 [[package]]
 name = "embodichain"
-source = { editable = "../../../EmbodiChain-robosyn" }
+source = { editable = "../EmbodiChain" }
 dependencies = [
     { name = "black" },
     { name = "casadi" },
@@ -2251,12 +2251,12 @@ dependencies = [
 requires-dist = [
     { name = "av", specifier = ">=14.2" },
     { name = "dexsim-engine", specifier = "==0.4.3", index = "http://pyp.open3dv.site:2345/simple/" },
-    { name = "embodichain", editable = "../../../EmbodiChain-robosyn" },
+    { name = "embodichain", editable = "../EmbodiChain" },
     { name = "lerobot", git = "https://github.com/huggingface/lerobot?rev=b883328e6c95681ca90a18b102e4ae5e1f91e2bf" },
     { name = "numpy", specifier = ">=1.22.4,<2" },
     { name = "pandas", specifier = ">=2.2,<3" },
     { name = "pyarrow", specifier = "==21.0.0" },
-    { name = "robosynchallenge", editable = "../../../RoboSynChallenge" },
+    { name = "robosynchallenge", editable = "../RoboSynChallenge" },
     { name = "torch", specifier = ">=2.2.1,<2.8" },
     { name = "torchvision", specifier = ">=0.21,<0.23" },
 ]
@@ -3357,7 +3357,7 @@ wheels = [
 
 [[package]]
 name = "robosynchallenge"
-source = { editable = "../../../RoboSynChallenge" }
+source = { editable = "../RoboSynChallenge" }
 
 [[package]]
 name = "rpds-py"

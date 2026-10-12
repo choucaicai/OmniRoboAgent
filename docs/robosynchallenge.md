@@ -10,14 +10,18 @@ smoke，以及带断点续跑的多任务评测；仿真依赖不进入 core。
 
 ## 准备源码和运行环境
 
-以下命令均从本项目根目录运行。隔离 lock 使用同级的两个上游 checkout：
+以下命令均从本项目根目录运行。上游源码由仓库内 submodule 固定：
 
 ```bash
-git clone https://github.com/EDEM-AI/RoboSynChallenge.git ../RoboSynChallenge
-git -C ../RoboSynChallenge checkout 8818c82df5fa2522809b8105e7018950dcc9a9a8
-git clone https://github.com/DexForce/EmbodiChain.git ../EmbodiChain-robosyn
-git -C ../EmbodiChain-robosyn checkout 89c14da8d0221dc4ee2a4a3e0ba1078b16d447bd
+git submodule update --init --recursive benchmarks/RoboSynChallenge benchmarks/EmbodiChain
 ```
+
+`benchmarks/RoboSynChallenge` 链接
+[EDEM-AI/RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge)，固定
+`8818c82df5fa2522809b8105e7018950dcc9a9a8`；`benchmarks/EmbodiChain` 链接
+[DexForce/EmbodiChain](https://github.com/DexForce/EmbodiChain)，固定
+`89c14da8d0221dc4ee2a4a3e0ba1078b16d447bd`。不再需要仓库外同级 checkout。
+`benchmarks/robosyn-runtime` 仍是本项目自有的隔离依赖锁目录。
 
 使用可用的 Conda Python 3.11，创建独立 `.venv-robosyn`：
 
@@ -104,7 +108,7 @@ SkillBackend 输出 `{"actions": [T, D]}`；adapter 校验并执行原生关节�
 env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
   .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
-  --robosyn-root ../RoboSynChallenge --embodichain-root ../EmbodiChain-robosyn \
+  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root benchmarks/EmbodiChain \
   --task click_bell --setting random --policy act --seeds 0 \
   --checkpoint ../models/robosyn/ACT_sim_click_bell \
   --checkpoint-revision 677e65fbb15974024ff840893496197ef7db26d4 \
@@ -123,7 +127,7 @@ env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
 env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
   .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
-  --robosyn-root ../RoboSynChallenge --embodichain-root ../EmbodiChain-robosyn \
+  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root benchmarks/EmbodiChain \
   --matrix-manifest configs/runs/robosynchallenge_act_random_manifest.json \
   --output runs/robosynchallenge/act-visual-random \
   --gpu 0 --device cuda:0 --record-video

@@ -12,6 +12,10 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 `benchmarks/` 下的第三方项目使用 Git submodule 管理。主仓库只保存 submodule 的 URL 和固定 commit，不会把第三方源码重复上传到主仓库。
 
+RoboSynChallenge 及其仿真依赖分别链接在 `benchmarks/RoboSynChallenge` 和
+`benchmarks/EmbodiChain`；`benchmarks/robosyn-runtime` 保留本项目自有依赖锁。
+安装和评测命令见 [RoboSynChallenge 文档](docs/robosynchallenge.md)。
+
 首次 clone 时同时拉取 submodule：
 
 ```bash
@@ -25,7 +29,7 @@ cd OmniRoboAgent
 git submodule update --init --recursive
 ```
 
-拉取主仓库更新后，使用同一命令让 submodule 回到主仓库记录的 commit。不要直接在 `benchmarks/EmbodiedBench` 或 `benchmarks/RoboCasa` 中提交本项目代码。
+拉取主仓库更新后，使用同一命令让 submodule 回到主仓库记录的 commit。不要在第三方 submodule 中提交本项目代码。
 
 ## Install
 

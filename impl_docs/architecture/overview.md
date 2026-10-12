@@ -530,7 +530,10 @@ OmniRoboAgent/
 │   └── serve_robocasa_openpi.py
 ├── benchmarks/
 │   ├── EmbodiedBench/             # submodule
-│   └── RoboCasa/                  # submodule
+│   ├── RoboCasa/                  # submodule
+│   ├── RoboSynChallenge/          # upstream submodule
+│   ├── EmbodiChain/               # upstream submodule
+│   └── robosyn-runtime/           # project-owned dependency lock
 ├── docs/
 └── pyproject.toml
 ```
@@ -565,6 +568,8 @@ RoboSynChallenge has an optional native environment in
 `backends/skills/robosyn.py`, and resumable per-task/multi-GPU runners in
 `evals/benchmarks/robosynchallenge`. Simulator/policy dependencies stay in a
 separate locked runtime; core contracts and service lifecycle are unchanged.
+Upstream sources are pinned submodules at `benchmarks/RoboSynChallenge` and
+`benchmarks/EmbodiChain`; `benchmarks/robosyn-runtime` remains project-owned.
 A visual Qwen3.5-9B + ACT evaluation completed ten tasks / 1000 unfiltered seeded
 episodes, with 412 successes (41.2%). The known native teardown SIGSEGV remains
 documented; cached resume validates completed results rather than repairing GC.

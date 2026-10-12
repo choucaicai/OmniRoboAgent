@@ -5,3 +5,9 @@
 	path = benchmarks/RoboCasa
 	url = https://github.com/robocasa/robocasa.git
 	ignore = untracked
+[submodule "benchmarks/RoboSynChallenge"]
+	path = benchmarks/RoboSynChallenge
+	url = https://github.com/EDEM-AI/RoboSynChallenge.git
+[submodule "benchmarks/EmbodiChain"]
+	path = benchmarks/EmbodiChain
+	url = https://github.com/DexForce/EmbodiChain.git
