@@ -4,9 +4,11 @@
 
 ## 0. Project Decisions
 
+- [x] `DONE` 分开说明自研化学仿真平台的滴定 demo 与 OmniRoboAgent 在 RoboSynChallenge 官方环境中的任务评测；保留两者入口，不将 41.2% 归为化学平台成绩。77 个公共文档本地链接、Bash 命令语法和 diff 检查通过；未修改代码或重跑 GPU（[计划](plans/0020-demo-and-benchmark-documentation.md)）。
+
 - [x] `DONE` RoboSynChallenge 独立 PR：benchmark 位于 `benchmarks/RoboSynChallenge`，通用 SDK 位于 `third_party/EmbodiChain`，均为固定 submodule；README 独立章节集中说明模块、安装和评测。路径调整后 38 项专项/183 项全套测试通过，1 项可选跳过，runtime lock 校验通过。历史模型矩阵 412/1000 成功（41.2%）；未重跑 GPU 矩阵，见 [0019](plans/0019-robosynchallenge-evaluation.md)。
 
-- [x] `DONE` Chemistry bench 完整画面和连续脚本动作演示，五步成功，20.8 秒/416 帧录像，见 [0016](plans/0016-chemistry-bench-visual-demo.md)。
+- [x] `DONE` 化学仿真平台固定滴定 demo：完整画面和连续脚本动作演示，五步成功，20.8 秒/416 帧录像，见 [0016](plans/0016-chemistry-bench-visual-demo.md)。
 
 - [x] `DONE` 使用 Python 3.11，Conda 环境名为 `omniagent`。
 - [x] `DONE` 使用 `uv + pyproject.toml + uv.lock` 管理 Python package 和依赖。

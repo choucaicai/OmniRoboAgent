@@ -43,9 +43,14 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 | [Environment](components/environment.md) | 连接 benchmark、simulator 或 robot 并执行 action |
 | [Evaluation](components/evaluation.md) | 遍历任务、聚合指标并保存可复现输出 |
 
+## Simulation Demo
+
+- [化学仿真平台 Demo](chemistry_bench.md)：自研 Isaac Sim 化学实验环境，当前用于固定滴定任务的画面、动作与闭环演示，不是系统 benchmark 评测。
+
 ## Benchmarks
 
 - [EB-ALFRED](eb_alfred.md)：EmbodiedBench/AI2-THOR 安装、运行和输出。
 - [RoboCasa365](robocasa365.md)：assets、atomic/composite Agent、VLA backends 和 evaluation。
+- [RoboSynChallenge](robosynchallenge.md)：使用 OmniRoboAgent 在官方 EmbodiChain/DexSim 环境运行任务，不经过化学仿真平台；[完整结果](robosynchallenge-results.md)记录 1000 回合的历史成绩与评测口径。
 
 架构约束、实现计划和历史变更位于 GitHub 仓库的 [`impl_docs/`](https://github.com/choucaicai/OmniRoboAgent/tree/master/impl_docs)，不属于用户教程。

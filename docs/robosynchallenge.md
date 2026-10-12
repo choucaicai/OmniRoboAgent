@@ -1,10 +1,12 @@
-# RoboSynChallenge
+# OmniRoboAgent 运行 RoboSynChallenge 官方任务
 
-[RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge) 通过独立的
-EmbodiChain/DexSim runtime 接入 OmniRoboAgent。支持本地 ACT/DP 推理、单任务
-smoke，以及带断点续跑的多任务评测；仿真依赖不进入 core。
+[RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge) 是第三方 benchmark。
+本项目通过适配模块让 OmniRoboAgent 在其官方任务和 EmbodiChain/DexSim 环境中
+运行，支持本地 ACT/DP 推理、单任务 smoke 和带断点续跑的多任务评测；仿真依赖
+不进入 core。这条评测路径与本项目的 [化学实验固定滴定 demo](chemistry_bench.md) 独立。
 
-已完成的历史 ACT 模型闭环评测为十任务 × 100 回合，成功率 41.2%。
+已完成的历史 ACT 模型闭环评测为十项 RoboSynChallenge 官方任务 × 100 回合，
+成功率 41.2%；该成绩不属于化学实验仿真平台。
 成绩口径、源码版本及已知限制见 [完整结果](robosynchallenge-results.md)。
 本 PR 基于最新 master 的集成仅做 CPU 验证，未重新执行 1000 回合 GPU 评测。
 

@@ -10,13 +10,13 @@ Observe -> Plan -> Act -> Verify -> Update or Stop
 
 ## Clone
 
-`benchmarks/` 保存 benchmark，`third_party/` 保存通用第三方依赖；外部项目使用
+`benchmarks/` 保存 benchmark 及环境相关包，`third_party/` 保存通用第三方依赖；外部项目使用
 Git submodule 管理。主仓库只保存上游 URL 和固定 commit，不重复上传第三方源码。
 
 首次 clone 时同时拉取 submodule：
 
 ```bash
-git clone --recurse-submodules <OmniRoboAgent-repo-url>
+git clone --recurse-submodules https://github.com/choucaicai/OmniRoboAgent.git
 cd OmniRoboAgent
 ```
 
@@ -138,9 +138,80 @@ git clone https://huggingface.co/datasets/EmbodiedBench/EB-ALFRED \
 该示例展示从场景 PLY 读取点云、运行 SpatialLM 空间定位、生成结构化墙体/门窗/物体
 结果展示。
 
-## RoboSynChallenge：为智能体提供标准化机器人仿真评测
+## 化学仿真平台：为智能体提供化学实验 Demo
 
-RoboSynChallenge 接入模块把官方机器人任务的 RGB、关节状态和原生动作转换为
+这是本项目自研的化学实验仿真模块，当前目标是生成一个完整、可观察的酸碱滴定
+demo，展示机械臂动作、实验状态变化与 Agent 闭环，而不是建立新的 benchmark。
+它使用独立 Isaac Sim 4.5 worker，并通过 gRPC 接入 OmniRoboAgent。
+
+演示任务是抓取 NaOH 试剂瓶、逐次向含 HCl 和酚酞的烧杯加液，观察变粉红后停止，
+放回试剂瓶并记录实验结果。当前化学引擎计算酸碱中和、近似 pH 和指示剂显色；
+机械臂使用逆运动学和脚本插值。暂不投入流体模拟、精确接触或策略训练。
+
+```text
+Isaac Sim 实验台 RGB / 可用动作
+                ↓
+LanguageSkillPlanner → LanguageSkillBackend
+                ↓
+ChemistryBenchEnvironment → gRPC worker → 机械臂 / 化学状态
+                ↓
+新图像与执行反馈 → EnvironmentVerifier → 继续或结束
+```
+
+### 模块与运行方式
+
+- `benchmarks/chemistry-bench-sim`：自有实验场景、化学状态引擎、机械臂动作和录像 worker。
+- `benchmarks/chemistry-bench-proto`：worker 与客户端共用的 gRPC 协议。
+- `ChemistryBenchEnvironment`：把 RGB、动作列表和反馈接入现有 `DirectPipeline`；
+  pH、体积等内部状态仅用于判定结果，不作为模型输入。
+- `configs/agents/chemistry_bench_titration.yaml` 和
+  `configs/runs/chemistry_bench_titration.yaml`：模型闭环配置。
+
+`chemistry_bench` 是沿用的包名和配置标识，不代表此 demo 是标准化 benchmark。
+Agent 与 Isaac Sim worker 分开安装，在项目根目录执行：
+
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-chemistry_bench uv sync --extra chemistry_bench --group dev
+
+/absolute/path/to/isaac-sim-4.5.0/python.sh -m pip install \
+  ./benchmarks/chemistry-bench-proto ./benchmarks/chemistry-bench-sim
+
+CHEMISTRY_BENCH_SIM_GPU=0 CHEMISTRY_BENCH_FRANKA_USD=/absolute/path/to/franka.usd \
+  /absolute/path/to/isaac-sim-4.5.0/python.sh \
+  -m chemistry_bench_sim.worker --port 50051 --record-dir runs/chemistry_bench_demo
+```
+
+worker 保持运行，在另一个终端生成脚本 demo（不需要模型服务）：
+
+```bash
+.venv-chemistry_bench/bin/python scripts/smoke_chemistry_bench.py \
+  --address 127.0.0.1:50051 --output runs/chemistry_bench_scripted
+```
+
+需要模型闭环时，先在 AgentConfig 中设置可用的多模态 `base_url` / `model`，再执行：
+
+```bash
+.venv-chemistry_bench/bin/omniroboagent run \
+  --config configs/runs/chemistry_bench_titration.yaml
+```
+
+### Demo 验证范围
+
+已验证带机械臂运动的脚本演示：5 步完成滴定与记录，连续录像 416 帧、20 FPS、
+20.8 秒。更早的静态机械臂版本也通过 Qwen3.5-9B 的 13 步模型闭环；相机与运动
+更新后尚未重验模型闭环。当前没有化学平台的系统 benchmark 成绩。
+
+完整安装、动作接口、成功条件、录像说明与验证记录见
+[化学仿真平台 Demo](docs/chemistry_bench.md)。
+
+## RoboSynChallenge：使用 OmniRoboAgent 运行官方任务
+
+这部分使用第三方 [RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge)
+的官方任务、EmbodiChain/DexSim 仿真环境及公开策略权重，验证 OmniRoboAgent 的
+规划、执行、反馈与评测链路；不是在上面的化学仿真平台中运行。
+本项目实现的是接入适配和评测 runner，不将官方 benchmark 或仿真 SDK 视为自研模块。
+
+接入模块把官方机器人任务的 RGB、关节状态和原生动作转换为
 OmniRoboAgent 的 Environment contract，使已有 Planner、SkillBackend、Verifier、
 Memory 和 Pipeline 能在同一闭环中运行，并按固定 seeds 统计成功率。
 它提供一个 benchmark 的十项任务；EmbodiChain 是仿真依赖，不是第二个 benchmark。
@@ -272,7 +343,8 @@ DexSim 的 Vulkan GPU index 不随 `CUDA_VISIBLE_DEVICES` 重映射，需保持 
 ### 验证结果与边界
 
 历史 Qwen3.5-9B + ACT 评测完成十任务 × 100 回合：412/1000 成功（41.2%），
-588 次正常失败，所有有效结果和录像/日志已核对。采用显式未过滤 seeds，未按
+588 次正常失败，所有有效结果和录像/日志已核对。这是 OmniRoboAgent 在官方任务
+环境中的成绩，不是化学仿真平台的成绩。采用显式未过滤 seeds，未按
 主办方专家可行性筛选，因此不是论文成绩的精确复现。目录布局调整只重新验证
 CPU 测试和依赖锁，未在新布局重跑 GPU 矩阵；历史源码身份见结果文档。
 
@@ -320,6 +392,7 @@ RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/
 - [Observability](docs/components/observability.md)
 - [SpatialMemory 空间记忆组件](docs/components/spatialmemory_memory.md)
 - [SpatialMemory Backend 环境安装](docs/components/spatialmemory_backend.md)
+- [化学仿真平台 Demo（固定滴定任务与录像）](docs/chemistry_bench.md)
 - [自定义组件](docs/custom_components.md)
 - [整体架构](impl_docs/architecture/overview.md)
 
@@ -327,5 +400,4 @@ RoboCasa365 使用独立 simulator/model 环境。官方 assets 安装、atomic/
 
 - [EB-ALFRED 评测](docs/eb_alfred.md)
 - [RoboCasa365 评测](docs/robocasa365.md)
-- [Chemistry Bench Isaac Sim 化学台（固定任务真实闭环已验证）](docs/chemistry_bench.md)
 - [RoboSynChallenge 接入与完整评测（1000 回合，41.2%）](docs/robosynchallenge.md)

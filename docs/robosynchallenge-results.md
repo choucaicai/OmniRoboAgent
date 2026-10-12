@@ -1,4 +1,8 @@
-# RoboSynChallenge 评测结果
+# OmniRoboAgent 的 RoboSynChallenge 官方任务评测结果
+
+本页记录 OmniRoboAgent 在第三方 RoboSynChallenge 官方任务上的历史成绩。
+1000 回合使用 EmbodiChain/DexSim 环境，未调用 `ChemistryBenchEnvironment` 或
+`chemistry_bench_sim`；41.2% 不代表化学实验仿真平台的固定滴定 demo 成绩。
 
 2026-10-12 完成十项任务 × 每任务 100 回合：**412/1000 成功，41.2%**；
 588 个正常失败，零回合执行或 observability 异常。
