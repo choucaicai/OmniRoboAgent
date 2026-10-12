@@ -1,7 +1,11 @@
-# Chemistry bench
+# 化学实验仿真平台：固定滴定 demo
 
-Chemistry bench is an independent Isaac Sim 4.5 environment for a fixed titration
-task, connected to the existing DirectPipeline and LanguageSkillBackend.
+本项目自研的化学实验仿真平台使用 Isaac Sim 4.5 生成固定滴定 demo 的场景和录像，
+展示取试剂瓶、加液显色、归位和记录流程。当前验证范围是这个固定演示，保留通过
+`ChemistryBenchEnvironment`、`DirectPipeline` 和 `LanguageSkillBackend` 运行的方式。
+
+本页的验证记录属于固定滴定 demo。OmniRoboAgent 运行第三方 RoboSynChallenge
+官方任务的评测独立记录在 [RoboSynChallenge 文档](robosynchallenge.md)。
 
 ## Install
 

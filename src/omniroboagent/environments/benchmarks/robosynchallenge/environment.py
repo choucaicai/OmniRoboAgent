@@ -43,7 +43,7 @@ class RoboSynChallengeEnvironment(Environment):
         self.embodichain_root = (
             Path(embodichain_root).expanduser().resolve()
             if embodichain_root is not None
-            else self.robosyn_root.parent / "EmbodiChain-robosyn"
+            else self.robosyn_root.parent.parent / "third_party" / "EmbodiChain"
         )
         self.setting = setting
         self.device = device

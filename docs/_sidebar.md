@@ -17,9 +17,10 @@
   - [Environment](/components/environment.md)
   - [Evaluation](/components/evaluation.md)
 - [自定义组件](/custom_components.md)
+- Simulation Demo
+  - [化学仿真平台 Demo](/chemistry_bench.md)
 - Benchmarks
   - [EB-ALFRED 评测](/eb_alfred.md)
   - [RoboCasa365 评测](/robocasa365.md)
-  - [Chemistry Bench 化学台](/chemistry_bench.md)
   - [RoboSynChallenge 评测](/robosynchallenge.md)
   - [RoboSynChallenge 完整结果](/robosynchallenge-results.md)

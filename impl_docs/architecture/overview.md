@@ -530,12 +530,22 @@ OmniRoboAgent/
 │   └── serve_robocasa_openpi.py
 ├── benchmarks/
 │   ├── EmbodiedBench/             # submodule
-│   └── RoboCasa/                  # submodule
+│   ├── RoboCasa/                  # submodule
+│   ├── RoboSynChallenge/          # upstream submodule
+│   ├── chemistry-bench-proto/     # project-owned demo protocol
+│   ├── chemistry-bench-sim/       # project-owned chemistry demo worker
+│   └── robosyn-runtime/           # project-owned dependency lock
+├── third_party/
+│   └── EmbodiChain/               # upstream shared simulation SDK submodule
 ├── docs/
 └── pyproject.toml
 ```
 
 `ros2/` 和 `human_interface/` 在树中表达 planned ownership，但实际目录只在出现首个实现时创建，避免预先生成空模块。
+
+`benchmarks/` 保存第三方评测项目、benchmark 专用依赖锁及既有化学 demo 包；
+`third_party/` 保存通用第三方 SDK。上游源码使用固定 commit 的 submodule 链接，
+本项目 adapter 和核心 contract 不放入这些第三方目录。
 
 ## 12. First Vertical Slice: EB-ALFRED
 
@@ -565,16 +575,26 @@ RoboSynChallenge has an optional native environment in
 `backends/skills/robosyn.py`, and resumable per-task/multi-GPU runners in
 `evals/benchmarks/robosynchallenge`. Simulator/policy dependencies stay in a
 separate locked runtime; core contracts and service lifecycle are unchanged.
+Upstream sources are pinned submodules at `benchmarks/RoboSynChallenge` and
+`third_party/EmbodiChain`; `benchmarks/robosyn-runtime` remains project-owned.
 A visual Qwen3.5-9B + ACT evaluation completed ten tasks / 1000 unfiltered seeded
 episodes, with 412 successes (41.2%). The known native teardown SIGSEGV remains
 documented; cached resume validates completed results rather than repairing GC.
+These episodes run the official RoboSynChallenge tasks in EmbodiChain/DexSim,
+not in the chemistry simulation worker; this result evaluates the framework's
+official-task integration, not the chemistry platform.
 See [usage](../../docs/robosynchallenge.md) and
 [evaluation scope/results](../../docs/robosynchallenge-results.md).
 
-Chemistry Bench now has an optional independent chemistry environment adapter using an
-external Isaac Sim worker. CPU contracts and loopback gRPC tests are verified;
-real Isaac Sim fixed-task smoke passed with two scripted resets and a 13-step Qwen
-episode. This is not a general success-rate evaluation. See [usage](../../docs/chemistry_bench.md).
+The self-developed chemistry simulation platform has an optional independent
+environment adapter using an external Isaac Sim worker. Its current purpose is a
+fixed titration demo, not a new benchmark. Existing `chemistry_bench` API and
+package names are compatibility identifiers. CPU contracts and loopback gRPC
+tests are verified; a historical static-arm smoke passed with two scripted resets
+and a 13-step Qwen episode. The articulated scripted demo completed in five steps
+with a 20.8-second continuous video; the model loop has not been revalidated after
+the camera/motion updates. Neither run is a systematic success-rate evaluation.
+See [usage](../../docs/chemistry_bench.md).
 
 | Capability | Status |
 | --- | --- |

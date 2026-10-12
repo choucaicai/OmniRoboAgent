@@ -1,23 +1,29 @@
-# RoboSynChallenge
+# OmniRoboAgent 运行 RoboSynChallenge 官方任务
 
-[RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge) 通过独立的
-EmbodiChain/DexSim runtime 接入 OmniRoboAgent。支持本地 ACT/DP 推理、单任务
-smoke，以及带断点续跑的多任务评测；仿真依赖不进入 core。
+[RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge) 是第三方 benchmark。
+本项目通过适配模块让 OmniRoboAgent 在其官方任务和 EmbodiChain/DexSim 环境中
+运行，支持本地 ACT/DP 推理、单任务 smoke 和带断点续跑的多任务评测；仿真依赖
+不进入 core。这条评测路径与本项目的 [化学实验固定滴定 demo](chemistry_bench.md) 独立。
 
-已完成的历史 ACT 模型闭环评测为十任务 × 100 回合，成功率 41.2%。
+已完成的历史 ACT 模型闭环评测为十项 RoboSynChallenge 官方任务 × 100 回合，
+成功率 41.2%；该成绩不属于化学实验仿真平台。
 成绩口径、源码版本及已知限制见 [完整结果](robosynchallenge-results.md)。
 本 PR 基于最新 master 的集成仅做 CPU 验证，未重新执行 1000 回合 GPU 评测。
 
 ## 准备源码和运行环境
 
-以下命令均从本项目根目录运行。隔离 lock 使用同级的两个上游 checkout：
+以下命令均从本项目根目录运行。上游源码由仓库内 submodule 固定：
 
 ```bash
-git clone https://github.com/EDEM-AI/RoboSynChallenge.git ../RoboSynChallenge
-git -C ../RoboSynChallenge checkout 8818c82df5fa2522809b8105e7018950dcc9a9a8
-git clone https://github.com/DexForce/EmbodiChain.git ../EmbodiChain-robosyn
-git -C ../EmbodiChain-robosyn checkout 89c14da8d0221dc4ee2a4a3e0ba1078b16d447bd
+git submodule update --init --recursive benchmarks/RoboSynChallenge third_party/EmbodiChain
 ```
+
+`benchmarks/RoboSynChallenge` 链接
+[EDEM-AI/RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge)，固定
+`8818c82df5fa2522809b8105e7018950dcc9a9a8`；通用仿真 SDK `third_party/EmbodiChain` 链接
+[DexForce/EmbodiChain](https://github.com/DexForce/EmbodiChain)，固定
+`89c14da8d0221dc4ee2a4a3e0ba1078b16d447bd`。不再需要仓库外同级 checkout。
+`benchmarks/robosyn-runtime` 仍是本项目自有的隔离依赖锁目录。
 
 使用可用的 Conda Python 3.11，创建独立 `.venv-robosyn`：
 
@@ -104,7 +110,7 @@ SkillBackend 输出 `{"actions": [T, D]}`；adapter 校验并执行原生关节�
 env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
   .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
-  --robosyn-root ../RoboSynChallenge --embodichain-root ../EmbodiChain-robosyn \
+  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root third_party/EmbodiChain \
   --task click_bell --setting random --policy act --seeds 0 \
   --checkpoint ../models/robosyn/ACT_sim_click_bell \
   --checkpoint-revision 677e65fbb15974024ff840893496197ef7db26d4 \
@@ -112,7 +118,7 @@ env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   --output runs/robosynchallenge/smoke --gpu 0 --device cuda:0 --record-video
 ```
 
-省略 `--agent-config` 会运行 `TaskSkillPlanner`、`EnvironmentVerifier` 和相同学习型
+在单任务命令中省略 `--agent-config` 会运行 `TaskSkillPlanner`、`EnvironmentVerifier` 和相同学习型
 策略的 baseline；它不调用视觉 Planner/Verifier，也不使用专家控制器。
 
 ## 完整矩阵与续跑
@@ -123,7 +129,7 @@ env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
 env -u CUDA_VISIBLE_DEVICES CUDA_DEVICE_ORDER=PCI_BUS_ID \
   EMBODICHAIN_SIM_EXIT_PROCESS=0 PYTHONPATH=src \
   .venv-robosyn/bin/python scripts/eval_robosynchallenge.py \
-  --robosyn-root ../RoboSynChallenge --embodichain-root ../EmbodiChain-robosyn \
+  --robosyn-root benchmarks/RoboSynChallenge --embodichain-root third_party/EmbodiChain \
   --matrix-manifest configs/runs/robosynchallenge_act_random_manifest.json \
   --output runs/robosynchallenge/act-visual-random \
   --gpu 0 --device cuda:0 --record-video

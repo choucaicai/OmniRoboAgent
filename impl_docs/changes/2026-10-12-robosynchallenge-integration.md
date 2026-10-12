@@ -26,8 +26,10 @@ Validation on the latest upstream base passed with explicit `PYTHONPATH=src`
 and a verified import path pointing at the PR worktree: 37 focused tests,
 182 full-suite tests passed / 1 optional skip, Ruff lint/format (9 Python files)
 and mypy (7 sources) passed; staged diff check passed.
-All 13 transferred source/config/test/runtime files are byte-identical to the
-evaluation workspace. Original checkout permission noise was normalized to the
+At the initial transfer, all 13 source/config/test/runtime files were byte-identical
+to the evaluation workspace; the subsequent submodule layout changes are recorded
+separately in `2026-10-12-robosynchallenge-submodules.md`.
+Original checkout permission noise was normalized to the
 upstream Git modes before staging; no unrelated source content changed.
 The 1000-episode score belongs to the earlier evaluation workspace, not to a new
 rollout on this PR worktree. Intended changes are staged; commit, fork push and

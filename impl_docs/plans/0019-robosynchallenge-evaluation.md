@@ -1,6 +1,6 @@
 # RoboSynChallenge integration and evaluation
 
-Status: DONE — integration isolated and CPU-verified on a clean PR branch.
+Status: DONE — simulator SDK separated and module README chapter completed.
 
 ## Scope
 
@@ -21,12 +21,36 @@ weights, generated runs or model services into this PR.
 - [x] Verify isolated changes against latest upstream master `c01a6bd`: 37
   focused tests; 182 full-suite tests passed, 1 optional test skipped; Ruff/mypy passed.
 - [x] Prepare only intended PR files on `feat/robosynchallenge`; leave commit,
-  push to the contributor fork and PR publication to the user.
+  push to the upstream feature branch and PR publication to the user.
+
+## Submodule layout follow-up
+
+- [x] Add `benchmarks/RoboSynChallenge` and `benchmarks/EmbodiChain` as gitlinks
+  to their official URLs, pinned to the same evaluated upstream commits.
+- [x] Move isolated runtime references, SDK discovery and instructions to the
+  repository-local submodules; retain our own `robosyn-runtime` dependency lock.
+- [x] Revalidate CPU tests (38 focused; 183 full-suite passed, 1 optional skip),
+  Ruff/mypy and offline locked-runtime consistency without rerunning GPU evaluation.
+
+The user's integration commit is preserved. Stage a follow-up rather than
+rewriting history; do not push automatically or copy upstream source into parent Git.
+
+## SDK separation and README chapter
+
+- [x] Move the pinned EmbodiChain submodule to `third_party/EmbodiChain`; keep
+  the benchmark and its own locked runtime under `benchmarks/`.
+- [x] Update SDK inference, editable dependency paths/lock, regression test and
+  documentation without changing checkpoint, physics or evaluation semantics.
+- [x] Consolidate RoboSynChallenge module explanation in its own README chapter,
+  following the SpatialMemory section's purpose/flow/usage/documentation structure.
+- [x] Verify 38 focused / 183 full-suite tests (1 optional skip), Ruff/mypy,
+  Git submodule/index consistency and offline lock check (281 packages).
 
 ## Boundaries
 
 This is a custom unfiltered Agent evaluation, not a reproduction of organizer
 expert-feasibility-filtered paper scores. ACT is not language-conditioned; DP
 support is unit-tested but did not receive a full matrix evaluation. Remote model
-services remain user-managed. Upstream benchmark code and checkpoints are obtained
-separately at documented revisions. Original workspace changes/results are retained.
+services remain user-managed. Upstream code is pinned through submodules; model
+checkpoints are downloaded separately at documented revisions. Original workspace
+changes/results are retained.

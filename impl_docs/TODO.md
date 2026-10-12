@@ -4,9 +4,11 @@
 
 ## 0. Project Decisions
 
-- [x] `DONE` RoboSynChallenge 独立 PR 分支整理完成：native adapter、ACT/DP backend、可续跑多卡评测及隔离 runtime；新 master 上 37 项专项/182 项全套测试通过，1 项可选跳过。历史完整模型矩阵 412/1000 成功（41.2%）；未重跑 GPU 矩阵，仅保留本 benchmark 改动，见 [0019](plans/0019-robosynchallenge-evaluation.md)。
+- [x] `DONE` README 将化学仿真 demo 与 OmniRoboAgent 官方任务 benchmark 归到“化学仿真平台”章节下的两个子部分；继续区分仿真环境与成绩归属，并补充 PR #8 已上传的视频链接（GET 验证 HTTP 206）。标题层级、Bash 语法和 diff 检查通过，全部代码块未变（[计划](plans/0020-demo-and-benchmark-documentation.md)）。
 
-- [x] `DONE` Chemistry bench 完整画面和连续脚本动作演示，五步成功，20.8 秒/416 帧录像，见 [0016](plans/0016-chemistry-bench-visual-demo.md)。
+- [x] `DONE` RoboSynChallenge 独立 PR：benchmark 位于 `benchmarks/RoboSynChallenge`，通用 SDK 位于 `third_party/EmbodiChain`，均为固定 submodule；README 独立章节集中说明模块、安装和评测。路径调整后 38 项专项/183 项全套测试通过，1 项可选跳过，runtime lock 校验通过。历史模型矩阵 412/1000 成功（41.2%）；未重跑 GPU 矩阵，见 [0019](plans/0019-robosynchallenge-evaluation.md)。
+
+- [x] `DONE` 化学仿真平台固定滴定 demo：完整画面和连续脚本动作演示，五步成功，20.8 秒/416 帧录像，见 [0016](plans/0016-chemistry-bench-visual-demo.md)。
 
 - [x] `DONE` 使用 Python 3.11，Conda 环境名为 `omniagent`。
 - [x] `DONE` 使用 `uv + pyproject.toml + uv.lock` 管理 Python package 和依赖。
