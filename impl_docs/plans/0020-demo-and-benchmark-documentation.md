@@ -1,6 +1,6 @@
 # Separate chemistry demo and official-task evaluation
 
-Status: DONE — original separation and README grouping follow-up complete.
+Status: DONE — documentation separation, README grouping and video-link follow-ups complete.
 
 Change record: [documentation separation](../changes/2026-10-12-demo-and-benchmark-documentation.md).
 
@@ -27,7 +27,8 @@ and implementation records.
 
 ## Out of Scope
 
-Code changes, simulator migration, rerunning GPU evaluation, commits and pushes.
+Code changes, simulator migration and rerunning GPU evaluation. Earlier documentation
+follow-ups excluded commits/pushes; the user explicitly authorized them for the video-link update.
 
 ## Tasks
 
@@ -54,3 +55,11 @@ all existing commands and result details.
 - [x] Group README headings, check hierarchy/unchanged command blocks and record verification.
 
 Follow-up record: [README grouping](../changes/2026-10-12-chemistry-chapter-grouping.md).
+
+## Video-link follow-up
+
+- [x] Link the existing PR #8 video attachment from the README chemistry demo;
+  preserve the stable GitHub URL without uploading the video again.
+- [x] Check attachment access and unchanged command blocks.
+
+Follow-up record: [demo video link](../changes/2026-10-12-chemistry-demo-video-link.md).

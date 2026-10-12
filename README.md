@@ -151,6 +151,8 @@ Isaac Sim 化学实验环境，benchmark 使用 RoboSynChallenge 官方环境；
 demo，展示机械臂动作、实验状态变化与 Agent 闭环，而不是建立新的 benchmark。
 它使用独立 Isaac Sim 4.5 worker，并通过 gRPC 接入 OmniRoboAgent。
 
+[观看化学仿真 Demo 视频](https://github.com/user-attachments/assets/41eb9447-0ff1-4551-b0b2-a2b8e4931c01)
+
 演示任务是抓取 NaOH 试剂瓶、逐次向含 HCl 和酚酞的烧杯加液，观察变粉红后停止，
 放回试剂瓶并记录实验结果。当前化学引擎计算酸碱中和、近似 pH 和指示剂显色；
 机械臂使用逆运动学和脚本插值。暂不投入流体模拟、精确接触或策略训练。
