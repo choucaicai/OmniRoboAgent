@@ -4,6 +4,8 @@
 
 ## 0. Project Decisions
 
+- [x] `DONE` RoboSynChallenge 独立 PR 分支整理完成：native adapter、ACT/DP backend、可续跑多卡评测及隔离 runtime；新 master 上 37 项专项/182 项全套测试通过，1 项可选跳过。历史完整模型矩阵 412/1000 成功（41.2%）；未重跑 GPU 矩阵，仅保留本 benchmark 改动，见 [0019](plans/0019-robosynchallenge-evaluation.md)。
+
 - [x] `DONE` Chemistry bench 完整画面和连续脚本动作演示，五步成功，20.8 秒/416 帧录像，见 [0016](plans/0016-chemistry-bench-visual-demo.md)。
 
 - [x] `DONE` 使用 Python 3.11，Conda 环境名为 `omniagent`。

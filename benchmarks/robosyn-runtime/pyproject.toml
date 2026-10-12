@@ -1,0 +1,31 @@
+[project]
+name = "omniroboagent-robosyn-runtime"
+version = "0.1.0"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "embodichain",
+    "robosynchallenge",
+    "lerobot",
+    "dexsim-engine==0.4.3",
+    "numpy>=1.22.4,<2",
+    "torch>=2.2.1,<2.8",
+    "torchvision>=0.21,<0.23",
+    "av>=14.2",
+    # New Arrow wheels require NumPy 2 at import time; DexSim uses NumPy 1.x.
+    "pyarrow==21.0.0",
+    "pandas>=2.2,<3",
+]
+
+[tool.uv]
+override-dependencies = ["lerobot", "dexsim-engine==0.4.3"]
+
+[tool.uv.sources]
+embodichain = { path = "../../../EmbodiChain-robosyn", editable = true }
+robosynchallenge = { path = "../../../RoboSynChallenge", editable = true }
+lerobot = { git = "https://github.com/huggingface/lerobot", rev = "b883328e6c95681ca90a18b102e4ae5e1f91e2bf" }
+dexsim-engine = { index = "open3dv" }
+
+[[tool.uv.index]]
+name = "open3dv"
+url = "http://pyp.open3dv.site:2345/simple/"
+explicit = true

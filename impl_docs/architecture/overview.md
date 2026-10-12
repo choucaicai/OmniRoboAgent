@@ -560,6 +560,17 @@ episode limit                -> Runtime termination
 
 ## 13. Implementation Boundary
 
+RoboSynChallenge has an optional native environment in
+`environments/benchmarks/robosynchallenge`, local ACT/DP backend in
+`backends/skills/robosyn.py`, and resumable per-task/multi-GPU runners in
+`evals/benchmarks/robosynchallenge`. Simulator/policy dependencies stay in a
+separate locked runtime; core contracts and service lifecycle are unchanged.
+A visual Qwen3.5-9B + ACT evaluation completed ten tasks / 1000 unfiltered seeded
+episodes, with 412 successes (41.2%). The known native teardown SIGSEGV remains
+documented; cached resume validates completed results rather than repairing GC.
+See [usage](../../docs/robosynchallenge.md) and
+[evaluation scope/results](../../docs/robosynchallenge-results.md).
+
 Chemistry Bench now has an optional independent chemistry environment adapter using an
 external Isaac Sim worker. CPU contracts and loopback gRPC tests are verified;
 real Isaac Sim fixed-task smoke passed with two scripted resets and a 13-step Qwen

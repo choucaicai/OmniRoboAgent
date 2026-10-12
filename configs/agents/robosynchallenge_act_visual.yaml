@@ -1,0 +1,77 @@
+agent:
+  class_path: omniroboagent.agent_core.DefaultAgent
+
+planner:
+  class_path: omniroboagent.agent_core.SubtaskSkillPlanner
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:28000
+        model: Qwen3.5-9B
+        timeout_seconds: 120
+        max_retries: 2
+    skill_ids:
+      click_bell: 0
+      drawer_open_place: 1
+      handle_basket: 2
+      item_assembly: 3
+      items_handover: 4
+      manipulate_pipette: 5
+      mixer_operating: 6
+      sample_loading: 7
+      table_rearrangement: 8
+      water_pouring: 9
+    skill_definitions:
+      click_bell: Press the bell button using the robot arm.
+      drawer_open_place: Open the drawer and place the target object inside.
+      handle_basket: Handle and move the basket to the task target.
+      item_assembly: Assemble the task objects into the target arrangement.
+      items_handover: Transfer the target item between robot arms.
+      manipulate_pipette: Manipulate the pipette according to the task instruction.
+      mixer_operating: Operate the mixer according to the task instruction.
+      sample_loading: Load the sample into the target apparatus.
+      table_rearrangement: Rearrange the tabletop objects to the task target.
+      water_pouring: Pick up the container and pour into the target receptacle.
+    camera_keys: [cam_high]
+    history_limit: 4
+    max_tokens: 512
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+skill_backend:
+  class_path: omniroboagent.backends.skills.robosyn.RoboSynPolicyBackend
+  init_args:
+    policy_name: act
+    checkpoint_path: ../models/robosyn/ACT_sim_click_bell
+    device: cuda:0
+
+verifier:
+  class_path: omniroboagent.agent_core.SubtaskVerifier
+  init_args:
+    backend:
+      class_path: omniroboagent.backends.llm.OpenAICompatibleLLMBackend
+      init_args:
+        base_url: http://127.0.0.1:28000
+        model: Qwen3.5-9B
+        timeout_seconds: 120
+        max_retries: 2
+    camera_keys: [cam_high]
+    check_interval_chunks: 64
+    max_tokens: 256
+    temperature: 0
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
+memory:
+  class_path: omniroboagent.agent_core.TieredMemory
+  init_args:
+    visual_window_size: 2
+    recent_event_limit: 12
+    key_event_limit: 12
+    summary_max_chars: 2048
+    save_key_event_artifacts: true
+    camera_keys: [cam_high]
