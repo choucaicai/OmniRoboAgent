@@ -1,6 +1,6 @@
 # Separate chemistry demo and official-task evaluation
 
-Status: DONE
+Status: DONE — original separation and README grouping follow-up complete.
 
 Change record: [documentation separation](../changes/2026-10-12-demo-and-benchmark-documentation.md).
 
@@ -43,3 +43,14 @@ attributes the 41.2% result to the chemistry simulator or claims exact paper rep
 ## Risks
 
 Existing `chemistry_bench` paths remain compatibility identifiers, not a benchmark claim.
+
+## README grouping follow-up
+
+The user requested one chemistry-platform chapter with two distinct subsections:
+the chemistry demo and OmniRoboAgent running official RoboSynChallenge tasks.
+Keep their simulation environments and score attribution separate, and preserve
+all existing commands and result details.
+
+- [x] Group README headings, check hierarchy/unchanged command blocks and record verification.
+
+Follow-up record: [README grouping](../changes/2026-10-12-chemistry-chapter-grouping.md).

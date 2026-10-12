@@ -138,7 +138,14 @@ git clone https://huggingface.co/datasets/EmbodiedBench/EB-ALFRED \
 该示例展示从场景 PLY 读取点云、运行 SpatialLM 空间定位、生成结构化墙体/门窗/物体
 结果展示。
 
-## 化学仿真平台：为智能体提供化学实验 Demo
+## 化学仿真平台
+
+本节包含两个子部分：化学仿真 demo，以及使用 OmniRoboAgent 运行官方任务的
+benchmark。两部分复用同一 Agent 框架，但使用独立的仿真环境：demo 使用自研
+Isaac Sim 化学实验环境，benchmark 使用 RoboSynChallenge 官方环境；后者的
+成绩不代表化学仿真平台的性能。
+
+### 化学仿真 Demo
 
 这是本项目自研的化学实验仿真模块，当前目标是生成一个完整、可观察的酸碱滴定
 demo，展示机械臂动作、实验状态变化与 Agent 闭环，而不是建立新的 benchmark。
@@ -158,7 +165,7 @@ ChemistryBenchEnvironment → gRPC worker → 机械臂 / 化学状态
 新图像与执行反馈 → EnvironmentVerifier → 继续或结束
 ```
 
-### 模块与运行方式
+#### 模块与运行方式
 
 - `benchmarks/chemistry-bench-sim`：自有实验场景、化学状态引擎、机械臂动作和录像 worker。
 - `benchmarks/chemistry-bench-proto`：worker 与客户端共用的 gRPC 协议。
@@ -195,7 +202,7 @@ worker 保持运行，在另一个终端生成脚本 demo（不需要模型服�
   --config configs/runs/chemistry_bench_titration.yaml
 ```
 
-### Demo 验证范围
+#### Demo 验证范围
 
 已验证带机械臂运动的脚本演示：5 步完成滴定与记录，连续录像 416 帧、20 FPS、
 20.8 秒。更早的静态机械臂版本也通过 Qwen3.5-9B 的 13 步模型闭环；相机与运动
@@ -204,7 +211,7 @@ worker 保持运行，在另一个终端生成脚本 demo（不需要模型服�
 完整安装、动作接口、成功条件、录像说明与验证记录见
 [化学仿真平台 Demo](docs/chemistry_bench.md)。
 
-## RoboSynChallenge：使用 OmniRoboAgent 运行官方任务
+### Benchmark：使用 OmniRoboAgent 运行 RoboSynChallenge 官方任务
 
 这部分使用第三方 [RoboSynChallenge](https://github.com/EDEM-AI/RoboSynChallenge)
 的官方任务、EmbodiChain/DexSim 仿真环境及公开策略权重，验证 OmniRoboAgent 的
@@ -230,7 +237,7 @@ RoboSynChallenge RGB / robot qpos
      Memory / Pipeline → 继续或终止
 ```
 
-### 模块组成与目录
+#### 模块组成与目录
 
 - `RoboSynChallengeEnvironment`：读取 RGB/proprioception，不向策略提供 privileged
   task state；校验 `{"actions": [T, D]}`，当前模型使用 CobotMagic 14 维原生动作。
@@ -247,7 +254,7 @@ RoboSynChallenge RGB / robot qpos
 `benchmarks/robosyn-runtime` 是本项目自有的隔离依赖配置和 `uv.lock`。
 模型下载到 `../models/robosyn/`，运行输出位于 `runs/robosynchallenge/`，不提交 Git。
 
-### 安装、权重与服务
+#### 安装、权重与服务
 
 从项目根目录初始化两个上游依赖，使用 Python 3.11 安装独立运行环境：
 
@@ -299,7 +306,7 @@ PY
 每个原生动作后读取环境反馈并验证；配置每 64 个 action chunks 做一次视觉语义检查。
 最终成功依据 `is_task_success() and not truncated`，不由模型自行宣告。
 
-### 单任务与完整评测
+#### 单任务与完整评测
 
 先验证 `click_bell` seed 0 的真实模型闭环和录像：
 
@@ -340,7 +347,7 @@ DexSim 的 Vulkan GPU index 不随 `CUDA_VISIBLE_DEVICES` 重映射，需保持 
 `artifact_manifest.json`。在单任务命令中省略 `--agent-config` 可运行相同策略的直接 baseline；
 该模式不调用视觉 Planner/Verifier，也不使用专家控制器。
 
-### 验证结果与边界
+#### 验证结果与边界
 
 历史 Qwen3.5-9B + ACT 评测完成十任务 × 100 回合：412/1000 成功（41.2%），
 588 次正常失败，所有有效结果和录像/日志已核对。这是 OmniRoboAgent 在官方任务
